@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <!-- ==================================================================== -->
 <!-- XSLT script for iNM eEAD -->
 <!-- source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
@@ -63,7 +62,7 @@
 					<tbody>
 						<tr>
 							<td width="1%">
-								<img src="./DPN_files/logo.jpg" alt="AIS"/>
+								<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsXfeeIugt2q_rvditc-PbmqOMAWkbYHcWwdq_3NuFPbjFXRXpd9DtJnUNt18Rqg6RTXI&amp;usqp=CAU" alt="AIS" width="80px" height="80px"/>
 							</td>
 							<td width="98%">
 								<div style="height: 100%; display: flex; justify-content: center; align-items: center;">
@@ -71,7 +70,7 @@
 								</div>
 							</td>
 							<td width="1%">
-								<img src="./DPN_files/logo.jpg" alt="AIS"/>
+								<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsXfeeIugt2q_rvditc-PbmqOMAWkbYHcWwdq_3NuFPbjFXRXpd9DtJnUNt18Rqg6RTXI&amp;usqp=CAU" alt="AIS" width="80px" height="80px"/>
 							</td>
 						</tr>
 					</tbody>
