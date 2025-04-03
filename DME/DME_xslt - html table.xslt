@@ -115,9 +115,10 @@
 								<td><xsl:value-of select="if (string-length(.//aixm:name) = 0) then '&#160;' else .//aixm:name"/></td>
 								
 								<!-- Responsible State -->
-								<xsl:variable name="OrgAuthUUID" select=".//aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href"/>
-								<xsl:variable name="OrgAuthName" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($OrgAuthUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:name"/>
-								<td><xsl:value-of select="if (string-length($OrgAuthName) = 0) then '&#160;' else $OrgAuthName"/></td>
+								<xsl:variable name="OrgAuthUUID" select="aixm:timeSlice/aixm:DMETimeSlice/aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href"/>
+								<xsl:variable name="ResponsibleStateUUID" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($OrgAuthUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation/aixm:theOrganisationAuthority/@xlink:href"/>
+								<xsl:variable name="ResponsibleState" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($ResponsibleStateUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:name"/>
+								<td><xsl:value-of select="if (string-length($ResponsibleState) = 0) then '&#160;' else $ResponsibleState"/></td>
 								
 								<!-- Latitude -->
 								<xsl:variable name="coordinates" select=".//aixm:location/aixm:ElevatedPoint/gml:pos"/>

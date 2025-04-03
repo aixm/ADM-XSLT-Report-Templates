@@ -72,11 +72,12 @@
 						</xsl:if>
 						
 						<!-- Responsible State -->
-						<xsl:variable name="OrgAuthUUID" select=".//aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href"/>
-						<xsl:variable name="OrgAuthName" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($OrgAuthUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:name"/>
-						<xsl:if test="not(empty($OrgAuthName))">
+						<xsl:variable name="OrgAuthUUID" select="aixm:timeSlice/aixm:DMETimeSlice/aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href"/>
+						<xsl:variable name="ResponsibleStateUUID" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($OrgAuthUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation/aixm:theOrganisationAuthority/@xlink:href"/>
+						<xsl:variable name="ResponsibleState" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($ResponsibleStateUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:name"/>
+						<xsl:if test="not(empty($ResponsibleState))">
 							<Org>
-								<txtName><xsl:value-of select="$OrgAuthName"/></txtName>
+								<txtName><xsl:value-of select="$ResponsibleState"/></txtName>
 							</Org>
 						</xsl:if>
 						

@@ -153,10 +153,11 @@
 								</tr>
 								
 								<!-- Responsible State -->
-								<xsl:variable name="OrgAuthUUID" select=".//aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href"/>
-								<xsl:variable name="OrgAuthName" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($OrgAuthUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:name"/>
+								<xsl:variable name="OrgAuthUUID" select="aixm:timeSlice/aixm:DMETimeSlice/aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href"/>
+								<xsl:variable name="ResponsibleStateUUID" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($OrgAuthUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation/aixm:theOrganisationAuthority/@xlink:href"/>
+								<xsl:variable name="ResponsibleState" select="//aixm:OrganisationAuthority[gml:identifier = substring-after($ResponsibleStateUUID, 'urn:uuid:')]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice/aixm:name"/>
 								<tr>
-									<td><xsl:value-of select="if (string-length($OrgAuthName) = 0) then '&#160;' else $OrgAuthName"/></td>
+									<td><xsl:value-of select="if (string-length($ResponsibleState) = 0) then '&#160;' else $ResponsibleState"/></td>
 								</tr>
 								
 								<!-- Latitude -->
