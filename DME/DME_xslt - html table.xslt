@@ -284,7 +284,7 @@
 								<xsl:variable name="month" select="substring(.//gml:validTime/gml:TimePeriod/gml:beginPosition, 6, 2)"/>
 								<xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
 									if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-									if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else 'DEC'"/>
+									if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
 								<xsl:variable name="year" select="substring(.//gml:validTime/gml:TimePeriod/gml:beginPosition, 1, 4)"/>
 								<td><xsl:value-of select="concat($day, '-', $month, '-', $year)"/></td>
 								
