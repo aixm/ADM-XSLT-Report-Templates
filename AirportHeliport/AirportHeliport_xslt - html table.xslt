@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- ==================================================================== -->
 <!-- XSLT script for iNM eEAD -->
-<!-- source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
+<!-- Source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
@@ -94,7 +94,7 @@
 							<td rowspan="2">
 								<strong>Working hours</strong>
 							</td>
-							<td rowspan="2">
+							<td rowspan="2" width="10%">
 								<strong>Remark to working hours</strong>
 							</td>
 							<td rowspan="2">
@@ -193,19 +193,39 @@
 							
 							<!-- Working hours: H24, HX, HO, NOTAM, if there is an aixm:availability property with aixm:operationalStatus='NORMAL' and no aixm:Timesheet -->
 							<xsl:for-each select="aixm:timeSlice/aixm:AirportHeliportTimeSlice/aixm:availability/aixm:AirportHeliportAvailability[not(aixm:timeInterval/aixm:Timesheet) and aixm:operationalStatus = 'NORMAL']">
-								<xsl:variable name="TimeRemarks" select="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:purpose=('REMARK', 'DESCRIPTION', 'WARNING')]/aixm:translatedNote/aixm:LinguisticNote/aixm:note"/>
+								<xsl:variable name="TimeRemarks">
+									<xsl:choose>
+										<xsl:when test="count(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']) = 1">
+											<xsl:for-each select="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']">
+												<xsl:value-of select="concat('(', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note)"/>
+											</xsl:for-each>
+										</xsl:when>
+										<xsl:when test="count(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']) gt 1">
+											<xsl:for-each select="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']">
+												<xsl:choose>
+													<xsl:when test="position() = 1">
+														<xsl:value-of select="concat('(', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note)"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', (', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note, ', ')"/>
+													</xsl:otherwise>
+												</xsl:choose>
+											</xsl:for-each>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
 								<xsl:variable name="WorkingHours">
 									<xsl:choose>
-										<xsl:when test="not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[aixm:note='HX (no specific working hours)' or aixm:note='HO (service available to meet operational requests)' or aixm:note='activity periods to be published by NOTAM']])">
+										<xsl:when test="not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note, 'HX') or contains(aixm:note, 'HO') or contains(aixm:note, 'NOTAM') or contains(aixm:note, 'HOL') or contains(aixm:note, 'SS') or contains(aixm:note, 'SR') or contains(aixm:note, 'MON') or contains(aixm:note, 'TUE') or contains(aixm:note, 'WED') or contains(aixm:note, 'THU') or contains(aixm:note, 'FRI') or contains(aixm:note, 'SAT') or contains(aixm:note, 'SUN')]])">
 											<xsl:value-of select="'H24'"/>
 										</xsl:when>
-										<xsl:when test="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note='HX (no specific working hours)']">
+										<xsl:when test="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'HX')]">
 											<xsl:value-of select="'HX'"/>
 										</xsl:when>
-										<xsl:when test="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note='HO (service available to meet operational requests)']">
+										<xsl:when test="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'HO') and not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'HOL'))]">
 											<xsl:value-of select="'HO'"/>
 										</xsl:when>
-										<xsl:when test="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note='activity periods to be published by NOTAM']">
+										<xsl:when test="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'NOTAM')]">
 											<xsl:value-of select="'NOTAM'"/>
 										</xsl:when>
 									</xsl:choose>
@@ -221,13 +241,34 @@
 												<xsl:value-of select="aixm:navigationEquipment"/>
 											</xsl:if>
 											<xsl:if test="aixm:antiCollisionAndSeparationEquipment">
-												<xsl:value-of select="concat(' ', aixm:antiCollisionAndSeparationEquipment)"/>
+												<xsl:choose>
+													<xsl:when test="not(aixm:navigationEquipment)">
+														<xsl:value-of select="aixm:antiCollisionAndSeparationEquipment"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', ', aixm:antiCollisionAndSeparationEquipment)"/>
+													</xsl:otherwise>
+												</xsl:choose>
 											</xsl:if>
 											<xsl:if test="aixm:communicationEquipment">
-												<xsl:value-of select="concat(' ', aixm:communicationEquipment)"/>
+												<xsl:choose>
+													<xsl:when test="not(aixm:antiCollisionAndSeparationEquipment) and not(aixm:navigationEquipment)">
+														<xsl:value-of select="aixm:communicationEquipment"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', ', aixm:communicationEquipment)"/>
+													</xsl:otherwise>
+												</xsl:choose>
 											</xsl:if>
 											<xsl:if test="aixm:surveillanceEquipment">
-												<xsl:value-of select="concat(' ', aixm:surveillanceEquipment)"/>
+												<xsl:choose>
+													<xsl:when test="not(aixm:antiCollisionAndSeparationEquipment) and not(aixm:navigationEquipment) and not(aixm:communicationEquipment)">
+														<xsl:value-of select="aixm:surveillanceEquipment"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', ', aixm:surveillanceEquipment)"/>
+													</xsl:otherwise>
+												</xsl:choose>
 											</xsl:if>
 										</xsl:variable>
 										<tr>
@@ -339,13 +380,34 @@
 												<xsl:value-of select="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment"/>
 											</xsl:if>
 											<xsl:if test="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment">
-												<xsl:value-of select="concat(' ', aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment)"/>
+												<xsl:choose>
+													<xsl:when test="not(aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment)">
+														<xsl:value-of select="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', ', aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment)"/>
+													</xsl:otherwise>
+												</xsl:choose>
 											</xsl:if>
 											<xsl:if test="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment">
-												<xsl:value-of select="concat(' ', aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment)"/>
+												<xsl:choose>
+													<xsl:when test="not(aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment) and not(aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment)">
+														<xsl:value-of select="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', ', aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment)"/>
+													</xsl:otherwise>
+												</xsl:choose>
 											</xsl:if>
 											<xsl:if test="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment">
-												<xsl:value-of select="concat(' ', aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment)"/>
+												<xsl:choose>
+													<xsl:when test="not(aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment) and not(aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment) and not(aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment)">
+														<xsl:value-of select="aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<xsl:value-of select="concat(', ', aixm:selection/aixm:ConditionCombination/aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment)"/>
+													</xsl:otherwise>
+												</xsl:choose>
 											</xsl:if>
 										</xsl:variable>
 										<td><xsl:value-of select="if (string-length($AircraftEquipment) != 0) then $AircraftEquipment else '&#160;'"/></td>
@@ -359,6 +421,44 @@
 										<td><xsl:value-of select="if (string-length($Originator) != 0) then $Originator else '&#160;'"/></td>
 									</tr>
 								</xsl:for-each>
+								<!-- No AircraftCharacteristic or FlightCharacteristic -->
+								<xsl:if test="not(aixm:selection)">
+									<tr>
+										<td><xsl:value-of select="if (string-length($AirportDesignator) != 0) then $AirportDesignator else '&#160;'"/></td>
+										<td><xsl:value-of select="if (string-length($AirportICAOcode) != 0) then $AirportICAOcode else '&#160;'"/></td>
+										<td>&#160;</td>
+										<td><xsl:value-of select="if (string-length($WorkingHours) != 0) then $WorkingHours else '&#160;'"/></td>
+										<td><xsl:value-of select="if (string-length($TimeRemarks) != 0) then $TimeRemarks else '&#160;'"/></td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td>&#160;</td>
+										<td><xsl:value-of select="if (string-length($EffectiveDate) gt 4) then $EffectiveDate else '&#160;'"/></td>
+										<td><xsl:value-of select="if (string-length($Commit_date) gt 4) then $Commit_date else '&#160;'"/></td>
+										<td><xsl:value-of select="if (string-length($AirportUUID) != 0) then $AirportUUID else '&#160;'"/></td>
+										<td><xsl:value-of select="if (string-length($Originator) != 0) then $Originator else '&#160;'"/></td>
+									</tr>
+								</xsl:if>
 							</xsl:for-each>
 							
 							<!-- Working hours: H24, HJ, HN, or other; if there is an aixm:availability property with aixm:operationalStatus='NORMAL' and at least one aixm:Timesheet -->
@@ -377,7 +477,27 @@
 									</xsl:choose>
 								</xsl:variable>
 								<xsl:for-each select="aixm:timeInterval/aixm:Timesheet">
-									<xsl:variable name="TimeRemarks" select="../../aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:purpose=('REMARK', 'DESCRIPTION', 'WARNING')]/aixm:translatedNote/aixm:LinguisticNote/aixm:note"/>
+									<xsl:variable name="TimeRemarks">
+										<xsl:choose>
+											<xsl:when test="count(../../aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']) = 1">
+												<xsl:for-each select="../../aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']">
+													<xsl:value-of select="concat('(', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note)"/>
+												</xsl:for-each>
+											</xsl:when>
+											<xsl:when test="count(../../aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']) gt 1">
+												<xsl:for-each select="../../aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']">
+													<xsl:choose>
+														<xsl:when test="position() = 1">
+															<xsl:value-of select="concat('(', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note)"/>
+														</xsl:when>
+														<xsl:otherwise>
+															<xsl:value-of select="concat(', (', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note, ', ')"/>
+														</xsl:otherwise>
+													</xsl:choose>
+												</xsl:for-each>
+											</xsl:when>
+										</xsl:choose>
+									</xsl:variable>
 									<xsl:variable name="TimeReference" select="aixm:timeReference"/>
 									<xsl:variable name="YearlyStartDate" select="aixm:startDate"/>
 									<xsl:variable name="YearlyEndDate" select="aixm:endDate"/>
@@ -405,13 +525,34 @@
 														<xsl:value-of select="aixm:navigationEquipment"/>
 													</xsl:if>
 													<xsl:if test="aixm:antiCollisionAndSeparationEquipment">
-														<xsl:value-of select="concat(' ', aixm:antiCollisionAndSeparationEquipment)"/>
+														<xsl:choose>
+															<xsl:when test="not(aixm:navigationEquipment)">
+																<xsl:value-of select="aixm:antiCollisionAndSeparationEquipment"/>
+															</xsl:when>
+															<xsl:otherwise>
+																<xsl:value-of select="concat(', ', aixm:antiCollisionAndSeparationEquipment)"/>
+															</xsl:otherwise>
+														</xsl:choose>
 													</xsl:if>
 													<xsl:if test="aixm:communicationEquipment">
-														<xsl:value-of select="concat(' ', aixm:communicationEquipment)"/>
+														<xsl:choose>
+															<xsl:when test="not(aixm:antiCollisionAndSeparationEquipment) and not(aixm:navigationEquipment)">
+																<xsl:value-of select="aixm:communicationEquipment"/>
+															</xsl:when>
+															<xsl:otherwise>
+																<xsl:value-of select="concat(', ', aixm:communicationEquipment)"/>
+															</xsl:otherwise>
+														</xsl:choose>
 													</xsl:if>
 													<xsl:if test="aixm:surveillanceEquipment">
-														<xsl:value-of select="concat(' ', aixm:surveillanceEquipment)"/>
+														<xsl:choose>
+															<xsl:when test="not(aixm:antiCollisionAndSeparationEquipment) and not(aixm:navigationEquipment) and not(aixm:communicationEquipment)">
+																<xsl:value-of select="aixm:surveillanceEquipment"/>
+															</xsl:when>
+															<xsl:otherwise>
+																<xsl:value-of select="concat(', ', aixm:surveillanceEquipment)"/>
+															</xsl:otherwise>
+														</xsl:choose>
 													</xsl:if>
 												</xsl:variable>
 												<tr>
@@ -523,13 +664,34 @@
 														<xsl:value-of select="aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment"/>
 													</xsl:if>
 													<xsl:if test="aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment">
-														<xsl:value-of select="concat(' ', aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment)"/>
+														<xsl:choose>
+															<xsl:when test="not(aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment)">
+																<xsl:value-of select="aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment"/>
+															</xsl:when>
+															<xsl:otherwise>
+																<xsl:value-of select="concat(', ', aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment)"/>
+															</xsl:otherwise>
+														</xsl:choose>
 													</xsl:if>
 													<xsl:if test="aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment">
-														<xsl:value-of select="concat(' ', aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment)"/>
+														<xsl:choose>
+															<xsl:when test="not(aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment) and not(aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment)">
+																<xsl:value-of select="aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment"/>
+															</xsl:when>
+															<xsl:otherwise>
+																<xsl:value-of select="concat(', ', aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment)"/>
+															</xsl:otherwise>
+														</xsl:choose>
 													</xsl:if>
 													<xsl:if test="aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment">
-														<xsl:value-of select="concat(' ', aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment)"/>
+														<xsl:choose>
+															<xsl:when test="not(aixm:aircraft/aixm:AircraftCharacteristic/aixm:antiCollisionAndSeparationEquipment) and not(aixm:aircraft/aixm:AircraftCharacteristic/aixm:navigationEquipment) and not(aixm:aircraft/aixm:AircraftCharacteristic/aixm:communicationEquipment)">
+																<xsl:value-of select="aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment"/>
+															</xsl:when>
+															<xsl:otherwise>
+																<xsl:value-of select="concat(', ', aixm:aircraft/aixm:AircraftCharacteristic/aixm:surveillanceEquipment)"/>
+															</xsl:otherwise>
+														</xsl:choose>
 													</xsl:if>
 												</xsl:variable>
 												<td><xsl:value-of select="if (string-length($AircraftEquipment) != 0) then $AircraftEquipment else '&#160;'"/></td>
@@ -543,6 +705,44 @@
 												<td><xsl:value-of select="if (string-length($Originator) != 0) then $Originator else '&#160;'"/></td>
 											</tr>
 										</xsl:for-each>
+										<!-- No AircraftCharacteristic or FlightCharacteristic -->
+										<xsl:if test="not(aixm:selection)">
+											<tr>
+												<td><xsl:value-of select="if (string-length($AirportDesignator) != 0) then $AirportDesignator else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($AirportICAOcode) != 0) then $AirportICAOcode else '&#160;'"/></td>
+												<td>&#160;</td>
+												<td><xsl:value-of select="if (string-length($WorkingHours) != 0) then $WorkingHours else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($TimeRemarks) != 0) then $TimeRemarks else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($TimeReference) != 0) then $TimeReference else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($YearlyStartDate) != 0) then $YearlyStartDate else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($YearlyEndDate) != 0) then $YearlyEndDate else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($DayStart) != 0) then $DayStart else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($DayEnd) != 0) then $DayEnd else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($StartTime) != 0) then $StartTime else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($StartEvent) != 0) then $StartEvent else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($RelativeToEventStart) != 0) then concat($RelativeToEventStart, ' ',$RelativeToEventStartUOM) else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($InterpretationStart) != 0) then $InterpretationStart else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($EndTime) != 0) then $EndTime else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($EndEvent) != 0) then $EndEvent else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($RelativeToEventEnd) != 0) then concat($RelativeToEventEnd, ' ',$RelativeToEventEndUOM) else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($InterpretationEnd) != 0) then $InterpretationEnd else '&#160;'"/></td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td>&#160;</td>
+												<td><xsl:value-of select="if (string-length($EffectiveDate) gt 4) then $EffectiveDate else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($Commit_date) gt 4) then $Commit_date else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($AirportUUID) != 0) then $AirportUUID else '&#160;'"/></td>
+												<td><xsl:value-of select="if (string-length($Originator) != 0) then $Originator else '&#160;'"/></td>
+											</tr>
+										</xsl:if>
 									</xsl:for-each>
 								</xsl:for-each>
 							</xsl:for-each>
