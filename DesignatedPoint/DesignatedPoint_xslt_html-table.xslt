@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- ==================================================================== -->
 <!-- XSLT script for iNM eEAD -->
-<!-- source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
+<!-- Source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
@@ -20,6 +20,8 @@
 		provided by the Open Source Initiative:
 		http://www.opensource.org/licenses/bsd-license.php
 -->
+
+<!-- for successful transformation, the XML file must contain the following features: aixm:DesignatedPoint -->
 
 <xsl:transform version="3.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -40,7 +42,6 @@
 	xmlns:aixm_ds_xslt="http://www.aixm.aero/xslt"
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit">
-	
 	
 	<xsl:output method="html" indent="yes"/>
 	
@@ -92,6 +93,9 @@
 						</tr>
 						
 						<xsl:for-each select="//aixm:DesignatedPointTimeSlice">
+							
+							<xsl:sort select="aixm:designator" data-type="text" order="ascending"/>
+							
 							<tr>
 								
 								<!-- Designator -->
@@ -111,6 +115,7 @@
 								<td><xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/></td>
 								
 							</tr>
+							
 						</xsl:for-each>
 						
 					</tbody>

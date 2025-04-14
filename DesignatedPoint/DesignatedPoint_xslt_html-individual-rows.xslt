@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <!-- ==================================================================== -->
 <!-- XSLT script for iNM eEAD -->
-<!-- source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
+<!-- Source: https://github.com/aixm/ADM-XSLT-Report-Templates -->
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
@@ -21,6 +20,8 @@
 		provided by the Open Source Initiative:
 		http://www.opensource.org/licenses/bsd-license.php
 -->
+
+<!-- for successful transformation, the XML file must contain the following features: aixm:DesignatedPoint -->
 
 <xsl:transform version="3.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -42,51 +43,113 @@
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit">
 	
-	<xsl:output method="xml" indent="yes"/>
+	<xsl:output method="html" indent="yes"/>
 	
 	<xsl:strip-space elements="*"/>
 	
 	<xsl:template match="/">
 		
-		<SdoReportResponse xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="SdoReportMgmt.xsd" origin="SDO" version="4.1">
-			<SdoReportResult>
+		<html xmlns="http://www.w3.org/1999/xhtml">
+			
+			<head>
+				<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+				<meta http-equiv="Expires" content="120"/>
+				<title>SDO Reporting - Designated Point</title>
+			</head>
+			
+			<body>
 				
-				<xsl:for-each select="//aixm:DesignatedPointTimeSlice">
-					<Record>
-						
-						<!-- Designator -->
-						<codeId>
-							<xsl:value-of select="aixm:designator"/>
-						</codeId>
-						
-						<!-- Coordinates (suffixed with 'N' or 'E' if positive, 'S' or 'W' if negative) -->
-						<xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
-						<xsl:variable name="latitude" select="number(substring-before($coordinates, ' '))"/>
-						<xsl:variable name="longitude" select="number(substring-after($coordinates, ' '))"/>
-						<geoLat>
-							<xsl:value-of select="concat(abs($latitude), if ($latitude ge 0) then 'N' else 'S')"/>
-						</geoLat>
-						<geoLong>
-							<xsl:value-of select="concat(abs($longitude), if ($longitude ge 0) then 'E' else 'W')"/>
-						</geoLong>
-						
-						<!-- Type -->
-						<codeType>
-							<xsl:value-of select="aixm:type"/>
-						</codeType>
-						
-						<!-- Originator -->
-						<OrgCre>
-							<txtName>
-								<xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
-							</txtName>
-						</OrgCre>
-					</Record>
-					
-				</xsl:for-each>
+				<table>
+					<tbody>
+						<tr>
+							<td width="1%">
+								<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsXfeeIugt2q_rvditc-PbmqOMAWkbYHcWwdq_3NuFPbjFXRXpd9DtJnUNt18Rqg6RTXI&amp;usqp=CAU" alt="AIS" width="80px" height="80px"/>
+							</td>
+							<td width="98%">
+								<div style="height: 100%; display: flex; justify-content: center; align-items: center;">
+									<h2>AERONAUTICAL INFORMATION SERVICES</h2>
+								</div>
+							</td>
+							<td width="1%">
+								<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsXfeeIugt2q_rvditc-PbmqOMAWkbYHcWwdq_3NuFPbjFXRXpd9DtJnUNt18Rqg6RTXI&amp;usqp=CAU" alt="AIS" width="80px" height="80px"/>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<hr/>
 				
-			</SdoReportResult>
-		</SdoReportResponse>
+				<center><b>Designated Point</b></center>
+				<hr/>
+				
+				<table width="100%" border="0">
+					<tbody>
+						
+						<tr>
+							<td><strong>Identification</strong></td>
+						</tr>
+						<tr>
+							<td><strong>Latitude</strong></td>
+						</tr>
+						<tr>
+							<td><strong>Longitude</strong></td>
+						</tr>
+						<tr>
+							<td><strong>Type</strong></td>
+						</tr>
+						<tr>
+							<td><strong>Originator</strong></td>
+						</tr>
+						<tr>
+							<td>&#160;</td>
+						</tr>
+						<tr>
+							<td>&#160;</td>
+						</tr>
+						
+						<xsl:for-each select="//aixm:DesignatedPointTimeSlice">
+							
+							<xsl:sort select="aixm:designator" data-type="text" order="ascending"/>
+							
+							<!-- Designator -->
+							<tr>
+								<td><xsl:value-of select="aixm:designator"/></td>
+							</tr>
+							
+							<!-- Coordinates (suffixed with 'N' or 'E' if positive, 'S' or 'W' if negative) -->
+							<xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
+							<xsl:variable name="latitude" select="number(substring-before($coordinates, ' '))"/>
+							<xsl:variable name="longitude" select="number(substring-after($coordinates, ' '))"/>
+							<tr>
+								<td><xsl:value-of select="concat(abs($latitude), if ($latitude ge 0) then 'N' else 'S')"/></td>
+							</tr>
+							<tr>
+								<td><xsl:value-of select="concat(abs($longitude), if ($longitude ge 0) then 'N' else 'S')"/></td>
+							</tr>
+							
+							<!-- Type -->
+							<tr>
+								<td><xsl:value-of select="aixm:type"/></td>
+							</tr>
+							
+							<!-- Originator -->
+							<tr>
+								<td><xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/></td>
+							</tr>
+							<tr>
+								<td>&#160;</td>
+							</tr>
+							<tr>
+								<td>&#160;</td>
+							</tr>
+							
+						</xsl:for-each>
+						
+					</tbody>
+				</table>
+				
+			</body>
+			
+		</html>
 		
 	</xsl:template>
 	
