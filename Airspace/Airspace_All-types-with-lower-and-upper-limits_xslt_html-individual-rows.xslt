@@ -21,6 +21,8 @@
 	http://www.opensource.org/licenses/bsd-license.php
 -->
 
+<!-- for successful transformation, the XML file must contain the following features: aixm:Airspace -->
+
 <xsl:transform version="3.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:uuid="java.util.UUID"
@@ -147,6 +149,8 @@
 						</tr>
 						
 						<xsl:for-each select="//aixm:AirspaceTimeSlice">
+							
+							<xsl:sort select=".//aixm:designator" data-type="text" order="ascending"/>
 							
 							<!-- Type -->
 							<tr>

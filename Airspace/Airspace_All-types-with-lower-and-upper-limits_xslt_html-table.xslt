@@ -21,6 +21,8 @@
 	http://www.opensource.org/licenses/bsd-license.php
 -->
 
+<!-- for successful transformation, the XML file must contain the following features: aixm:Airspace -->
+
 <xsl:transform version="3.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:uuid="java.util.UUID"
@@ -41,7 +43,7 @@
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit">
 	
-	<xsl:output method="html" indent="yes"/>
+	<xsl:output method="html" indent="yes" />
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -81,10 +83,10 @@
 				</center>
 				<hr/>
 				
-				<table width="100%" border="0">
+				<table border="0" style="border-spacing: 8px 4px">
 					<tbody>
 						
-						<tr>
+						<tr style="white-space:nowrap">
 							<td>
 								<strong>Type</strong>
 							</td>
@@ -95,25 +97,25 @@
 								<strong>Name</strong>
 							</td>
 							<td>
-								<strong>Location indicator [ICAO doc. 7910]</strong>
+								<strong>Location indicator<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[ICAO doc. 7910]</strong>
 							</td>
 							<td>
-								<strong>Reference for upper limit</strong>
+								<strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>upper limit</strong>
 							</td>
 							<td>
 								<strong>Upper limit</strong>
 							</td>
 							<td>
-								<strong>Unit of measurement [upper limit]</strong>
+								<strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[upper limit]</strong>
 							</td>
 							<td>
-								<strong>Reference for lower limit</strong>
+								<strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>lower limit</strong>
 							</td>
 							<td>
 								<strong>Lower limit</strong>
 							</td>
 							<td>
-								<strong>Unit of measurement [lower limit]</strong>
+								<strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[lower limit]</strong>
 							</td>
 							<td>
 								<strong>Originator</strong>
@@ -122,7 +124,9 @@
 						
 						<xsl:for-each select="//aixm:AirspaceTimeSlice">
 							
-							<tr>
+							<xsl:sort select=".//aixm:designator" data-type="text" order="ascending"/>
+							
+							<tr style="white-space:nowrap">
 								<!-- Type -->
 								<td><xsl:value-of select="if (aixm:type) then aixm:type else '&#160;'"/></td>
 								
@@ -130,7 +134,7 @@
 								<td><xsl:value-of select="if (aixm:designator) then aixm:designator else '&#160;'"/></td>
 								
 								<!-- Name -->
-								<td><xsl:value-of select="if (aixm:name) then aixm:name else '&#160;'"/></td>
+								<td style="white-space:normal"><xsl:value-of select="if (aixm:name) then aixm:name else '&#160;'"/></td>
 								
 								<!-- Location indicator [ICAO doc. 7910] -->
 								<td><xsl:value-of select="if (aixm:designatorICAO = 'YES') then aixm:designator else '&#160;'"/></td>
@@ -156,7 +160,7 @@
 								<td><xsl:value-of select="if ($AirspaceVolume/aixm:lowerLimit/@uom) then $AirspaceVolume/aixm:lowerLimit/@uom else '&#160;'"/></td>
 								
 								<!-- Originator -->
-								<td><xsl:value-of select="aixm:extension/ead-audit:AirspaceExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/></td>
+								<td style="white-space:normal"><xsl:value-of select="aixm:extension/ead-audit:AirspaceExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/></td>
 							</tr>
 							
 						</xsl:for-each>
