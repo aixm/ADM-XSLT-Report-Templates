@@ -21,7 +21,13 @@
 		http://www.opensource.org/licenses/bsd-license.php
 -->
 
-<!-- for successful transformation, the XML file must contain the following features: aixm:DesignatedPoint -->
+<!-- 
+	Extraction Rule parameters required for the transformation to be successful:
+	===========================================================================
+	featureTypes: aixm:DesignatedPoint
+	permanentBaseline: true
+	AIXMversion:	5.1.1
+-->
 
 <xsl:transform version="3.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -52,7 +58,7 @@
 		<SdoReportResponse xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="SdoReportMgmt.xsd" origin="SDO" version="4.1">
 			<SdoReportResult>
 				
-				<xsl:for-each select="//aixm:DesignatedPointTimeSlice">
+				<xsl:for-each select="//aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE']">
 					
 					<xsl:sort select="aixm:designator" data-type="text" order="ascending"/>
 					
