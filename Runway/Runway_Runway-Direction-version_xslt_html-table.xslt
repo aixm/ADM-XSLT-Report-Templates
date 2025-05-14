@@ -245,8 +245,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'VASIS position')">
-													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note,'(\r\n?|\n)', ' ')), ' ')"/>
+												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'VASIS position')">
+													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
 													<xsl:value-of select="substring-before(substring-after($annotation_text, 'VASIS position: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
@@ -267,8 +267,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'PortableVASIS')">
-													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note,'(\r\n?|\n)', ' ')), ' ')"/>
+												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'PortableVASIS')">
+													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
 													<xsl:value-of select="substring-before(substring-after($annotation_text, 'PortableVASIS: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
@@ -299,8 +299,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'Type of VASIS')">
-													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note,'(\r\n?|\n)', ' ')), ' ')"/>
+												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Type of VASIS')">
+													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
 													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Type of VASIS: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
@@ -310,7 +310,7 @@
 								
 								<!-- (d)VASIS position description -->
 								<xsl:variable name="RD_VASIS_position_desc">
-									<xsl:value-of select="//aixm:VisualGlideSlopeIndicatorTimeSlice[aixm:interpretation = 'BASELINE' and substring-after(aixm:runwayDirection/@xlink:href, 'urn:uuid:') = $RD_UUID]/aixm:annotation/aixm:Note[aixm:propertyName = 'position']/aixm:translatedNote/aixm:LinguisticNote/aixm:note"/>
+									<xsl:value-of select="//aixm:VisualGlideSlopeIndicatorTimeSlice[aixm:interpretation = 'BASELINE' and substring-after(aixm:runwayDirection/@xlink:href, 'urn:uuid:') = $RD_UUID]/aixm:annotation/aixm:Note[aixm:propertyName = 'position']/aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]"/>
 								</xsl:variable>
 								
 								<!-- Approach slope angle -->
@@ -321,8 +321,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'Approach slope angle')">
-													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note,'(\r\n?|\n)', ' ')), ' ')"/>
+												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Approach slope angle')">
+													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
 													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Approach slope angle: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
@@ -338,8 +338,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'Minimum eye height over threshold')">
-													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note,'(\r\n?|\n)', ' ')), ' ')"/>
+												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Minimum eye height over threshold')">
+													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
 													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Minimum eye height over threshold: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
@@ -355,8 +355,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note, 'Unit of measurement [minimum eye height over threshold]')">
-													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note,'(\r\n?|\n)', ' ')), ' ')"/>
+												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Unit of measurement [minimum eye height over threshold]')">
+													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
 													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Unit of measurement [minimum eye height over threshold]: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
@@ -388,8 +388,8 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note), 'runway visual range')">
-													<xsl:value-of select="substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note, ':')"/>
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'runway visual range')">
+													<xsl:value-of select="substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:otherwise>
@@ -403,7 +403,7 @@
 								
 								<!-- Remarks -->
 								<xsl:variable name="remarks">
-									<xsl:variable name="dataset_creation_date" select="../../../../aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
+									<xsl:variable name="dataset_creation_date" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
@@ -472,127 +472,132 @@
 				
 				<!-- extractionRulesUUID -->
 				<xsl:variable name="rule_uuid">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', interestedInDataAt'), 'extractionRulesUuid: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'extractionRulesUuid: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- interestedInDataAt -->
 				<xsl:variable name="interest_date">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', featureTypes'), 'interestedInDataAt: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'interestedInDataAt: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- featureTypes -->
 				<xsl:variable name="feat_types">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', excludedProperties'), 'featureTypes: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'featureTypes: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- excludedProperties -->
 				<xsl:variable name="exc_properties">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', includeReferencedFeaturesLevel'), 'excludedProperties: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'excludedProperties: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- includeReferencedFeaturesLevel -->
 				<xsl:variable name="referenced_feat_level">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', featureOccurrence'), 'includeReferencedFeaturesLevel: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'includeReferencedFeaturesLevel: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- featureOccurrence -->
 				<xsl:variable name="feat_occurrence">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', effectiveDateStart'), 'featureOccurrence: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'featureOccurrence: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- effectiveDateStart -->
 				<xsl:variable name="eff_date_start">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', effectiveDateEnd'), 'effectiveDateStart: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'effectiveDateStart: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- effectiveDateEnd -->
 				<xsl:variable name="eff_date_end">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', referencedDataFeature'), 'effectiveDateEnd: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'effectiveDateEnd: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- referencedDataFeature -->
 				<xsl:variable name="referenced_data_feat">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', permanentBaseline'), 'referencedDataFeature: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'referencedDataFeature: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- permanentBaseline -->
 				<xsl:variable name="perm_BL">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', permanentPermdelta'), 'permanentBaseline: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'permanentBaseline: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- permanentPermdelta -->
 				<xsl:variable name="perm_PD">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', temporaryData'), 'permanentPermdelta: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'permanentPermdelta: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- temporaryData -->
 				<xsl:variable name="temp_data">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', permanentBaselineForTemporaryData'), 'temporaryData: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'temporaryData: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- permanentBaselineForTemporaryData -->
 				<xsl:variable name="perm_BS_for_temp_data">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', spatialFilteringBy'), 'permanentBaselineForTemporaryData: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'permanentBaselineForTemporaryData: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- spatialFilteringBy -->
 				<xsl:variable name="spatial_filtering">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', spatialAreaUUID'), 'spatialFilteringBy: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialFilteringBy: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- spatialAreaUUID -->
 				<xsl:variable name="spatial_area_uuid">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', spatialAreaBuffer'), 'spatialAreaUUID: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialAreaUUID: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- spatialAreaBuffer -->
 				<xsl:variable name="spatial_area_buffer">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', spatialOperator'), 'spatialAreaBuffer: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialAreaBuffer: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- spatialOperator -->
 				<xsl:variable name="spatial_operator">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', spatialValueOperator'), 'spatialOperator: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialOperator: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- spatialValueOperator -->
 				<xsl:variable name="spatial_value_operator">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', dataBranch'), 'spatialValueOperator: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialValueOperator: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- dataBranch -->
 				<xsl:variable name="data_branch">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', dataScope'), 'dataBranch: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataBranch: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- dataScope -->
 				<xsl:variable name="data_scope">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', dataProviderOrganization'), 'dataScope: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataScope: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- dataProviderOrganization -->
 				<xsl:variable name="data_provider_org">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', systemExtension'), 'dataProviderOrganization: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataProviderOrganization: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- systemExtension -->
 				<xsl:variable name="system_extension">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', AIXMversion'), 'systemExtension: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'systemExtension: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- AIXMversion -->
 				<xsl:variable name="AIXM_ver">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', indirectReferences'), 'AIXMversion: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'AIXMversion: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- indirectReferences -->
 				<xsl:variable name="indirect_references">
-					<xsl:value-of select="substring-after(substring-before($rule_parameters, ', dataType'), 'indirectReferences: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'indirectReferences: '), ',')"/>
 				</xsl:variable>
 				
 				<!-- dataType -->
 				<xsl:variable name="data_type">
-					<xsl:value-of select="substring-after($rule_parameters, 'dataType: ')"/>
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataType: '), ',')"/>
+				</xsl:variable>
+				
+				<!-- CustomizationAirspaceCircleArcToPolygon -->
+				<xsl:variable name="arc_to_polygon">
+					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: '), ',')"/>
 				</xsl:variable>
 				
 				<p><font size="-1">Extraction rule parameters used for this report:</font></p>
@@ -698,6 +703,10 @@
 					<tr>
 						<td><font size="-1">dataType: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($data_type) gt 0) then $data_type else '&#160;'"/></font></td>
+					</tr>
+					<tr>
+						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				
