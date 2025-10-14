@@ -24,10 +24,10 @@
 <!-- 
 	Extraction Rule parameters required for the transformation to be successful:
 	===========================================================================
-	featureTypes:	aixm:Airspace
+			 featureTypes: aixm:Airspace
 	permanentBaseline: true
-	dataScope:	ReleasedData
-	AIXMversion:	5.1.1
+					dataScope: ReleasedData
+			  AIXMversion: 5.1.1
 -->
 
 <xsl:transform version="3.0" 
@@ -47,12 +47,99 @@
 	xmlns:xs="http://www.w3.org/2001/XMLSchema"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:aixm_ds_xslt="http://www.aixm.aero/xslt"
+	xmlns:fcn="local-function"
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit">
+	xmlns:saxon="http://saxon.sf.net/"
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit saxon">
 	
-	<xsl:output method="html" indent="yes" />
+	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
 	
 	<xsl:strip-space elements="*"/>
+	
+	<!-- Insert value or NIL + nilReason -->
+	<xsl:function name="fcn:insert-value" as="xs:string">
+		<xsl:param name="feature_property" as="element()"/>
+		<xsl:choose>
+			<xsl:when test="$feature_property/@xsi:nil='true'">
+				<xsl:choose>
+					<xsl:when test="$feature_property/@nilReason">
+						<xsl:value-of select="concat('NIL:', $feature_property/@nilReason)"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="'NIL'"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="$feature_property"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+
+	<!-- Function to get sort order for airspace types -->
+	<xsl:function name="fcn:get-airspace-type-sort-order" as="xs:integer">
+		<xsl:param name="type" as="xs:string"/>
+		<xsl:choose>
+			<xsl:when test="$type = 'NAS'">1</xsl:when>
+			<xsl:when test="$type = 'NAS_P'">2</xsl:when>
+			<xsl:when test="$type = 'FIR'">3</xsl:when>
+			<xsl:when test="$type = 'FIR_P'">4</xsl:when>
+			<xsl:when test="$type = 'UIR'">5</xsl:when>
+			<xsl:when test="$type = 'UIR_P'">6</xsl:when>
+			<xsl:when test="$type = 'CTA'">7</xsl:when>
+			<xsl:when test="$type = 'CTA_P'">8</xsl:when>
+			<xsl:when test="$type = 'OCA'">9</xsl:when>
+			<xsl:when test="$type = 'OCA_P'">10</xsl:when>
+			<xsl:when test="$type = 'UTA'">11</xsl:when>
+			<xsl:when test="$type = 'UTA_P'">12</xsl:when>
+			<xsl:when test="$type = 'TMA'">13</xsl:when>
+			<xsl:when test="$type = 'TMA_P'">14</xsl:when>
+			<xsl:when test="$type = 'CTR'">15</xsl:when>
+			<xsl:when test="$type = 'CTR_P'">16</xsl:when>
+			<xsl:when test="$type = 'OTA'">17</xsl:when>
+			<xsl:when test="$type = 'SECTOR'">18</xsl:when>
+			<xsl:when test="$type = 'SECTOR_C'">19</xsl:when>
+			<xsl:when test="$type = 'TSA'">20</xsl:when>
+			<xsl:when test="$type = 'CBA'">21</xsl:when>
+			<xsl:when test="$type = 'RCA'">22</xsl:when>
+			<xsl:when test="$type = 'RAS'">23</xsl:when>
+			<xsl:when test="$type = 'AWY'">24</xsl:when>
+			<xsl:when test="$type = 'MTR'">25</xsl:when>
+			<xsl:when test="$type = 'P'">26</xsl:when>
+			<xsl:when test="$type = 'R'">27</xsl:when>
+			<xsl:when test="$type = 'D'">28</xsl:when>
+			<xsl:when test="$type = 'AIDZ'">29</xsl:when>
+			<xsl:when test="$type = 'NO_FIR'">30</xsl:when>
+			<xsl:when test="$type = 'PART'">31</xsl:when>
+			<xsl:when test="$type = 'CLASS'">32</xsl:when>
+			<xsl:when test="$type = 'POLITICAL'">33</xsl:when>
+			<xsl:when test="$type = 'D_OTHER'">34</xsl:when>
+			<xsl:when test="$type = 'A'">35</xsl:when>
+			<xsl:when test="$type = 'W'">36</xsl:when>
+			<xsl:when test="$type = 'PROTECT'">37</xsl:when>
+			<xsl:when test="$type = 'AMA'">38</xsl:when>
+			<xsl:when test="$type = 'ASR'">39</xsl:when>
+			<xsl:when test="$type = 'ADV'">40</xsl:when>
+			<xsl:when test="$type = 'UADV'">41</xsl:when>
+			<xsl:when test="$type = 'ATZ'">42</xsl:when>
+			<xsl:when test="$type = 'ATZ_P'">43</xsl:when>
+			<xsl:when test="$type = 'HTZ'">44</xsl:when>
+			<xsl:when test="$type = 'NTZ'">45</xsl:when>
+			<xsl:when test="$type = 'NOZ'">46</xsl:when>
+			<xsl:when test="$type = 'FBZ'">47</xsl:when>
+			<xsl:when test="$type = 'FIZ'">48</xsl:when>
+			<xsl:when test="$type = 'FRA'">49</xsl:when>
+			<xsl:when test="$type = 'MOA'">50</xsl:when>
+			<xsl:when test="$type = 'NPZ'">51</xsl:when>
+			<xsl:when test="$type = 'RCZ'">52</xsl:when>
+			<xsl:when test="$type = 'RMZ'">53</xsl:when>
+			<xsl:when test="$type = 'TMZ'">54</xsl:when>
+			<!-- Types starting with OTHER -->
+			<xsl:when test="starts-with($type, 'OTHER')">100</xsl:when>
+			<!-- All other types not in the list -->
+			<xsl:otherwise>99</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
 	
 	<xsl:template match="/">
 		
@@ -94,117 +181,162 @@
 					<tbody>
 						
 						<tr style="white-space:nowrap">
-							<td>
-								<strong>Type</strong>
-							</td>
-							<td>
-								<strong>Coded identifier</strong>
-							</td>
-							<td>
-								<strong>Name</strong>
-							</td>
-							<td>
-								<strong>Location indicator<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[ICAO doc. 7910]</strong>
-							</td>
-							<td>
-								<strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>upper limit</strong>
-							</td>
-							<td>
-								<strong>Upper limit</strong>
-							</td>
-							<td>
-								<strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[upper limit]</strong>
-							</td>
-							<td>
-								<strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>lower limit</strong>
-							</td>
-							<td>
-								<strong>Lower limit</strong>
-							</td>
-							<td>
-								<strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[lower limit]</strong>
-							</td>
-							<td>
-								<strong>Originator</strong>
-							</td>
+							<td><strong>Type</strong></td>
+							<td><strong>Coded identifier</strong></td>
+							<td><strong>Name</strong></td>
+							<td><strong>Location indicator<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[ICAO doc. 7910]</strong></td>
+							<td><strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>upper limit</strong></td>
+							<td><strong>Upper limit</strong></td>
+							<td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[upper limit]</strong></td>
+							<td><strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>lower limit</strong></td>
+							<td><strong>Lower limit</strong></td>
+							<td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[lower limit]</strong></td>
+							<td><strong>UUID</strong></td>
+							<td><strong>Valid TimeSlice</strong></td>
+							<td><strong>Originator</strong></td>
 						</tr>
 						
-						<xsl:for-each select="//aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']">
+						<xsl:for-each select="//aixm:Airspace">
 							
-							<xsl:sort select=".//aixm:designator" data-type="text" order="ascending"/>
+							<!-- First sort by type priority, then by designator -->
+							<xsl:sort select="fcn:get-airspace-type-sort-order(string((aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:type))" data-type="number" order="ascending"/>
+							<xsl:sort select="string((aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:designator)" data-type="text" order="ascending"/>
+							<!-- Get all BASELINE time slices for this feature -->
+							<xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']"/>
+							<!-- Find the maximum sequenceNumber -->
+							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
+							<!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
+							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
+							<!-- Select the latest time slice -->
+							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 							
-							<!-- Type -->
-							<xsl:variable name="type">
-								<xsl:value-of select="aixm:type"/>
-							</xsl:variable>
-							
-							<!-- Coded identifier -->
-							<xsl:variable name="designator">
-								<xsl:value-of select="aixm:designator"/>
-							</xsl:variable>
-							
-							<!-- Name -->
-							<xsl:variable name="name">
-								<xsl:value-of select="aixm:name"/>
-							</xsl:variable>
-							
-							<!-- Location indicator [ICAO doc. 7910] -->
-							<xsl:variable name="loc_indicator_ICAO">
-								<xsl:if test="aixm:designatorICAO = 'YES'">
-									<xsl:value-of select="aixm:designator"/>
-								</xsl:if>
-							</xsl:variable>
-							
-							<xsl:variable name="AirspaceVolume" select="aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume"/>
-							
-							<!-- Reference for upper limit -->
-							<xsl:variable name="upper_limit_ref">
-								<xsl:value-of select="$AirspaceVolume/aixm:upperLimitReference"/>
-							</xsl:variable>
-							
-							<!-- Upper limit -->
-							<xsl:variable name="upper_limit">
-								<xsl:value-of select="$AirspaceVolume/aixm:upperLimit"/>
-							</xsl:variable>
-							
-							<!-- Unit of measurement [upper limit] -->
-							<xsl:variable name="upper_limit_uom">
-								<xsl:value-of select="$AirspaceVolume/aixm:upperLimit/@uom"/>
-							</xsl:variable>
-							
-							<!-- Reference for lower limit -->
-							<xsl:variable name="lower_limit_ref">
-								<xsl:value-of select="$AirspaceVolume/aixm:lowerLimitReference"/>
-							</xsl:variable>
-							
-							<!-- Lower limit -->
-							<xsl:variable name="lower_limit">
-								<xsl:value-of select="$AirspaceVolume/aixm:lowerLimit"/>
-							</xsl:variable>
-							
-							<!-- Unit of measurement [lower limit] -->
-							<xsl:variable name="lower_limit_uom">
-								<xsl:value-of select="$AirspaceVolume/aixm:lowerLimit/@uom"/>
-							</xsl:variable>
-							
-							<!-- Originator -->
-							<xsl:variable name="originator">
-								<xsl:value-of select="aixm:extension/ead-audit:AirspaceExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
-							</xsl:variable>
-							
-							<tr style="white-space:nowrap">
-								<td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($designator) gt 0) then $designator else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($name) gt 0) then $name else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($loc_indicator_ICAO) gt 0) then $loc_indicator_ICAO else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($upper_limit_ref) gt 0) then $upper_limit_ref else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($upper_limit) gt 0) then $upper_limit else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($upper_limit_uom) gt 0) then $upper_limit_uom else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($lower_limit_ref) gt 0) then $lower_limit_ref else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($lower_limit) gt 0) then $lower_limit else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($lower_limit_uom) gt 0) then $lower_limit_uom else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
-							</tr>
+							<xsl:for-each select="$latest-timeslice">
+								
+								<!-- Type -->
+								<xsl:variable name="type">
+									<xsl:choose>
+										<xsl:when test="not(aixm:type)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value(aixm:type)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Coded identifier -->
+								<xsl:variable name="designator">
+									<xsl:choose>
+										<xsl:when test="not(aixm:designator)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value(aixm:designator)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Name -->
+								<xsl:variable name="name">
+									<xsl:choose>
+										<xsl:when test="not(aixm:name)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value(aixm:name)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Location indicator [ICAO doc. 7910] -->
+								<xsl:variable name="loc_indicator_ICAO">
+									<xsl:if test="aixm:designatorICAO = 'YES'">
+										<xsl:value-of select="aixm:designator"/>
+									</xsl:if>
+								</xsl:variable>
+								
+								<xsl:variable name="AirspaceVolume" select="aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume"/>
+								
+								<!-- Reference for upper limit -->
+								<xsl:variable name="upper_limit_ref">
+									<xsl:choose>
+										<xsl:when test="not($AirspaceVolume/aixm:upperLimitReference)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:upperLimitReference)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Upper limit -->
+								<xsl:variable name="upper_limit">
+									<xsl:choose>
+										<xsl:when test="not($AirspaceVolume/aixm:upperLimit)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:upperLimit)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Unit of measurement [upper limit] -->
+								<xsl:variable name="upper_limit_uom" select="$AirspaceVolume/aixm:upperLimit/@uom"/>
+								
+								<!-- Reference for lower limit -->
+								<xsl:variable name="lower_limit_ref">
+									<xsl:choose>
+										<xsl:when test="not($AirspaceVolume/aixm:lowerLimitReference)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:lowerLimitReference)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Lower limit -->
+								<xsl:variable name="lower_limit">
+									<xsl:choose>
+										<xsl:when test="not($AirspaceVolume/aixm:lowerLimit)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:lowerLimit)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Unit of measurement [lower limit] -->
+								<xsl:variable name="lower_limit_uom" select="$AirspaceVolume/aixm:lowerLimit/@uom"/>
+								
+								<!-- UUID -->
+								<xsl:variable name="UUID" select="../../gml:identifier"/>
+								
+								<!-- Valid TimeSlice -->
+								<xsl:variable name="timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
+								
+								<!-- Originator -->
+								<xsl:variable name="originator" select="aixm:extension/ead-audit:AirspaceExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+								
+								<tr style="white-space:nowrap">
+									<td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($designator) gt 0) then $designator else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($name) gt 0) then $name else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($loc_indicator_ICAO) gt 0) then $loc_indicator_ICAO else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($upper_limit_ref) gt 0) then $upper_limit_ref else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($upper_limit) gt 0) then $upper_limit else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($upper_limit_uom) gt 0) then $upper_limit_uom else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($lower_limit_ref) gt 0) then $lower_limit_ref else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($lower_limit) gt 0) then $lower_limit else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($lower_limit_uom) gt 0) then $lower_limit_uom else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($UUID) gt 0) then $UUID else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($timeslice) gt 0) then $timeslice else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
+								</tr>
+								
+							</xsl:for-each>
 							
 						</xsl:for-each>
 						
@@ -337,12 +469,14 @@
 				
 				<!-- dataType -->
 				<xsl:variable name="data_type">
-					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataType: '), ',')"/>
+					<xsl:variable name="after_key" select="substring-after($rule_parameters, 'dataType: ')"/>
+					<xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
 				</xsl:variable>
 				
 				<!-- CustomizationAirspaceCircleArcToPolygon -->
 				<xsl:variable name="arc_to_polygon">
-					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: '), ',')"/>
+					<xsl:variable name="after_key" select="substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: ')"/>
+					<xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
 				</xsl:variable>
 				
 				<p><font size="-1">Extraction rule parameters used for this report:</font></p>
@@ -458,8 +592,8 @@
 				<p></p>
 				<table>
 					<tr>
-						<td><font size="-1">Sorting by column: </font></td>
-						<td><font size="-1">Coded identifier</font></td>
+						<td><font size="-1">Sorting: </font></td>
+						<td><font size="-1">first grouped by Type, then sorted by Coded identifier</font></td>
 					</tr>
 					<tr>
 						<td><font size="-1">Sorting order: </font></td>

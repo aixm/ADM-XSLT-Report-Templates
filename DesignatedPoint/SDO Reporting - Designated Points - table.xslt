@@ -24,10 +24,18 @@
 <!-- 
 	Extraction Rule parameters required for the transformation to be successful:
 	===========================================================================
-	featureTypes: aixm:DesignatedPoint
-	permanentBaseline: true
-	dataScope:	ReleasedData
-	AIXMversion:	5.1.1
+       featureTypes: aixm:DesignatedPoint
+  permanentBaseline: true
+          dataScope: ReleasedData
+        AIXMversion: 5.1.1
+-->
+
+<!--
+	Coordinates formatting:
+	======================
+	Latitude and Longitude coordinates format is by default Degrees Minutes Seconds with two decimals for Seconds.
+	The number of decimals can be selected by changing the value of 'coordinates_decimal_number' to the desired number of decimals.
+	The format of coordinates displayed can be chosen between DMS or Decimal Degrees by changing the value of 'coordinates_type' to 'DMS' or 'DEC'.
 -->
 
 <xsl:transform version="3.0" 
@@ -47,12 +55,96 @@
 	xmlns:xs="http://www.w3.org/2001/XMLSchema"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:aixm_ds_xslt="http://www.aixm.aero/xslt"
+	xmlns:fcn="local-function"
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit">
+	xmlns:saxon="http://saxon.sf.net/"
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit saxon">
 	
-	<xsl:output method="html" indent="yes"/>
+	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
 	
 	<xsl:strip-space elements="*"/>
+	
+	<!-- Insert value or NIL + nilReason -->
+	<xsl:function name="fcn:insert-value" as="xs:string">
+		<xsl:param name="feature_property" as="element()"/>
+		<xsl:choose>
+			<xsl:when test="$feature_property/@xsi:nil='true'">
+				<xsl:choose>
+					<xsl:when test="$feature_property/@nilReason">
+						<xsl:value-of select="concat('NIL:', $feature_property/@nilReason)"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="'NIL'"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="$feature_property"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+
+	<!-- Format latitude coordinate -->
+	<xsl:function name="fcn:format-latitude" as="xs:string">
+		<xsl:param name="lat_decimal" as="xs:double"/>
+		<xsl:param name="coord_type" as="xs:string"/>
+		<xsl:param name="decimal_places" as="xs:integer"/>
+		<xsl:choose>
+			<xsl:when test="$coord_type = 'DEC'">
+				<!-- Decimal degrees format -->
+				<xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="format-number($lat_decimal, $format-string)"/>
+			</xsl:when>
+			<xsl:when test="$coord_type = 'DMS'">
+				<!-- Degrees Minutes Seconds format -->
+				<xsl:variable name="abs_lat" select="abs($lat_decimal)"/>
+				<xsl:variable name="degrees" select="floor($abs_lat)"/>
+				<xsl:variable name="minutes_decimal" select="($abs_lat - $degrees) * 60"/>
+				<xsl:variable name="minutes" select="floor($minutes_decimal)"/>
+				<xsl:variable name="seconds" select="($minutes_decimal - $minutes) * 60"/>
+				<xsl:variable name="format-string" select="concat('00.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="concat(
+					format-number($degrees, '00'),
+					format-number($minutes, '00'),
+					format-number($seconds, $format-string),
+					if ($lat_decimal ge 0) then 'N' else 'S')"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="string($lat_decimal)"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+
+	<!-- Format longitude coordinate -->
+	<xsl:function name="fcn:format-longitude" as="xs:string">
+		<xsl:param name="lon_decimal" as="xs:double"/>
+		<xsl:param name="coord_type" as="xs:string"/>
+		<xsl:param name="decimal_places" as="xs:integer"/>
+		<xsl:choose>
+			<xsl:when test="$coord_type = 'DEC'">
+				<!-- Decimal degrees format -->
+				<xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="format-number($lon_decimal, $format-string)"/>
+			</xsl:when>
+			<xsl:when test="$coord_type = 'DMS'">
+				<!-- Degrees Minutes Seconds format: dddmmss.ssP -->
+				<xsl:variable name="abs_lon" select="abs($lon_decimal)"/>
+				<xsl:variable name="degrees" select="floor($abs_lon)"/>
+				<xsl:variable name="minutes_decimal" select="($abs_lon - $degrees) * 60"/>
+				<xsl:variable name="minutes" select="floor($minutes_decimal)"/>
+				<xsl:variable name="seconds" select="($minutes_decimal - $minutes) * 60"/>
+				<xsl:variable name="format-string" select="concat('00.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="concat(
+					format-number($degrees, '000'),
+					format-number($minutes, '00'),
+					format-number($seconds, $format-string),
+					if ($lon_decimal ge 0) then 'E' else 'W')"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="string($lon_decimal)"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
 	
 	<xsl:template match="/">
 		
@@ -96,46 +188,94 @@
 							<td><strong>Latitude</strong></td>
 							<td><strong>Longitude</strong></td>
 							<td><strong>Type</strong></td>
+							<td><strong>UUID</strong></td>
+							<td><strong>Valid TimeSlice</strong></td>
 							<td><strong>Originator</strong></td>
 						</tr>
 						
-						<xsl:for-each select="//aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE']">
+						<xsl:for-each select="//aixm:DesignatedPoint">
+
+							<xsl:sort select="(aixm:timeSlice/aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:designator" order="ascending"/>
+
+							<!-- Get all BASELINE time slices for this feature -->
+							<xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE']"/>
+							<!-- Find the maximum sequenceNumber -->
+							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
+							<!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
+							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
+							<!-- Select the latest time slice -->
+							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 							
-							<xsl:sort select="aixm:designator" data-type="text" order="ascending"/>
-							
-							<!-- Designator -->
-							<xsl:variable name="designator">
-								<xsl:value-of select="aixm:designator"/>
-							</xsl:variable>
-							
-							<!-- Coordinates (suffixed with 'N' or 'E' if positive, 'S' or 'W' if negative) -->
-							<xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
-							<xsl:variable name="latitude" select="number(substring-before($coordinates, ' '))"/>
-							<xsl:variable name="longitude" select="number(substring-after($coordinates, ' '))"/>
-							<xsl:variable name="lat">
-								<xsl:value-of select="concat(abs($latitude), if ($latitude ge 0) then 'N' else 'S')"/>
-							</xsl:variable>
-							<xsl:variable name="long">
-								<xsl:value-of select="concat(abs($longitude), if ($longitude ge 0) then 'N' else 'S')"/>
-							</xsl:variable>
-							
-							<!-- Type -->
-							<xsl:variable name="type">
-								<xsl:value-of select="aixm:type"/>
-							</xsl:variable>
-							
-							<!-- Originator -->
-							<xsl:variable name="originator">
-								<xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
-							</xsl:variable>
-							
-							<tr>
-								<td><xsl:value-of select="if (string-length($designator) gt 0) then $designator else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($lat) gt 0) then $lat else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($long) gt 0) then $long else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
-								<td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
-							</tr>
+							<xsl:for-each select="$latest-timeslice">
+								
+								<!-- Designator -->
+								<xsl:variable name="designator">
+									<xsl:choose>
+										<xsl:when test="not(aixm:designator)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value(aixm:designator)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- Coordinates -->
+								
+								<!-- Select the type of coordinates: 'DMS' or 'DEC' -->
+								<xsl:variable name="coordinates_type" select="'DMS'"/>
+								
+								<!-- Select the number of decimals -->
+								<xsl:variable name="coordinates_decimal_number" select="2"/>
+								
+								<xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
+								<xsl:variable name="latitude_decimal" select="number(substring-before($coordinates, ' '))"/>
+								<xsl:variable name="longitude_decimal" select="number(substring-after($coordinates, ' '))"/>
+								<xsl:variable name="latitude">
+									<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+								</xsl:variable>
+								<xsl:variable name="longitude">
+									<xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+								</xsl:variable>
+								
+								<!-- Type -->
+								<xsl:variable name="type">
+									<xsl:choose>
+										<xsl:when test="not(aixm:type)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value(aixm:type)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
+								
+								<!-- UUID -->
+								<xsl:variable name="DPN_uuid">
+									<xsl:value-of select="../../gml:identifier"/>
+								</xsl:variable>
+								
+								<!-- Valid TimeSlice -->
+								<xsl:variable name="DPN_timeslice">
+									<xsl:value-of select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
+								</xsl:variable>
+								
+								<!-- Originator -->
+								<xsl:variable name="originator">
+									<xsl:value-of select="$latest-timeslice/aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+								</xsl:variable>
+								
+								<tr style="white-space:nowrap;vertical-align:top;">
+									<td><xsl:value-of select="if (string-length($designator) gt 0) then $designator else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($latitude) gt 0) then $latitude else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($longitude) gt 0) then $longitude else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($DPN_uuid) gt 0) then $DPN_uuid else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($DPN_timeslice) gt 0) then $DPN_timeslice else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
+								</tr>
+								
+							</xsl:for-each>
 							
 						</xsl:for-each>
 						
@@ -268,12 +408,14 @@
 				
 				<!-- dataType -->
 				<xsl:variable name="data_type">
-					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataType: '), ',')"/>
+					<xsl:variable name="after_key" select="substring-after($rule_parameters, 'dataType: ')"/>
+					<xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
 				</xsl:variable>
 				
 				<!-- CustomizationAirspaceCircleArcToPolygon -->
 				<xsl:variable name="arc_to_polygon">
-					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: '), ',')"/>
+					<xsl:variable name="after_key" select="substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: ')"/>
+					<xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
 				</xsl:variable>
 				
 				<p><font size="-1">Extraction rule parameters used for this report:</font></p>
