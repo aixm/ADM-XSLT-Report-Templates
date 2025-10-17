@@ -24,15 +24,23 @@
 <!-- 
 	Extraction Rule parameters required for the transformation to be successful:
 	===========================================================================
-	featureTypes: aixm:AirportHeliport aixm:Airspace
+										featureTypes: aixm:AirportHeliport aixm:Airspace
 	includeReferencedFeaturesLevel: 2
-	featureOccurrence: aixm:Airspace.aixm:type EQUALS 'FIR' OR aixm:Airspace.aixm:type EQUALS 'FIR_P'
-	permanentBaseline: true
-	spatialFilteringBy: Airspace
-	spatialAreaUUID: *select FIR*
-	spatialOperator: "Within"
-	spatialValueOperator: "OR"
-	AIXMversion:	5.1.1
+							 featureOccurrence: aixm:Airspace.aixm:type EQUALS 'FIR' OR aixm:Airspace.aixm:type EQUALS 'FIR_P'
+						   permanentBaseline: true
+							spatialFilteringBy: Airspace
+								 spatialAreaUUID: *select FIR*
+								 spatialOperator: Within
+						spatialValueOperator: OR
+										 AIXMversion: 5.1.1
+-->
+
+<!--
+	Coordinates formatting:
+	======================
+	Latitude and Longitude coordinates format is by default Degrees Minutes Seconds with two decimals for Seconds.
+	The number of decimals can be selected by changing the value of 'coordinates_decimal_number' to the desired number of decimals.
+	The format of coordinates displayed can be chosen between DMS or Decimal Degrees by changing the value of 'coordinates_type' to 'DMS' or 'DEC'.
 -->
 
 <xsl:transform version="3.0" 
@@ -55,9 +63,11 @@
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	xmlns:fcn="local-function"
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math">
+	xmlns:map="http://www.w3.org/2005/xpath-functions/map"
+	xmlns:saxon="http://saxon.sf.net/"
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math map saxon">
 	
-	<xsl:output method="html" indent="yes"/>
+	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -78,79 +88,67 @@
 		<xsl:variable name="year" select="substring($date-time, 1, 4)"/>
 		<xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
 	</xsl:function>
-
-	<!-- Function to extract all polygon coordinates from a geometry including referenced GeoBorders -->
-	<xsl:function name="fcn:get-all-polygon-coords" as="xs:double*">
-		<xsl:param name="airspace-volume" as="element()?"/>
-		<xsl:param name="root" as="document-node()"/>
-		<xsl:variable name="coords" as="xs:double*">
-			<xsl:for-each select="$airspace-volume//gml:curveMember">
-				<xsl:choose>
-					<!-- Handle direct coordinates -->
-					<xsl:when test=".//gml:posList">
-						<xsl:for-each select=".//gml:posList">
-							<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
-						</xsl:for-each>
-					</xsl:when>
-					<!-- Handle xlink reference to GeoBorder -->
-					<xsl:when test="@xlink:href and starts-with(@xlink:href, 'urn:uuid:')">
-						<xsl:variable name="uuid" select="substring-after(@xlink:href, 'urn:uuid:')"/>
-						<xsl:for-each select="$root//aixm:GeoBorder[gml:identifier = $uuid]//aixm:border//gml:posList">
-							<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
-						</xsl:for-each>
-					</xsl:when>
-				</xsl:choose>
-			</xsl:for-each>
-		</xsl:variable>
-		<xsl:sequence select="$coords"/>
-	</xsl:function>
-
-	<!-- Function to check if a point is inside a polygon using ray-casting algorithm -->
-	<xsl:function name="fcn:point-in-polygon" as="xs:boolean">
-		<xsl:param name="point-lat" as="xs:double"/>
-		<xsl:param name="point-lon" as="xs:double"/>
-		<xsl:param name="polygon-coords" as="xs:double*"/>
-		<!-- Extract lat/lon pairs from the flat array -->
-		<xsl:variable name="num-coords" select="count($polygon-coords)"/>
-		<xsl:variable name="num-points" select="$num-coords div 2"/>
+	
+	<!-- Format latitude coordinate -->
+	<xsl:function name="fcn:format-latitude" as="xs:string">
+		<xsl:param name="lat_decimal" as="xs:double"/>
+		<xsl:param name="coord_type" as="xs:string"/>
+		<xsl:param name="decimal_places" as="xs:integer"/>
 		<xsl:choose>
-			<xsl:when test="$num-points lt 3">
-				<xsl:sequence select="false()"/>
+			<xsl:when test="$coord_type = 'DEC'">
+				<!-- Decimal degrees format -->
+				<xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="format-number($lat_decimal, $format-string)"/>
+			</xsl:when>
+			<xsl:when test="$coord_type = 'DMS'">
+				<!-- Degrees Minutes Seconds format -->
+				<xsl:variable name="abs_lat" select="abs($lat_decimal)"/>
+				<xsl:variable name="degrees" select="floor($abs_lat)"/>
+				<xsl:variable name="minutes_decimal" select="($abs_lat - $degrees) * 60"/>
+				<xsl:variable name="minutes" select="floor($minutes_decimal)"/>
+				<xsl:variable name="seconds" select="($minutes_decimal - $minutes) * 60"/>
+				<xsl:variable name="format-string" select="concat('00.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="concat(
+					format-number($degrees, '00'),
+					format-number($minutes, '00'),
+					format-number($seconds, $format-string),
+					if ($lat_decimal ge 0) then 'N' else 'S')"/>
 			</xsl:when>
 			<xsl:otherwise>
-				<!-- Ray-casting algorithm: count intersections with edges -->
-				<xsl:variable name="intersections" as="xs:integer">
-					<xsl:variable name="counts" as="xs:integer*">
-						<xsl:for-each select="1 to xs:integer($num-points)">
-							<xsl:variable name="i" select="."/>
-							<xsl:variable name="j" select="if ($i = $num-points) then 1 else $i + 1"/>
-							<xsl:variable name="lat1" select="$polygon-coords[($i - 1) * 2 + 1]"/>
-							<xsl:variable name="lon1" select="$polygon-coords[($i - 1) * 2 + 2]"/>
-							<xsl:variable name="lat2" select="$polygon-coords[($j - 1) * 2 + 1]"/>
-							<xsl:variable name="lon2" select="$polygon-coords[($j - 1) * 2 + 2]"/>
-							<!-- Check if ray from point crosses this edge -->
-							<xsl:variable name="crosses" select="
-								(($lon1 gt $point-lon) != ($lon2 gt $point-lon)) and
-								($point-lat lt ($lat2 - $lat1) * ($point-lon - $lon1) div ($lon2 - $lon1) + $lat1)
-							"/>
-							<xsl:sequence select="if ($crosses) then 1 else 0"/>
-						</xsl:for-each>
-					</xsl:variable>
-					<xsl:sequence select="sum($counts)"/>
-				</xsl:variable>
-				<!-- Point is inside if number of intersections is odd -->
-				<xsl:sequence select="$intersections mod 2 = 1"/>
+				<xsl:value-of select="string($lat_decimal)"/>
 			</xsl:otherwise>
 		</xsl:choose>
 	</xsl:function>
-
-	<!-- Function to get the latest BASELINE timeslice for an Airspace -->
-	<xsl:function name="fcn:get-latest-airspace-timeslice" as="element()?">
-		<xsl:param name="airspace" as="element()?"/>
-		<xsl:variable name="baseline-timeslices" select="$airspace/aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']"/>
-		<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
-		<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-		<xsl:sequence select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+	
+	<!-- Format longitude coordinate -->
+	<xsl:function name="fcn:format-longitude" as="xs:string">
+		<xsl:param name="lon_decimal" as="xs:double"/>
+		<xsl:param name="coord_type" as="xs:string"/>
+		<xsl:param name="decimal_places" as="xs:integer"/>
+		<xsl:choose>
+			<xsl:when test="$coord_type = 'DEC'">
+				<!-- Decimal degrees format -->
+				<xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="format-number($lon_decimal, $format-string)"/>
+			</xsl:when>
+			<xsl:when test="$coord_type = 'DMS'">
+				<!-- Degrees Minutes Seconds format: dddmmss.ssP -->
+				<xsl:variable name="abs_lon" select="abs($lon_decimal)"/>
+				<xsl:variable name="degrees" select="floor($abs_lon)"/>
+				<xsl:variable name="minutes_decimal" select="($abs_lon - $degrees) * 60"/>
+				<xsl:variable name="minutes" select="floor($minutes_decimal)"/>
+				<xsl:variable name="seconds" select="($minutes_decimal - $minutes) * 60"/>
+				<xsl:variable name="format-string" select="concat('00.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
+				<xsl:value-of select="concat(
+					format-number($degrees, '000'),
+					format-number($minutes, '00'),
+					format-number($seconds, $format-string),
+					if ($lon_decimal ge 0) then 'E' else 'W')"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="string($lon_decimal)"/>
+			</xsl:otherwise>
+		</xsl:choose>
 	</xsl:function>
 
 	<!-- Function to format working hours from AirportHeliportAvailability elements -->
@@ -167,15 +165,15 @@
 								<xsl:value-of select="'H24'"/>
 							</xsl:when>
 							<!-- insert 'H24' if there is an availability with operationalStatus='NORMAL' and a continuous service 24/7 Timesheet -->
-							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and (not(aixm:dayTil) or aixm:dayTil='ANY') and aixm:startTime='00:00' and (aixm:endTime='00:00' or aixm:endTime='24:00') and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@nilReason='inapplicable') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and (not(aixm:dayTil) or aixm:dayTil/@xsi:nil='true' or aixm:dayTil='ANY') and aixm:startTime='00:00' and aixm:endTime=('00:00','23:59','24:00') and (aixm:daylightSavingAdjust=('NO','YES') or aixm:daylightSavingAdjust/@xsi:nil='true' or not(aixm:daylightSavingAdjust)) and ((aixm:startDate='01-01' and aixm:endDate='31-12') or ((not(aixm:startDate) or aixm:startDate/@xsi:nil='true') and (not(aixm:endDate) or aixm:endDate/@xsi:nil='true'))) and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'H24'"/>
 							</xsl:when>
 							<!-- insert 'HJ' if there is an availability with operationalStatus='NORMAL' and a sunrise to sunset Timesheet -->
-							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SR' and aixm:endEvent='SS' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@nilReason='inapplicable') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SR' and aixm:endEvent='SS' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'HJ'"/>
 							</xsl:when>
 							<!-- insert 'HN' if there is an availability with operationalStatus='NORMAL' and a sunset to sunrise Timesheet -->
-							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SS' and aixm:endEvent='SR' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@nilReason='inapplicable') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SS' and aixm:endEvent='SR' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'HN'"/>
 							</xsl:when>
 							<!-- insert 'HX' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
@@ -183,7 +181,7 @@
 								<xsl:value-of select="'HX'"/>
 							</xsl:when>
 							<!-- insert 'HO' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
-							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')]">
+							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'HO'"/>
 							</xsl:when>
 							<!-- insert 'NOTAM' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
@@ -230,7 +228,7 @@
 												if (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) then if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then concat('/',aixm:endEvent) else aixm:endEvent else '',
 												if ((aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) and (aixm:endTimeRelativeEvent and (not(aixm:endTimeRelativeEvent/@xsi:nil) or aixm:endTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:endTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:endTimeRelativeEvent, '+'), aixm:endTimeRelativeEvent/@uom) else if (number(aixm:endTimeRelativeEvent) ge 0) then concat('plus', aixm:endTimeRelativeEvent, aixm:endTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:endTimeRelativeEvent, '-'), aixm:endTimeRelativeEvent/@uom) else '',
 												if (aixm:startEvent and (not(aixm:startEvent) and not(aixm:endEvent)) and aixm:daylightSavingAdjust = 'YES') then concat(' (', $start_time_DST, '-', $end_time_DST, ')') else '')"/>
-											<xsl:if test="position() != last()"><xsl:text>, </xsl:text></xsl:if>
+											<xsl:if test="position() != last()"><xsl:text> </xsl:text></xsl:if>
 										</xsl:for-each>
 										<xsl:if test="position() != last()"><xsl:text>&lt;br/&gt;</xsl:text></xsl:if>
 									</dayInterval>
@@ -243,7 +241,119 @@
 		</xsl:variable>
 		<xsl:sequence select="string($result)"/>
 	</xsl:function>
-
+	
+	<!-- Function to extract all polygon coordinates from a geometry including referenced GeoBorders -->
+	<xsl:function name="fcn:get-all-polygon-coords" as="xs:double*">
+		<xsl:param name="airspace-volume" as="element()?"/>
+		<xsl:param name="root" as="document-node()"/>
+		<xsl:variable name="coords" as="xs:double*">
+			<!-- Process curveMember elements in their actual document order to maintain polygon sequence -->
+			<xsl:for-each select="$airspace-volume//gml:Ring/gml:curveMember">
+				<xsl:choose>
+					<!-- Handle xlink reference to GeoBorder FIRST (check before checking for posList) -->
+					<xsl:when test="@xlink:href and starts-with(@xlink:href, 'urn:uuid:')">
+						<xsl:variable name="uuid" select="substring-after(@xlink:href, 'urn:uuid:')"/>
+						<!-- Get the GeoBorder and find its latest BASELINE timeslice -->
+						<xsl:variable name="geoborder" select="$root//aixm:GeoBorder[gml:identifier = $uuid]"/>
+						<xsl:variable name="gb-baseline-ts" select="$geoborder/aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE']"/>
+						<xsl:variable name="gb-max-seq" select="max($gb-baseline-ts/aixm:sequenceNumber)"/>
+						<xsl:variable name="gb-max-corr" select="max($gb-baseline-ts[aixm:sequenceNumber = $gb-max-seq]/aixm:correctionNumber)"/>
+						<xsl:variable name="gb-latest-ts" select="$gb-baseline-ts[aixm:sequenceNumber = $gb-max-seq and aixm:correctionNumber = $gb-max-corr][1]"/>
+						<!-- Extract coordinates from the latest timeslice only, preserving segment order -->
+						<xsl:for-each select="$gb-latest-ts/aixm:border//gml:posList">
+							<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
+						</xsl:for-each>
+					</xsl:when>
+					<!-- Handle direct coordinates (including both GeodesicString and LineStringSegment) -->
+					<xsl:when test=".//gml:posList">
+						<!-- Process all posList elements in this curveMember in order -->
+						<xsl:for-each select=".//gml:posList">
+							<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
+						</xsl:for-each>
+					</xsl:when>
+				</xsl:choose>
+			</xsl:for-each>
+		</xsl:variable>
+		<!-- Remove consecutive duplicate coordinate pairs (degenerate edges) -->
+		<xsl:variable name="epsilon" select="0.000001" as="xs:double"/>
+		<xsl:variable name="deduplicated" as="xs:double*">
+			<xsl:for-each select="1 to count($coords) div 2">
+				<xsl:variable name="idx" select=". * 2 - 1"/>
+				<xsl:variable name="lat" select="$coords[$idx]"/>
+				<xsl:variable name="lon" select="$coords[$idx + 1]"/>
+				<!-- Only include this point if it's different from the previous point -->
+				<xsl:if test=". = 1 or abs($lat - $coords[$idx - 2]) ge $epsilon or abs($lon - $coords[$idx - 1]) ge $epsilon">
+					<xsl:sequence select="$lat"/>
+					<xsl:sequence select="$lon"/>
+				</xsl:if>
+			</xsl:for-each>
+		</xsl:variable>
+		<xsl:sequence select="$deduplicated"/>
+	</xsl:function>
+	
+	<!-- Function to check if a point is inside a polygon using ray-casting algorithm -->
+	<!-- Uses robust handling for edge cases near polygon boundaries -->
+	<xsl:function name="fcn:point-in-polygon" as="xs:boolean">
+		<xsl:param name="point-lat" as="xs:double"/>
+		<xsl:param name="point-lon" as="xs:double"/>
+		<xsl:param name="polygon-coords" as="xs:double*"/>
+		<!-- Epsilon for floating-point comparison tolerance (approximately 0.1 meters at equator) -->
+		<xsl:variable name="epsilon" select="0.000001" as="xs:double"/>
+		<!-- Extract lat/lon pairs from the flat array -->
+		<xsl:variable name="num-coords" select="count($polygon-coords)"/>
+		<xsl:variable name="num-points" select="$num-coords div 2"/>
+		<xsl:choose>
+			<xsl:when test="$num-points lt 3">
+				<xsl:sequence select="false()"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<!-- Check if polygon is closed (first point = last point) -->
+				<xsl:variable name="is-closed" select="abs($polygon-coords[1] - $polygon-coords[$num-coords - 1]) lt $epsilon and abs($polygon-coords[2] - $polygon-coords[$num-coords]) lt $epsilon"/>
+				<xsl:variable name="actual-num-points" select="if ($is-closed) then $num-points - 1 else $num-points"/>
+				<!-- Ray-casting algorithm with improved edge case handling -->
+				<xsl:variable name="intersections" as="xs:integer">
+					<xsl:variable name="counts" as="xs:integer*">
+						<xsl:for-each select="1 to xs:integer($actual-num-points)">
+							<xsl:variable name="i" select="."/>
+							<xsl:variable name="j" select="if ($i = $actual-num-points) then 1 else $i + 1"/>
+							<xsl:variable name="lat-i" select="$polygon-coords[($i - 1) * 2 + 1]"/>
+							<xsl:variable name="lon-i" select="$polygon-coords[($i - 1) * 2 + 2]"/>
+							<xsl:variable name="lat-j" select="$polygon-coords[($j - 1) * 2 + 1]"/>
+							<xsl:variable name="lon-j" select="$polygon-coords[($j - 1) * 2 + 2]"/>
+							<!-- Standard ray-casting: check if horizontal ray from point intersects edge -->
+							<!-- Edge must cross the latitude of the test point -->
+							<xsl:variable name="lat-i-above" select="$lat-i gt $point-lat"/>
+							<xsl:variable name="lat-j-above" select="$lat-j gt $point-lat"/>
+							<xsl:choose>
+								<xsl:when test="$lat-i-above != $lat-j-above">
+									<!-- Calculate longitude of intersection with horizontal ray -->
+									<xsl:variable name="intersect-lon" select="($lon-j - $lon-i) * ($point-lat - $lat-i) div ($lat-j - $lat-i) + $lon-i"/>
+									<!-- Count if intersection is to the right of test point (with epsilon tolerance) -->
+									<xsl:sequence select="if ($intersect-lon gt $point-lon - $epsilon) then 1 else 0"/>
+								</xsl:when>
+								<xsl:otherwise>
+									<xsl:sequence select="0"/>
+								</xsl:otherwise>
+							</xsl:choose>
+						</xsl:for-each>
+					</xsl:variable>
+					<xsl:sequence select="sum($counts)"/>
+				</xsl:variable>
+				<!-- Point is inside if number of intersections is odd -->
+				<xsl:sequence select="$intersections mod 2 = 1"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+	
+	<!-- Function to get the latest BASELINE timeslice for an Airspace -->
+	<xsl:function name="fcn:get-latest-airspace-timeslice" as="element()?">
+		<xsl:param name="airspace" as="element()?"/>
+		<xsl:variable name="baseline-timeslices" select="$airspace/aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']"/>
+		<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
+		<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
+		<xsl:sequence select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+	</xsl:function>
+	
 	<!-- Function to find the FIR containing a given point -->
 	<xsl:function name="fcn:find-containing-fir" as="map(xs:string, xs:string)?">
 		<xsl:param name="lat" as="xs:double"/>
@@ -264,7 +374,7 @@
 							<!-- Direct geometry -->
 							<xsl:when test="$airspace-volume/aixm:horizontalProjection">
 								<xsl:variable name="coords" select="fcn:get-all-polygon-coords($airspace-volume/aixm:horizontalProjection, $root)"/>
-								<xsl:if test="fcn:point-in-polygon($lat, $lon, $coords)">
+								<xsl:if test="count($coords) ge 6 and fcn:point-in-polygon($lat, $lon, $coords)">
 									<xsl:sequence select="$airspace"/>
 								</xsl:if>
 							</xsl:when>
@@ -277,7 +387,7 @@
 									<xsl:if test="$ref-latest-ts">
 										<xsl:variable name="ref-volume" select="$ref-latest-ts/aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume"/>
 										<xsl:variable name="ref-coords" select="fcn:get-all-polygon-coords($ref-volume/aixm:horizontalProjection, $root)"/>
-										<xsl:if test="fcn:point-in-polygon($lat, $lon, $ref-coords)">
+										<xsl:if test="count($ref-coords) ge 6 and fcn:point-in-polygon($lat, $lon, $ref-coords)">
 											<xsl:sequence select="$ref-airspace"/>
 										</xsl:if>
 									</xsl:if>
@@ -291,10 +401,10 @@
 		<!-- Process the first containing airspace found (prefer FIR over FIR_P) -->
 		<xsl:variable name="containing-airspace" select="
 			if (exists($containing-airspaces)) then
-				(($containing-airspaces[fcn:get-latest-airspace-timeslice(.)/aixm:type = 'FIR'])[1],
-				 $containing-airspaces[1])[1]
+			(($containing-airspaces[fcn:get-latest-airspace-timeslice(.)/aixm:type = 'FIR'])[1],
+			$containing-airspaces[1])[1]
 			else ()
-		"/>
+			"/>
 		<xsl:if test="$containing-airspace">
 			<xsl:variable name="airspace-ts" select="fcn:get-latest-airspace-timeslice($containing-airspace)"/>
 			<xsl:variable name="airspace-type" select="$airspace-ts/aixm:type"/>
@@ -310,7 +420,7 @@
 							'designator': string($parent-ts/aixm:designator),
 							'sequenceNumber': string($parent-ts/aixm:sequenceNumber),
 							'correctionNumber': string($parent-ts/aixm:correctionNumber)
-						}"/>
+							}"/>
 					</xsl:if>
 				</xsl:when>
 				<!-- If it's already a FIR, return it -->
@@ -319,7 +429,7 @@
 						'designator': string($airspace-ts/aixm:designator),
 						'sequenceNumber': string($airspace-ts/aixm:sequenceNumber),
 						'correctionNumber': string($airspace-ts/aixm:correctionNumber)
-					}"/>
+						}"/>
 				</xsl:when>
 			</xsl:choose>
 		</xsl:if>
@@ -345,13 +455,21 @@
 		</xsl:choose>
 	</xsl:function>
 	
+	<!-- Get annotation text with preserving line breaks -->
+	<xsl:function name="fcn:get-annotation-text" as="xs:string">
+		<xsl:param name="raw_text" as="xs:string"/>
+		<xsl:variable name="lines" select="for $line in tokenize($raw_text, '&#xA;') return normalize-space($line)"/>
+		<xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
+		<xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
+	</xsl:function>
+	
 	<xsl:template match="/">
 		
 		<html xmlns="http://www.w3.org/1999/xhtml">
 			
 			<head>
 				<meta http-equiv="Expires" content="120" />
-				<title>SDO Reporting - AD with FIR</title>
+				<title>SDO Reporting - AD / HP including FIR</title>
 			</head>
 			
 			<body>
@@ -376,8 +494,10 @@
 				<hr/>
 				
 				<center>
-					<b>AD with FIR</b>
+					<b>AD / HP including FIR</b>
 				</center>
+				<hr/>
+				<mark>DISCLAIMER</mark> For some features the XSLT transformation might not successfully identify the <i>FIR - Coded identifier</i>
 				<hr/>
 				
 				<table border="0" style="border-spacing: 8px 4px">
@@ -391,23 +511,23 @@
 							<td><strong>ICAO Code</strong></td>
 							<td><strong>IATA Code</strong></td>
 							<td><strong>Type</strong></td>
-							<td><strong>(d)Operation<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>code</strong></td>
-							<td><strong>(d)National<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>traffic</strong></td>
-							<td><strong>(d)International<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>traffic</strong></td>
-							<td><strong>(d)Scheduled<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>flight</strong></td>
-							<td><strong>(d)Non scheduled<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>flight</strong></td>
-							<td><strong>(d)Private<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>flight</strong></td>
-							<td><strong>(d)Observe<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>VFR</strong></td>
-							<td><strong>(d)Observe<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>IFR</strong></td>
+							<td><strong>(d)Operation code</strong></td>
+							<td><strong>(d)National traffic</strong></td>
+							<td><strong>(d)International traffic</strong></td>
+							<td><strong>(d)Scheduled flight</strong></td>
+							<td><strong>(d)Non scheduled flight</strong></td>
+							<td><strong>(d)Private flight</strong></td>
+							<td><strong>(d)Observe VFR</strong></td>
+							<td><strong>(d)Observe IFR</strong></td>
 							<td><strong>Reference point description</strong></td>
 							<td><strong>Latitude</strong></td>
 							<td><strong>Longitude</strong></td>
 							<td><strong>Datum</strong></td>
-							<td><strong>Geographical<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>accuracy</strong></td>
+							<td><strong>Geographical accuracy</strong></td>
 							<td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[geographical accuracy]</strong></td>
 							<td><strong>Elevation</strong></td>
-							<td><strong>Elevation<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>accuracy</strong></td>
-							<td><strong>Geoid<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>undulation</strong></td>
+							<td><strong>Elevation accuracy</strong></td>
+							<td><strong>Geoid undulation</strong></td>
 							<td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[vertical distance]</strong></td>
 							<td><strong>Cyclic redundancy<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>check</strong></td>
 							<td><strong>Vertical Datum</strong></td>
@@ -438,6 +558,9 @@
 							<td><strong>Effective date</strong></td>
 							<td><strong>System Remark</strong></td>
 						</tr>
+						
+						<!-- Capture document root before iterating through AirportHeliport features -->
+						<xsl:variable name="doc-root" select="/" as="document-node()"/>
 
 						<xsl:for-each select="//aixm:AirportHeliport">
 							<xsl:sort select="(aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:designator" order="ascending"/>
@@ -453,17 +576,25 @@
 							<xsl:for-each select="$latest-timeslice">
 							
 								<!-- Identification -->
-								<xsl:variable name="AHP_designator" select="aixm:designator"/>
+								<xsl:variable name="AHP_designator">
+									<xsl:choose>
+										<xsl:when test="not(aixm:designator)">
+											<xsl:value-of select="''"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="fcn:insert-value(aixm:designator)"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
 								
 								<!-- Organisation in charge -->
-								<xsl:variable name="Org_in_charge_UUID" select="substring-after(aixm:responsibleOrganisation/aixm:AirportHeliportResponsibilityOrganisation/aixm:theOrganisationAuthority/@xlink:href, 'urn:uuid:')"/>
+								<xsl:variable name="Org_in_charge_UUID" select="replace(aixm:responsibleOrganisation/aixm:AirportHeliportResponsibilityOrganisation/aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 	
 								<!-- Get the latest BASELINE time slice for this OrganisationAuthority -->
 								<xsl:variable name="org-baseline-ts" select="//aixm:OrganisationAuthority[gml:identifier = $Org_in_charge_UUID]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="org-max-seq" select="max($org-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="org-max-corr" select="max($org-baseline-ts[aixm:sequenceNumber = $org-max-seq]/aixm:correctionNumber)"/>
 								<xsl:variable name="org-latest-ts" select="$org-baseline-ts[aixm:sequenceNumber = $org-max-seq and aixm:correctionNumber = $org-max-corr][1]"/>
-	
 								<xsl:variable name="Org_in_charge_name">
 									<xsl:value-of select="$org-latest-ts/aixm:name"/>
 								</xsl:variable>
@@ -472,7 +603,7 @@
 								</xsl:variable>
 	
 								<!-- Responsible State or international organisaton - Name -->
-								<xsl:variable name="Owner_organisation_UUID" select="substring-after($org-latest-ts/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation[aixm:type = 'OWNED_BY' and aixm:theOrganisationAuthority/@xlink:href]/aixm:theOrganisationAuthority/@xlink:href[1], 'urn:uuid:')"/>
+								<xsl:variable name="Owner_organisation_UUID" select="replace($org-latest-ts/aixm:relatedOrganisationAuthority[1]/aixm:OrganisationAuthorityAssociation[aixm:type = 'OWNED_BY' and aixm:theOrganisationAuthority/@xlink:href]/aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 								<!-- Get the latest BASELINE time slice for the owner OrganisationAuthority -->
 								<xsl:variable name="owner-baseline-ts" select="//aixm:OrganisationAuthority[gml:identifier = $Owner_organisation_UUID]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="owner-max-seq" select="max($owner-baseline-ts/aixm:sequenceNumber)"/>
@@ -673,46 +804,32 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote/aixm:note">
 											<xsl:choose>
 												<xsl:when test="contains(lower-case(.[not(@lang) or @lang=('en','eng')]), 'aerodrome reference point description')">
-													<xsl:value-of select="substring-after(.[not(@lang) or @lang=('en','eng')], ':')"/>
+													<xsl:value-of select="fcn:get-annotation-text(substring-after(.[not(@lang) or @lang=('en','eng')], ':'))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="."/>
+													<xsl:value-of select="fcn:get-annotation-text(.)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
 									</xsl:for-each>
 								</xsl:variable>
 								
-								<!-- Latitude -->
-								<xsl:variable name="AHP_ARP_lat">
-									<xsl:if test="aixm:ARP/aixm:ElevatedPoint/gml:pos">
-										<xsl:variable name="latitude" select="number(substring-before(aixm:ARP/aixm:ElevatedPoint/gml:pos, ' '))"/>
-										<xsl:variable name="lat_whole" select="string(floor(abs($latitude)))"/>
-										<xsl:variable name="lat_frac" select="string(abs($latitude) - floor(abs($latitude)))"/>
-										<xsl:variable name="lat_deg" select="if (string-length($lat_whole) = 1) then concat('0', $lat_whole) else $lat_whole"/>
-										<xsl:variable name="lat_min_whole" select="floor(number($lat_frac) * 60)"/>
-										<xsl:variable name="lat_min_frac" select="number($lat_frac) * 60 - $lat_min_whole"/>
-										<xsl:variable name="lat_min" select="if (string-length(string($lat_min_whole)) = 1) then concat('0', string($lat_min_whole)) else string($lat_min_whole)"/>
-										<xsl:variable name="lat_sec" select="format-number($lat_min_frac * 60, '0.00')"/>
-										<xsl:variable name="lat_sec" select="if (string-length(string(floor(number($lat_sec)))) = 1) then concat('0', string($lat_sec)) else string($lat_sec)"/>
-										<xsl:value-of select="concat($lat_deg, $lat_min, $lat_sec, if ($latitude ge 0) then 'N' else 'S')"/>
-									</xsl:if>
-								</xsl:variable>
+								<!-- Coordinates -->
 								
-								<!-- Longitude -->
+								<!-- Select the type of coordinates: 'DMS' or 'DEC' -->
+								<xsl:variable name="coordinates_type" select="'DMS'"/>
+								
+								<!-- Select the number of decimals -->
+								<xsl:variable name="coordinates_decimal_number" select="2"/>
+								
+								<xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
+								<xsl:variable name="latitude_decimal" select="number(substring-before($coordinates, ' '))"/>
+								<xsl:variable name="longitude_decimal" select="number(substring-after($coordinates, ' '))"/>
+								<xsl:variable name="AHP_ARP_lat">
+									<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+								</xsl:variable>
 								<xsl:variable name="AHP_ARP_long">
-									<xsl:if test="aixm:ARP/aixm:ElevatedPoint/gml:pos">
-										<xsl:variable name="longitude" select="number(substring-after(aixm:ARP/aixm:ElevatedPoint/gml:pos, ' '))"/>
-										<xsl:variable name="long_whole" select="string(floor(abs($longitude)))"/>
-										<xsl:variable name="long_frac" select="string(abs($longitude) - floor(abs($longitude)))"/>
-										<xsl:variable name="long_deg" select="if (string-length($long_whole) != 3) then (if (string-length($long_whole) = 1) then concat('00', $long_whole) else concat('0', $long_whole)) else $long_whole"/>
-										<xsl:variable name="long_min_whole" select="floor(number($long_frac) * 60)"/>
-										<xsl:variable name="long_min_frac" select="number($long_frac) * 60 - $long_min_whole"/>
-										<xsl:variable name="long_min" select="if (string-length(string($long_min_whole)) = 1) then concat('0', string($long_min_whole)) else string($long_min_whole)"/>
-										<xsl:variable name="long_sec" select="format-number($long_min_frac * 60, '0.00')"/>
-										<xsl:variable name="long_sec" select="if (string-length(string(floor(number($long_sec)))) = 1) then concat('0', string($long_sec)) else string($long_sec)"/>
-										<xsl:value-of select="concat($long_deg, $long_min, $long_sec, if ($longitude ge 0) then 'E' else 'W')"/>
-									</xsl:if>
+									<xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 								</xsl:variable>
 								
 								<!-- Datum -->
@@ -832,10 +949,10 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote/aixm:note">
 											<xsl:choose>
 												<xsl:when test="contains(.[not(@lang) or @lang=('en','eng')], ':')">
-													<xsl:value-of select="substring-after(.[not(@lang) or @lang=('en','eng')], ':')"/>
+													<xsl:value-of select="fcn:get-annotation-text(substring-after(.[not(@lang) or @lang=('en','eng')], ':'))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="."/>
+													<xsl:value-of select="fcn:get-annotation-text(.)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
@@ -923,10 +1040,10 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote/aixm:note">
 											<xsl:choose>
 												<xsl:when test="contains(.[not(@lang) or @lang=('en','eng')], ':')">
-													<xsl:value-of select="substring-after(.[not(@lang) or @lang=('en','eng')], ':')"/>
+													<xsl:value-of select="fcn:get-annotation-text(substring-after(.[not(@lang) or @lang=('en','eng')], ':'))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="."/>
+													<xsl:value-of select="fcn:get-annotation-text(.)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
@@ -939,10 +1056,10 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote/aixm:note">
 											<xsl:choose>
 												<xsl:when test="contains(.[not(@lang) or @lang=('en','eng')], ':')">
-													<xsl:value-of select="substring-after(.[not(@lang) or @lang=('en','eng')], ':')"/>
+													<xsl:value-of select="fcn:get-annotation-text(substring-after(.[not(@lang) or @lang=('en','eng')], ':'))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="."/>
+													<xsl:value-of select="fcn:get-annotation-text(.)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
@@ -955,10 +1072,10 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote/aixm:note">
 											<xsl:choose>
 												<xsl:when test="contains(.[not(@lang) or @lang=('en','eng')], ':')">
-													<xsl:value-of select="substring-after(.[not(@lang) or @lang=('en','eng')], ':')"/>
+													<xsl:value-of select="fcn:get-annotation-text(substring-after(.[not(@lang) or @lang=('en','eng')], ':'))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="."/>
+													<xsl:value-of select="fcn:get-annotation-text(.)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
@@ -971,10 +1088,10 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote/aixm:note">
 											<xsl:choose>
 												<xsl:when test="contains(.[not(@lang) or @lang=('en','eng')], ':')">
-													<xsl:value-of select="substring-after(.[not(@lang) or @lang=('en','eng')], ':')"/>
+													<xsl:value-of select="fcn:get-annotation-text(substring-after(.[not(@lang) or @lang=('en','eng')], ':'))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="."/>
+													<xsl:value-of select="fcn:get-annotation-text(.)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
@@ -1049,26 +1166,22 @@
 								
 								<!-- FIR - Coded identifier -->
 								<xsl:variable name="FIR_info" as="map(xs:string, xs:string)?">
-									<xsl:if test="aixm:ARP/aixm:ElevatedPoint/gml:pos">
-										<xsl:variable name="arp-coords" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
-										<xsl:variable name="arp-lat" select="xs:double(substring-before($arp-coords, ' '))"/>
-										<xsl:variable name="arp-lon" select="xs:double(substring-after($arp-coords, ' '))"/>
-										<xsl:sequence select="fcn:find-containing-fir($arp-lat, $arp-lon, /)"/>
-									</xsl:if>
+									<xsl:choose>
+										<xsl:when test="aixm:ARP/aixm:ElevatedPoint/gml:pos">
+											<xsl:variable name="ARP-coords" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
+											<xsl:variable name="ARP-lat" select="xs:double(substring-before($ARP-coords, ' '))"/>
+											<xsl:variable name="ARP-lon" select="xs:double(substring-after($ARP-coords, ' '))"/>
+											<xsl:sequence select="fcn:find-containing-fir($ARP-lat, $ARP-lon, $doc-root)"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:sequence select="()"/>
+										</xsl:otherwise>
+									</xsl:choose>
 								</xsl:variable>
-	
-								<xsl:variable name="FIR_designator">
-									<xsl:if test="exists($FIR_info)">
-										<xsl:value-of select="$FIR_info?designator"/>
-									</xsl:if>
-								</xsl:variable>
-	
+								<xsl:variable name="FIR_designator" select="if (exists($FIR_info) and map:contains($FIR_info, 'designator')) then string($FIR_info?designator) else ''" as="xs:string"/>
+								
 								<!-- FIR - Valid TimeSlice -->
-								<xsl:variable name="FIR_timeslice">
-									<xsl:if test="exists($FIR_info)">
-										<xsl:value-of select="concat('BASELINE ', $FIR_info?sequenceNumber, '.', $FIR_info?correctionNumber)"/>
-									</xsl:if>
-								</xsl:variable>
+								<xsl:variable name="FIR_timeslice" select="if (exists($FIR_info) and map:contains($FIR_info, 'sequenceNumber')) then concat('BASELINE ', $FIR_info?sequenceNumber, '.', $FIR_info?correctionNumber) else ''" as="xs:string"/>
 								
 								<!-- Originator -->
 								<xsl:variable name="originator">
@@ -1101,7 +1214,7 @@
 									<td><xsl:value-of select="if (string-length($AHP_private_flight) gt 0) then $AHP_private_flight else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_VFR_flight) gt 0) then $AHP_VFR_flight else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_IFR_flight) gt 0) then $AHP_IFR_flight else '&#160;'"/></td>
-									<td style="white-space:normal;min-width:300px"><xsl:value-of select="if (string-length($AHP_ARP_description) gt 0) then $AHP_ARP_description else '&#160;'"/></td>
+									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_ARP_description) gt 0"><xsl:value-of select="$AHP_ARP_description" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
 									<td><xsl:value-of select="if (string-length($AHP_ARP_lat) gt 0) then $AHP_ARP_lat else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_ARP_long) gt 0) then $AHP_ARP_long else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_ARP_datum) gt 0) then $AHP_ARP_datum else '&#160;'"/></td>
@@ -1114,7 +1227,7 @@
 									<td><xsl:value-of select="if (string-length($AHP_CRC) gt 0) then $AHP_CRC else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_vertical_datum) gt 0) then $AHP_vertical_datum else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_served_city) gt 0) then $AHP_served_city else '&#160;'"/></td>
-									<td style="white-space:normal;min-width:300px"><xsl:value-of select="if (string-length($AHP_site_description) gt 0) then $AHP_site_description else '&#160;'"/></td>
+									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_site_description) gt 0"><xsl:value-of select="$AHP_site_description" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
 									<td><xsl:value-of select="if (string-length($AHP_mag_var) gt 0) then $AHP_mag_var else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_mag_var_date) gt 0) then $AHP_mag_var_date else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_mag_var_change) gt 0) then $AHP_mag_var_change else '&#160;'"/></td>
@@ -1122,14 +1235,14 @@
 									<td><xsl:value-of select="if (string-length($AHP_ref_temp_uom) gt 0) then $AHP_ref_temp_uom else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($Org_in_charge_name) gt 0) then $Org_in_charge_name else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($Org_in_charge_timeslice) gt 0) then $Org_in_charge_timeslice else '&#160;'"/></td>
-									<td style="white-space:normal;min-width:300px"><xsl:value-of select="if (string-length($AHP_alt_check_loc) gt 0) then $AHP_alt_check_loc else '&#160;'"/></td>
-									<td style="white-space:normal;min-width:300px"><xsl:value-of select="if (string-length($AHP_secondary_power_supply) gt 0) then $AHP_secondary_power_supply else '&#160;'"/></td>
-									<td style="white-space:normal;min-width:300px"><xsl:value-of select="if (string-length($AHP_wind_direction_indicator) gt 0) then $AHP_wind_direction_indicator else '&#160;'"/></td>
-									<td style="white-space:normal;min-width:300px"><xsl:value-of select="if (string-length($AHP_landing_direction_indicator) gt 0) then $AHP_landing_direction_indicator else '&#160;'"/></td>
+									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_alt_check_loc) gt 0"><xsl:value-of select="$AHP_alt_check_loc" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_secondary_power_supply) gt 0"><xsl:value-of select="$AHP_secondary_power_supply" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_wind_direction_indicator) gt 0"><xsl:value-of select="$AHP_wind_direction_indicator" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_landing_direction_indicator) gt 0"><xsl:value-of select="$AHP_landing_direction_indicator" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
 									<td><xsl:value-of select="if (string-length($AHP_transition_altitude) gt 0) then $AHP_transition_altitude else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_transition_alt_uom) gt 0) then $AHP_transition_alt_uom else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_working_hours) gt 0) then $AHP_working_hours else '&#160;'" disable-output-escaping="yes"/></td>
-									<td style="white-space:normal;min-width:500px"><xsl:value-of select="if (string-length($AHP_working_hours_remarks) gt 0) then $AHP_working_hours_remarks else '&#160;'" disable-output-escaping="yes"/></td>
+									<td><xsl:value-of select="if (string-length($AHP_working_hours_remarks) gt 0) then $AHP_working_hours_remarks else '&#160;'" disable-output-escaping="yes"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_remarks) gt 0) then $AHP_remarks else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($commit_date) gt 0) then $commit_date else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($AHP_UUID) gt 0) then $AHP_UUID else '&#160;'"/></td>
@@ -1274,12 +1387,14 @@
 				
 				<!-- dataType -->
 				<xsl:variable name="data_type">
-					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataType: '), ',')"/>
+					<xsl:variable name="after_key" select="substring-after($rule_parameters, 'dataType: ')"/>
+					<xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
 				</xsl:variable>
 				
 				<!-- CustomizationAirspaceCircleArcToPolygon -->
 				<xsl:variable name="arc_to_polygon">
-					<xsl:value-of select="substring-before(substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: '), ',')"/>
+					<xsl:variable name="after_key" select="substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: ')"/>
+					<xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
 				</xsl:variable>
 				
 				<p><font size="-1">Extraction rule parameters used for this report:</font></p>

@@ -189,15 +189,15 @@
 								<xsl:value-of select="'H24'"/>
 							</xsl:when>
 							<!-- insert 'H24' if there is an availability with operationalStatus='NORMAL' and a continuous service 24/7 Timesheet -->
-							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and (not(aixm:dayTil) or aixm:dayTil/@xsi:nil='true' or aixm:dayTil='ANY') and aixm:startTime='00:00' and (aixm:endTime='00:00' or aixm:endTime='24:00') and (aixm:daylightSavingAdjust=('NO','YES') or aixm:daylightSavingAdjust/@nilReason='inapplicable' and ((aixm:startDate='01-01' and aixm:endDate='31-12') or ((not(aixm:startDate) or aixm:startDate/@xsi:nil='true') and (not(aixm:endDate) or aixm:endDate/@xsi:nil='true')))) and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and (not(aixm:dayTil) or aixm:dayTil/@xsi:nil='true' or aixm:dayTil='ANY') and aixm:startTime='00:00' and aixm:endTime=('00:00','23:59','24:00') and (aixm:daylightSavingAdjust=('NO','YES') or aixm:daylightSavingAdjust/@xsi:nil='true' or not(aixm:daylightSavingAdjust)) and ((aixm:startDate='01-01' and aixm:endDate='31-12') or ((not(aixm:startDate) or aixm:startDate/@xsi:nil='true') and (not(aixm:endDate) or aixm:endDate/@xsi:nil='true'))) and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'H24'"/>
 							</xsl:when>
 							<!-- insert 'HJ' if there is an availability with operationalStatus='NORMAL' and a sunrise to sunset Timesheet -->
-							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SR' and aixm:endEvent='SS' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@nilReason='inapplicable') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SR' and aixm:endEvent='SS' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'HJ'"/>
 							</xsl:when>
 							<!-- insert 'HN' if there is an availability with operationalStatus='NORMAL' and a sunset to sunrise Timesheet -->
-							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SS' and aixm:endEvent='SR' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@nilReason='inapplicable') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SS' and aixm:endEvent='SR' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'HN'"/>
 							</xsl:when>
 							<!-- insert 'HX' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
@@ -205,7 +205,7 @@
 								<xsl:value-of select="'HX'"/>
 							</xsl:when>
 							<!-- insert 'HO' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
-							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')]">
+							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')] and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'HO'"/>
 							</xsl:when>
 							<!-- insert 'NOTAM' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
@@ -940,6 +940,9 @@
 			<td><xsl:value-of select="if (string-length(map:get($airport-vars, 'uuid')) != 0) then map:get($airport-vars, 'uuid') else '&#160;'"/></td>
 		</tr>
 		<tr>
+			<td><xsl:value-of select="if (string-length(map:get($airport-vars, 'valid_timeslice')) != 0) then map:get($airport-vars, 'valid_timeslice') else '&#160;'"/></td>
+		</tr>
+		<tr>
 			<td><xsl:value-of select="if (string-length(map:get($airport-vars, 'originator')) != 0) then map:get($airport-vars, 'originator') else '&#160;'"/></td>
 		</tr>
 		<tr>
@@ -1101,6 +1104,9 @@
 							<td><strong>Internal UID (master)</strong></td>
 						</tr>
 						<tr>
+							<td><strong>Valid TimeSlice</strong></td>
+						</tr>
+						<tr>
 							<td><strong>Originator</strong></td>
 						</tr>
 						<tr>
@@ -1178,6 +1184,9 @@
 								
 								<!-- Internal UID (master) -->
 								<xsl:variable name="airport-uuid" select="../../gml:identifier"/>
+								
+								<!-- Valid TimeSlice -->
+								<xsl:variable name="airport_timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
 
 								<!-- Effective date -->
 								<xsl:variable name="effective-day" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 9, 2)"/>
@@ -1208,6 +1217,7 @@
 										'designator': string($airport-designator),
 										'icao': string($airport-designator-icao),
 										'uuid': string($airport-uuid),
+										'valid_timeslice': string($airport_timeslice),
 										'effective-date': string($effective-date),
 										'commit-date': string($commit-date),
 										'originator': string($originator),
