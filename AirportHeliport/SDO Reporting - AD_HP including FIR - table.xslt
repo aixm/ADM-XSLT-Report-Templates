@@ -1301,7 +1301,7 @@
 								
 								<!-- Remark to working hours -->
 								<xsl:variable name="AHP_working_hours_remarks">
-									<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']">
+									<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
 										<xsl:choose>
 											<xsl:when test="position() = 1">
 												<xsl:value-of select="concat('(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
@@ -1319,22 +1319,18 @@
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
-									<xsl:for-each select="aixm:annotation/aixm:Note">
-										<xsl:choose>
-											<xsl:when test="aixm:propertyName and not(aixm:propertyName/@xsi:nil='true') and aixm:propertyName != ('landingDirectionIndicator','windDirectionIndicator','secondaryPowerSupply','altimeterCheckLocation','servedCity','arp','ARP')">
-												<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
-											</xsl:when>
-											<xsl:when test="(not(aixm:propertyName) or aixm:propertyName/@xsi:nil='true') and
-												not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'landing direction indicator')) and
-												not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'wind direction indicator')) and
-												not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'secondary power supply')) and
-												not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'altimeter check location')) and
-												not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'site description')) and
-												not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'aerodrome reference point')) and
-												not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:'))">
-												<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
-											</xsl:when>
-										</xsl:choose>
+									<xsl:for-each select="aixm:annotation/aixm:Note[aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+										<xsl:if test="
+											((aixm:propertyName and (not(aixm:propertyName/@xsi:nil='true') or not(aixm:propertyName/@xsi:nil)) and aixm:propertyName != ('landingDirectionIndicator','windDirectionIndicator','secondaryPowerSupply','altimeterCheckLocation','servedCity','arp','ARP')) or not(aixm:propertyName)) and
+											(not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'landing direction indicator')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'wind direction indicator')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'secondary power supply')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'altimeter check location')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'site description')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'aerodrome reference point')) and
+											not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')))">
+											<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+										</xsl:if>
 									</xsl:for-each>
 								</xsl:variable>
 								
