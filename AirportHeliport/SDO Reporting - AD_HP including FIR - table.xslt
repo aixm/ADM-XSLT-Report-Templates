@@ -198,13 +198,16 @@
 							</xsl:when>
 							<xsl:otherwise>
 								<!-- for days of the week special days schedules  -->
-								<!-- First grouping: by day/dayTil -->
-								<xsl:for-each-group select="aixm:timeInterval/aixm:Timesheet[aixm:day = ('ANY','MON','TUE','WED','THU','FRI','SAT','SUN','WORK_DAY','BEF_WORK_DAY','AFT_WORK_DAY','HOL','BEF_HOL','AFT_HOL','BUSY_FRI')]" group-by="if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then concat(aixm:day, '-', aixm:dayTil) else aixm:day">
+								<!-- First grouping: by excluded/not excluded, then by day/dayTil -->
+								<xsl:for-each-group select="aixm:timeInterval/aixm:Timesheet[aixm:day = ('ANY','MON','TUE','WED','THU','FRI','SAT','SUN','WORK_DAY','BEF_WORK_DAY','AFT_WORK_DAY','HOL','BEF_HOL','AFT_HOL','BUSY_FRI')]" group-by="concat(
+									if (aixm:excluded = 'YES') then 'EXCLUDED' else 'NOT_EXCLUDED',
+									'|',
+									if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then concat(aixm:day, '-', aixm:dayTil) else aixm:day)">
 									<dayInterval days="{current-grouping-key()}">
 										<xsl:variable name="day" select="if (aixm:day = 'ANY') then 'ANY_DAY' else aixm:day"/>
 										<xsl:variable name="day_til" select="if (aixm:dayTil = 'ANY') then 'ANY_DAY' else aixm:dayTil"/>
 										<xsl:variable name="day_group" select="if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then if (aixm:dayTil = aixm:day) then $day else concat($day, '-', $day_til) else $day"/>
-										<xsl:value-of select="if (((aixm:excluded and (not(aixm:excluded/@xsi:nil) or aixm:excluded/@xsi:nil!='true')) and aixm:excluded = 'NO') or not(aixm:excluded)) then concat($day_group, ' ') else concat('exc ', $day_group, ' ')"/>
+										<xsl:value-of select="if (aixm:excluded = 'NO' or not(aixm:excluded) or aixm:excluded/@xsi:nil='true') then concat($day_group, ' ') else concat('exc ', $day_group, ' ')"/>
 										<!-- Second grouping: by startDate/endDate within each day group -->
 										<xsl:for-each-group select="current-group()" group-by="
 											if (aixm:startDate and ((not(aixm:startDate/@xsi:nil) or aixm:startDate/@xsi:nil!='true')) and (aixm:endDate and (not(aixm:endDate/@xsi:nil) or aixm:endDate/@xsi:nil!='true')))
@@ -387,7 +390,6 @@
 				</xsl:if>
 			</xsl:for-each>
 		</xsl:variable>
-
 		<!-- Apply geodesic densification - add intermediate points for segments longer than 1 degree -->
 		<xsl:variable name="max-segment-degrees" select="1.0" as="xs:double"/>
 		<xsl:variable name="densified" as="xs:double*">
@@ -1613,11 +1615,11 @@
 						<td><font size="-1">interestedInDataAt: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureTypes: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">excludedProperties: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
 					</tr>
@@ -1625,7 +1627,7 @@
 						<td><font size="-1">includeReferencedFeaturesLevel: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureOccurrence: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
 					</tr>
@@ -1707,7 +1709,7 @@
 					</tr>
 					<tr>
 						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
-						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				

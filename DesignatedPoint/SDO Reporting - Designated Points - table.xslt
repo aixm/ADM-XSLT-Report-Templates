@@ -5,25 +5,25 @@
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
-		Copyright (c) 2025, EUROCONTROL
-		=====================================
-		All rights reserved.
-		Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-			* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-			* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-			* Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
+  Copyright (c) 2025, EUROCONTROL
+  =====================================
+  All rights reserved.
+  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    * Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
 
-		THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-		CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-		==========================================
-		Editorial note: this license is an instance of the BSD license template as
-		provided by the Open Source Initiative:
-		http://www.opensource.org/licenses/bsd-license.php
+  THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ==========================================
+  Editorial note: this license is an instance of the BSD license template as
+  provided by the Open Source Initiative:
+  http://www.opensource.org/licenses/bsd-license.php
 -->
 
 <!-- 
-	Extraction Rule parameters required for the transformation to be successful:
-	===========================================================================
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
        featureTypes: aixm:DesignatedPoint
   permanentBaseline: true
           dataScope: ReleasedData
@@ -31,11 +31,11 @@
 -->
 
 <!--
-	Coordinates formatting:
-	======================
-	Latitude and Longitude coordinates format is by default Degrees Minutes Seconds with two decimals for Seconds.
-	The number of decimals can be selected by changing the value of 'coordinates_decimal_number' to the desired number of decimals.
-	The format of coordinates displayed can be chosen between DMS or Decimal Degrees by changing the value of 'coordinates_type' to 'DMS' or 'DEC'.
+  Coordinates formatting:
+  ======================
+  Latitude and Longitude coordinates format is by default Degrees Minutes Seconds with two decimals for Seconds.
+  The number of decimals can be selected by changing the value of 'coordinates_decimal_number' to the desired number of decimals.
+  The format of coordinates displayed can be chosen between DMS or Decimal Degrees by changing the value of 'coordinates_type' to 'DMS' or 'DEC'.
 -->
 
 <xsl:transform version="3.0" 
@@ -430,11 +430,11 @@
 						<td><font size="-1">interestedInDataAt: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureTypes: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">excludedProperties: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
 					</tr>
@@ -442,7 +442,7 @@
 						<td><font size="-1">includeReferencedFeaturesLevel: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureOccurrence: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
 					</tr>
@@ -478,7 +478,7 @@
 						<td><font size="-1">spatialFilteringBy: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_filtering) gt 0) then $spatial_filtering else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">spatialAreaUUID: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'"/></font></td>
 					</tr>
@@ -524,7 +524,7 @@
 					</tr>
 					<tr>
 						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
-						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				

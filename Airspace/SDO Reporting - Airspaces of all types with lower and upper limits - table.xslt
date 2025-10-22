@@ -491,11 +491,11 @@
 						<td><font size="-1">interestedInDataAt: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureTypes: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">excludedProperties: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
 					</tr>
@@ -503,7 +503,7 @@
 						<td><font size="-1">includeReferencedFeaturesLevel: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureOccurrence: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
 					</tr>
@@ -539,7 +539,7 @@
 						<td><font size="-1">spatialFilteringBy: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_filtering) gt 0) then $spatial_filtering else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">spatialAreaUUID: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'"/></font></td>
 					</tr>
@@ -585,7 +585,7 @@
 					</tr>
 					<tr>
 						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
-						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				

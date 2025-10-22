@@ -5,28 +5,28 @@
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!--
-	Copyright (c) 2025, EUROCONTROL
-	=====================================
-	All rights reserved.
-	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-	* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-	* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-	* Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
+  Copyright (c) 2025, EUROCONTROL
+  =====================================
+  All rights reserved.
+  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+  * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+  * Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
 
-	THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-	CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-	==========================================
-	Editorial note: this license is an instance of the BSD license template as
-	provided by the Open Source Initiative:
-	http://www.opensource.org/licenses/bsd-license.php
+  THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ==========================================
+  Editorial note: this license is an instance of the BSD license template as
+  provided by the Open Source Initiative:
+  http://www.opensource.org/licenses/bsd-license.php
 -->
 
 <!--
-	Extraction Rule parameters required for the transformation to be successful:
-	===========================================================================
-	 	  featureTypes: aixm:AirportHeliport
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
+       featureTypes: aixm:AirportHeliport
   permanentBaseline: true
-		    AIXMversion: 5.1.1
+        AIXMversion: 5.1.1
 -->
 
 <xsl:transform version="3.0"
@@ -74,6 +74,16 @@
 				<xsl:value-of select="$feature_property"/>
 			</xsl:otherwise>
 		</xsl:choose>
+	</xsl:function>
+	
+	<!-- Get annotation text escaping special HTML characters -->
+	<xsl:function name="fcn:get-annotation-text" as="xs:string">
+		<xsl:param name="raw_text" as="xs:string"/>
+		<!-- First, escape special HTML characters in the raw text before processing -->
+		<xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
+		<xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
+		<xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
+		<xsl:value-of select="string-join($non_empty_lines, ' ')"/>
 	</xsl:function>
 
 	<!-- Function to transform AIXM property values to display text -->
@@ -221,42 +231,7 @@
 								<xsl:value-of select="concat('NIL:', aixm:timeInterval/@nilReason)"/>
 							</xsl:when>
 							<xsl:otherwise>
-								<!-- for days of the week special days schedules  -->
-								<xsl:for-each-group select="aixm:timeInterval/aixm:Timesheet[aixm:day = ('ANY','MON','TUE','WED','THU','FRI','SAT','SUN','WORK_DAY','BEF_WORK_DAY','AFT_WORK_DAY','HOL','BEF_HOL','AFT_HOL','BUSY_FRI')]" group-by="if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then concat(aixm:day, '-', aixm:dayTil) else aixm:day">
-									<dayInterval days="{current-grouping-key()}">
-										<xsl:variable name="day" select="if (aixm:day = 'ANY') then 'ANY_DAY' else aixm:day"/>
-										<xsl:variable name="day_til" select="if (aixm:dayTil = 'ANY') then 'ANY_DAY' else aixm:dayTil"/>
-										<xsl:variable name="day_group" select="if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then if (aixm:dayTil = aixm:day) then $day else concat($day, '-', $day_til) else $day"/>
-										<xsl:value-of select="if (aixm:excluded and (not(aixm:excluded/@xsi:nil) or aixm:excluded/@xsi:nil!='true') and aixm:excluded = 'NO') then concat($day_group, ' ') else concat('exc ', $day_group, ' ')"/>
-										<xsl:for-each select="current-group()">
-											<xsl:variable name="start_date" select="if (aixm:startDate != 'SDLST' and aixm:startDate != 'EDLST') then concat(substring(aixm:startDate,1,2), '/', substring(aixm:startDate,4,2)) else aixm:startDate"/>
-											<xsl:variable name="end_date" select="if (aixm:endDate != 'SDLST' and aixm:endDate != 'EDLST') then concat(substring(aixm:endDate,1,2), '/', substring(aixm:endDate,4,2)) else aixm:endDate"/>
-											<xsl:variable name="start_time" select="concat(substring(aixm:startTime, 1, 2), substring(aixm:startTime, 4, 2))"/>
-											<xsl:variable name="end_time" select="concat(substring(aixm:endTime, 1, 2), substring(aixm:endTime, 4, 2))"/>
-											<xsl:variable name="start_time_DST">
-												<xsl:value-of select="concat(if (number(substring($start_time, 1, 2)) gt 0) then format-number(number(substring($start_time, 1, 2)) - 1, '00') else 23, substring($start_time, 3, 2))"/>
-											</xsl:variable>
-											<xsl:variable name="end_time_DST">
-												<xsl:value-of select="concat(if (number(substring($end_time, 1, 2)) gt 0) then format-number(number(substring($end_time, 1, 2)) - 1, '00') else 23, substring($end_time, 3, 2))"/>
-											</xsl:variable>
-											<xsl:value-of select="concat(
-												if (aixm:startDate and ((not(aixm:startDate/@xsi:nil) or aixm:startDate/@xsi:nil!='true')) and (aixm:endDate and (not(aixm:endDate/@xsi:nil) or aixm:endDate/@xsi:nil!='true'))) then concat($start_date, '-', $end_date, ' ') else '',
-												if (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true') then $start_time else '',
-												if (aixm:daylightSavingAdjust = 'YES' and (aixm:startEvent and ((not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) or (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true'))) and (aixm:startTime and (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true'))) then concat('(', $start_time_DST, ')') else '',
-												if (aixm:startEvent and (not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) then if (aixm:startTime and (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true')) then concat('/',aixm:startEvent) else aixm:startEvent else '',
-												if ((aixm:startEvent and (not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) and (aixm:startTimeRelativeEvent and (not(aixm:startTimeRelativeEvent/@xsi:nil) or aixm:startTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:startTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:startTimeRelativeEvent, '+'), aixm:startTimeRelativeEvent/@uom) else if (number(aixm:startTimeRelativeEvent) ge 0) then concat('plus', aixm:startTimeRelativeEvent, aixm:startTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:startTimeRelativeEvent, '-'), aixm:startTimeRelativeEvent/@uom) else '',
-												if (aixm:startEventInterpretation and (not(aixm:startEventInterpretation/@xsi:nil) or aixm:startEventInterpretation/@xsi:nil!='true')) then concat('(', aixm:startEventInterpretation, ')') else '',
-												'-',
-												if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then $end_time else '',
-												if (aixm:daylightSavingAdjust = 'YES' and (aixm:startEvent and ((not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) or (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true'))) and (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true'))) then concat('(', $end_time_DST, ')') else '',
-												if (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) then if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then concat('/',aixm:endEvent) else aixm:endEvent else '',
-												if ((aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) and (aixm:endTimeRelativeEvent and (not(aixm:endTimeRelativeEvent/@xsi:nil) or aixm:endTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:endTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:endTimeRelativeEvent, '+'), aixm:endTimeRelativeEvent/@uom) else if (number(aixm:endTimeRelativeEvent) ge 0) then concat('plus', aixm:endTimeRelativeEvent, aixm:endTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:endTimeRelativeEvent, '-'), aixm:endTimeRelativeEvent/@uom) else '',
-												if (aixm:startEvent and (not(aixm:startEvent) and not(aixm:endEvent)) and aixm:daylightSavingAdjust = 'YES') then concat(' (', $start_time_DST, '-', $end_time_DST, ')') else '')"/>
-											<xsl:if test="position() != last()"><xsl:text> </xsl:text></xsl:if>
-										</xsl:for-each>
-										<xsl:if test="position() != last()"><xsl:text>&lt;br/&gt;</xsl:text></xsl:if>
-									</dayInterval>
-								</xsl:for-each-group>
+								<xsl:value-of select="'TIMESH'"/>
 							</xsl:otherwise>
 						</xsl:choose>
 					</xsl:for-each>
@@ -376,6 +351,34 @@
 		<xsl:param name="flight-index" as="xs:integer"/>
 		<xsl:param name="aircraft-data" as="element()*"/>
 		<xsl:param name="flight-data" as="element()*"/>
+
+		<!-- Detect working hours code for this timesheet -->
+		<xsl:variable name="working-hours-code">
+			<xsl:variable name="temp-availability">
+				<aixm:AirportHeliportAvailability xmlns:aixm="http://www.aixm.aero/schema/5.1.1">
+					<aixm:operationalStatus>NORMAL</aixm:operationalStatus>
+					<aixm:timeInterval>
+						<xsl:copy-of select="$timesheet"/>
+					</aixm:timeInterval>
+					<xsl:copy-of select="$condition-element/aixm:annotation"/>
+				</aixm:AirportHeliportAvailability>
+			</xsl:variable>
+			<xsl:value-of select="fcn:format-working-hours($temp-availability/aixm:AirportHeliportAvailability)"/>
+		</xsl:variable>
+
+		<!-- Extract same-level annotations for this timesheet -->
+		<xsl:variable name="timesheet-remarks">
+			<xsl:for-each select="$condition-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+				<xsl:choose>
+					<xsl:when test="position() = 1">
+						<xsl:value-of select="concat('(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:for-each>
+		</xsl:variable>
 
 		<!-- Extract timesheet data -->
 		<xsl:variable name="time-reference">
@@ -838,10 +841,10 @@
 			<td><xsl:value-of select="if (string-length($limitation-code) != 0) then $limitation-code else '&#160;'"/></td>
 		</tr>
 		<tr>
-			<td><xsl:value-of select="if (string-length(map:get($airport-vars, 'working-hours')) != 0) then map:get($airport-vars, 'working-hours') else '&#160;'" disable-output-escaping="yes"/></td>
+			<td><xsl:value-of select="if (string-length($working-hours-code) != 0) then $working-hours-code else '&#160;'" disable-output-escaping="yes"/></td>
 		</tr>
 		<tr>
-			<td><xsl:value-of select="if (string-length(map:get($airport-vars, 'working-hours-remarks')) != 0) then map:get($airport-vars, 'working-hours-remarks') else '&#160;'" disable-output-escaping="yes"/></td>
+			<td xml:space="preserve"><xsl:value-of select="if (string-length($timesheet-remarks) != 0) then $timesheet-remarks else '&#160;'" disable-output-escaping="yes"/></td>
 		</tr>
 		<tr>
 			<td><xsl:value-of select="if (string-length($condition-level) != 0) then $condition-level else '&#160;'"/></td>
@@ -989,7 +992,7 @@
 				</center>
 				<hr/>
 
-				<table border="0" style="white-space:nowrap">
+				<table border="0"  style="white-space:nowrap">
 					<tbody>
 
 						<tr>
@@ -1118,6 +1121,7 @@
 
 						<!-- Process each AirportHeliport feature -->
 						<xsl:for-each select="//aixm:AirportHeliport">
+							<xsl:sort select="(aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:designator" order="ascending"/>
 
 							<!-- Get all BASELINE timeslices -->
 							<xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
@@ -1170,13 +1174,13 @@
 								
 								<!-- Remark to working hours -->
 								<xsl:variable name="working-hours-remarks">
-									<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']">
+									<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
 										<xsl:choose>
 											<xsl:when test="position() = 1">
-												<xsl:value-of select="concat('(', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')])"/>
+												<xsl:value-of select="concat('(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')])"/>
+												<xsl:value-of select="concat(' (', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:for-each>
@@ -1224,6 +1228,21 @@
 										'working-hours': string($working-hours),
 										'working-hours-remarks': string($working-hours-remarks)
 									}"/>
+
+									<!-- Process top-level timesheets (outside ConditionCombination) -->
+									<xsl:for-each select="aixm:timeInterval/aixm:Timesheet">
+										<xsl:call-template name="generate-row">
+											<xsl:with-param name="timesheet" select="."/>
+											<xsl:with-param name="usage-element" select="../.."/>
+											<xsl:with-param name="condition-element" select="../.."/>
+											<xsl:with-param name="condition-level" select="''"/>
+											<xsl:with-param name="airport-vars" select="$airport-vars"/>
+											<xsl:with-param name="aircraft-index" select="0"/>
+											<xsl:with-param name="flight-index" select="0"/>
+											<xsl:with-param name="aircraft-data" select="()"/>
+											<xsl:with-param name="flight-data" select="()"/>
+										</xsl:call-template>
+									</xsl:for-each>
 
 									<!-- Process each usage -->
 									<xsl:for-each select="aixm:usage/aixm:AirportHeliportUsage">
@@ -1397,11 +1416,11 @@
 						<td><font size="-1">interestedInDataAt: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureTypes: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">excludedProperties: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
 					</tr>
@@ -1409,7 +1428,7 @@
 						<td><font size="-1">includeReferencedFeaturesLevel: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureOccurrence: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
 					</tr>
@@ -1445,7 +1464,7 @@
 						<td><font size="-1">spatialFilteringBy: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_filtering) gt 0) then $spatial_filtering else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">spatialAreaUUID: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'"/></font></td>
 					</tr>
@@ -1491,14 +1510,14 @@
 					</tr>
 					<tr>
 						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
-						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				
 				<p></p>
 				<table>
 					<tr>
-						<td><font size="-1">Sorting by column: </font></td>
+						<td><font size="-1">Sorting by: </font></td>
 						<td><font size="-1">Identification</font></td>
 					</tr>
 					<tr>

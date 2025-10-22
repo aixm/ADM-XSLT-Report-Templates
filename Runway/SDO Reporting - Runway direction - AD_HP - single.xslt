@@ -5,31 +5,39 @@
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
-	Copyright (c) 2025, EUROCONTROL
-	=====================================
-	All rights reserved.
-	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-	* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-	* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-	* Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
+  Copyright (c) 2025, EUROCONTROL
+  =====================================
+  All rights reserved.
+  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+  * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+  * Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
 	
-	THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-	CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-	==========================================
-	Editorial note: this license is an instance of the BSD license template as
-	provided by the Open Source Initiative:
-	http://www.opensource.org/licenses/bsd-license.php
+  THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ==========================================
+  Editorial note: this license is an instance of the BSD license template as
+  provided by the Open Source Initiative:
+  http://www.opensource.org/licenses/bsd-license.php
 -->
 
 <!-- 
-	Extraction Rule parameters required for the transformation to be successful:
-	===========================================================================
-										featureTypes: aixm:RunwayDirection;
-	includeReferencedFeaturesLevel: 2
-							 permanentBaseline: true
-											 dataScope: ReleasedData
-										 AIXMversion: 5.1.1
-							indirectReferences: aixm:RunwayDirection references (aixm:ArrestingGear aixm:RunwayCentrelinePoint aixm:RunwayVisualRange aixm:VisualGlideSlopeIndicator)
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
+                    featureTypes: aixm:RunwayDirection;
+  includeReferencedFeaturesLevel: 2
+               permanentBaseline: true
+                       dataScope: ReleasedData
+                     AIXMversion: 5.1.1
+              indirectReferences: aixm:RunwayDirection references (aixm:ArrestingGear aixm:RunwayCentrelinePoint aixm:RunwayVisualRange aixm:VisualGlideSlopeIndicator)
+-->
+
+<!--
+  Coordinates formatting:
+  ======================
+  Latitude and Longitude coordinates format is by default Degrees Minutes Seconds with two decimals for Seconds.
+  The number of decimals can be selected by changing the value of 'coordinates_decimal_number' to the desired number of decimals.
+  The format of coordinates displayed can be chosen between DMS or Decimal Degrees by changing the value of 'coordinates_type' to 'DMS' or 'DEC'.
 -->
 
 <xsl:transform version="3.0"
@@ -164,10 +172,12 @@
 		</xsl:choose>
 	</xsl:function>
 	
-	<!-- Get annotation text -->
+	<!-- Get annotation text escaping special HTML characters -->
 	<xsl:function name="fcn:get-annotation-text" as="xs:string">
 		<xsl:param name="raw_text" as="xs:string"/>
-		<xsl:variable name="lines" select="for $line in tokenize($raw_text, '&#xA;') return normalize-space($line)"/>
+		<!-- First, escape special HTML characters in the raw text before processing -->
+		<xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
+		<xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
 		<xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
 		<xsl:value-of select="string-join($non_empty_lines, ' ')"/>
 	</xsl:function>
@@ -177,7 +187,8 @@
 		<html xmlns="http://www.w3.org/1999/xhtml">
 			
 			<head>
-				<meta http-equiv="Expires" content="120" />
+				<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+				<meta http-equiv="Expires" content="120"/>
 				<title>SDO Reporting - Runway direction - AD / HP</title>
 			</head>
 			
@@ -541,9 +552,9 @@
 										</xsl:when>
 										<xsl:when test="not($VASIS-latest-ts/aixm:position)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'VASIS position')">
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after($annotation_text, 'VASIS position: '), ' ')"/>
+													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'vasis position: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -577,9 +588,9 @@
 										</xsl:when>
 										<xsl:when test="not($VASIS-latest-ts/aixm:portable)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'PortableVASIS')">
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'portablevasis')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after($annotation_text, 'PortableVASIS: '), ' ')"/>
+													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'portablevasis: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -621,9 +632,9 @@
 										</xsl:when>
 										<xsl:when test="not($VASIS-latest-ts/aixm:type)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Type of VASIS')">
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'type of vasis')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Type of VASIS: '), ' ')"/>
+													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'type of vasis: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -639,9 +650,9 @@
 										<xsl:otherwise>
 											<xsl:if test="not($VASIS-latest-ts/aixm:annotation/aixm:Note[aixm:propertyName = 'position']/aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')])">
 												<xsl:for-each select="aixm:annotation/aixm:Note">
-													<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'VASIS position')">
+													<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')">
 														<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-														<xsl:value-of select="substring-before(substring-after($annotation_text, 'VASIS position: '), ' ')"/>
+														<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'vasis position: '), ' ')"/>
 													</xsl:if>
 												</xsl:for-each>
 											</xsl:if>
@@ -664,9 +675,9 @@
 										</xsl:when>
 										<xsl:when test="not($VASIS-latest-ts/aixm:slopeAngle)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Approach slope angle')">
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'approach slope angle')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Approach slope angle: '), ' ')"/>
+													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'approach slope angle: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -688,9 +699,9 @@
 										</xsl:when>
 										<xsl:when test="not($VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Minimum eye height over threshold')">
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'minimum eye height over threshold')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Minimum eye height over threshold: '), ' ')"/>
+													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'minimum eye height over threshold: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -705,9 +716,9 @@
 										</xsl:when>
 										<xsl:when test="not($VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold/@uom)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'Unit of measurement [minimum eye height over threshold]')">
+												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'unit of measurement [minimum eye height over threshold]')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after($annotation_text, 'Unit of measurement [minimum eye height over threshold]: '), ' ')"/>
+													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'unit of measurement [minimum eye height over threshold]: '), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -795,11 +806,27 @@
 								</xsl:variable>
 								
 								<!-- Remarks -->
-								<xsl:variable name="remarks">
+								<xsl:variable name="RDN_remarks">
 									<xsl:variable name="dataset_creation_date" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
+									<xsl:for-each select="aixm:annotation/aixm:Note[aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+										<xsl:if test="
+											((aixm:propertyName and (not(aixm:propertyName/@xsi:nil='true') or not(aixm:propertyName/@xsi:nil))) or not(aixm:propertyName)) and
+											(not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'portablevasis')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'type of vasis')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'approach slope angle')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'minimum eye height over threshold')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'unit of measurement [minimum eye height over threshold]')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'arresting gear')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'runway visual range')) and
+											not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')))">
+											<xsl:value-of select="concat(' (', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+										</xsl:if>
+									</xsl:for-each>
 								</xsl:variable>
 								
 								<!-- Effective date -->
@@ -910,7 +937,7 @@
 									<td><xsl:value-of select="if (string-length($RDN_VFR_pattern_direction) gt 0) then $RDN_VFR_pattern_direction else '&#160;'"/></td>
 								</tr>
 								<tr>
-									<td><xsl:value-of select="if (string-length($remarks) gt 0) then $remarks else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($RDN_remarks) gt 0) then $RDN_remarks else '&#160;'"/></td>
 								</tr>
 								<tr>
 									<td><xsl:value-of select="if (string-length($effective_date) gt 0) then $effective_date else '&#160;'"/></td>
@@ -1089,11 +1116,11 @@
 						<td><font size="-1">interestedInDataAt: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureTypes: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">excludedProperties: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
 					</tr>
@@ -1101,7 +1128,7 @@
 						<td><font size="-1">includeReferencedFeaturesLevel: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureOccurrence: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
 					</tr>
@@ -1137,7 +1164,7 @@
 						<td><font size="-1">spatialFilteringBy: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_filtering) gt 0) then $spatial_filtering else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">spatialAreaUUID: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'"/></font></td>
 					</tr>
@@ -1183,7 +1210,7 @@
 					</tr>
 					<tr>
 						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
-						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				

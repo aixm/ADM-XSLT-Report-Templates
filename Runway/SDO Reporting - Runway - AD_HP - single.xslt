@@ -5,31 +5,31 @@
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
-	Copyright (c) 2025, EUROCONTROL
-	=====================================
-	All rights reserved.
-	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-	* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-	* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-	* Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
+  Copyright (c) 2025, EUROCONTROL
+  =====================================
+  All rights reserved.
+  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+  * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+  * Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
 	
-	THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-	CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-	==========================================
-	Editorial note: this license is an instance of the BSD license template as
-	provided by the Open Source Initiative:
-	http://www.opensource.org/licenses/bsd-license.php
+  THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  ==========================================
+  Editorial note: this license is an instance of the BSD license template as
+  provided by the Open Source Initiative:
+  http://www.opensource.org/licenses/bsd-license.php
 -->
 
 <!-- 
-	Extraction Rule parameters required for the transformation to be successful:
-	===========================================================================
-										featureTypes: aixm:Runway
-	includeReferencedFeaturesLevel: 1
-							 featureOccurrence: aixm:Runway.aixm:type EQUALS 'RWY'
-							 permanentBaseline: true
-										 AIXMversion: 5.1.1
-							indirectReferences: aixm:Runway references (aixm:RunwayDirection)
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
+                    featureTypes: aixm:Runway
+  includeReferencedFeaturesLevel: 1
+               featureOccurrence: aixm:Runway.aixm:type EQUALS 'RWY'
+               permanentBaseline: true
+                     AIXMversion: 5.1.1
+              indirectReferences: aixm:Runway references (aixm:RunwayDirection)
 -->
 
 <xsl:transform version="3.0" 
@@ -102,10 +102,12 @@
 		</xsl:choose>
 	</xsl:function>
 	
-	<!-- Get annotation text -->
+	<!-- Get annotation text escaping special HTML characters -->
 	<xsl:function name="fcn:get-annotation-text" as="xs:string">
 		<xsl:param name="raw_text" as="xs:string"/>
-		<xsl:variable name="lines" select="for $line in tokenize($raw_text, '&#xA;') return normalize-space($line)"/>
+		<!-- First, escape special HTML characters in the raw text before processing -->
+		<xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
+		<xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
 		<xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
 		<xsl:value-of select="string-join($non_empty_lines, ' ')"/>
 	</xsl:function>
@@ -115,7 +117,8 @@
 		<html xmlns="http://www.w3.org/1999/xhtml">
 			
 			<head>
-				<meta http-equiv="Expires" content="120" />
+				<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+				<meta http-equiv="Expires" content="120"/>
 				<title>SDO Reporting - Runway - AD / HP</title>
 			</head>
 			
@@ -547,7 +550,7 @@
 									<xsl:for-each select="$RWY_sfc_ch/aixm:annotation/aixm:Note[aixm:propertyName = 'classPCN' or contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'txtPcnNote')]">
 										<xsl:choose>
 											<xsl:when test="contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'txtPcnNote')">
-												<xsl:value-of select="substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':')"/>
+												<xsl:value-of select="fcn:get-annotation-text(substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':'))"/>
 											</xsl:when>
 											<xsl:otherwise>
 												<xsl:value-of select="fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')])"/>
@@ -704,11 +707,21 @@
 								</xsl:variable>
 								
 								<!-- Remarks -->
-								<xsl:variable name="remarks">
+								<xsl:variable name="RWY_remarks">
 									<xsl:variable name="dataset_creation_date" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
+									<xsl:for-each select="aixm:annotation/aixm:Note[aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+										<xsl:if test="
+											((aixm:propertyName and (not(aixm:propertyName/@xsi:nil='true') or not(aixm:propertyName/@xsi:nil)) and aixm:propertyName != 'classPCN') or not(aixm:propertyName)) and
+											(not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'txtPcnNote')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'txtProfile')) and
+											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'txtMarking')) and
+											not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')))">
+											<xsl:value-of select="concat(' (', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+										</xsl:if>
+									</xsl:for-each>
 								</xsl:variable>
 								
 								<!-- Effective date -->
@@ -834,7 +847,7 @@
 									<td xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_marking) gt 0"><xsl:value-of select="$RWY_marking" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
 								</tr>
 								<tr>
-									<td><xsl:value-of select="if (string-length($remarks) gt 0) then $remarks else '&#160;'"/></td>
+									<td xml:space="preserve"><xsl:value-of select="if (string-length($RWY_remarks) gt 0) then $RWY_remarks else '&#160;'"/></td>
 								</tr>
 								<tr>
 									<td><xsl:value-of select="if (string-length($effective_date) gt 0) then $effective_date else '&#160;'"/></td>
@@ -1013,11 +1026,11 @@
 						<td><font size="-1">interestedInDataAt: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureTypes: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">excludedProperties: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
 					</tr>
@@ -1025,7 +1038,7 @@
 						<td><font size="-1">includeReferencedFeaturesLevel: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">featureOccurrence: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
 					</tr>
@@ -1061,7 +1074,7 @@
 						<td><font size="-1">spatialFilteringBy: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_filtering) gt 0) then $spatial_filtering else '&#160;'"/></font></td>
 					</tr>
-					<tr>
+					<tr style="vertical-align:top">
 						<td><font size="-1">spatialAreaUUID: </font></td>
 						<td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'"/></font></td>
 					</tr>
@@ -1107,14 +1120,14 @@
 					</tr>
 					<tr>
 						<td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
-						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $data_type else '&#160;'"/></font></td>
+						<td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
 					</tr>
 				</table>
 				
 				<p></p>
 				<table>
 					<tr>
-						<td><font size="-1">Sorting by column: </font></td>
+						<td><font size="-1">Sorting by: </font></td>
 						<td><font size="-1">Aerodrome / Heliport - Identification</font></td>
 					</tr>
 					<tr>
