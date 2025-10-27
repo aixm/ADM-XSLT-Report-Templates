@@ -208,11 +208,11 @@
 							
 							<!-- UUID -->
 							<xsl:variable name="DPN_uuid" select="../../gml:identifier"/>
-							<txtRmk><xsl:value-of select="concat('UUID: ', $DPN_uuid)"/></txtRmk>
 							
 							<!-- Valid TimeSlice -->
 							<xsl:variable name="DPN_timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
-							<txtRmk><xsl:value-of select="concat('Valid TimeSlice: ', $DPN_timeslice)"/></txtRmk>
+							
+							<txtRmk><xsl:value-of select="concat('UUID: ', $DPN_uuid)"/><xsl:text>&#xa;</xsl:text><xsl:value-of select="concat('Valid TimeSlice: ', $DPN_timeslice)"/></txtRmk>
 							
 						</Record>
 						
