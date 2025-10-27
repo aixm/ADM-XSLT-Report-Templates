@@ -294,7 +294,14 @@
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:upperLimitReference)"/>
+											<xsl:choose>
+												<xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
+													<xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:upperLimitReference)"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="''"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -306,13 +313,29 @@
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:upperLimit)"/>
+											<xsl:choose>
+												<xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
+													<xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:upperLimit)"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="''"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
 								
 								<!-- Unit of measurement [upper limit] -->
-								<xsl:variable name="upper_limit_uom" select="$AirspaceVolume/aixm:upperLimit/@uom"/>
+								<xsl:variable name="upper_limit_uom">
+									<xsl:choose>
+										<xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
+											<xsl:value-of select="$AirspaceVolume[1]/aixm:upperLimit/@uom"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="''"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
 								
 								<!-- Reference for lower limit -->
 								<xsl:variable name="lower_limit_ref">
@@ -321,7 +344,14 @@
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:lowerLimitReference)"/>
+											<xsl:choose>
+												<xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
+													<xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:lowerLimitReference)"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="''"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -333,13 +363,29 @@
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AirspaceVolume/aixm:lowerLimit)"/>
+											<xsl:choose>
+												<xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
+													<xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:lowerLimit)"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="''"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
 								
 								<!-- Unit of measurement [lower limit] -->
-								<xsl:variable name="lower_limit_uom" select="$AirspaceVolume/aixm:lowerLimit/@uom"/>
+								<xsl:variable name="lower_limit_uom">
+									<xsl:choose>
+										<xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
+											<xsl:value-of select="$AirspaceVolume[1]/aixm:lowerLimit/@uom"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:value-of select="''"/>
+										</xsl:otherwise>
+									</xsl:choose>
+								</xsl:variable>
 								
 								<!-- UUID -->
 								<xsl:variable name="UUID" select="../../gml:identifier"/>
