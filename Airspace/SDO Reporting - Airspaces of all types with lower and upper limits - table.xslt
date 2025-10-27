@@ -49,10 +49,9 @@
 	xmlns:aixm_ds_xslt="http://www.aixm.aero/xslt"
 	xmlns:fcn="local-function"
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit saxon">
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit">
 	
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	<xsl:output method="html" indent="yes"/>
 	
 	<xsl:strip-space elements="*"/>
 	
