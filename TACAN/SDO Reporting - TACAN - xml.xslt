@@ -290,7 +290,7 @@ Copyright (c) 2025, EUROCONTROL
 		<xsl:element name="SdoReportResponse" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 			<xsl:attribute name="created" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
 			<xsl:attribute name="xsi:noNamespaceSchemaLocation" select="'SdoReportMgmt.xsd'"/>
-			<xsl:attribute name="origin" select="'SDD'"/>
+			<xsl:attribute name="origin" select="'SDO'"/>
 			<xsl:attribute name="version" select="'4.1'"/>
 			<SdoReportResult>
 				
