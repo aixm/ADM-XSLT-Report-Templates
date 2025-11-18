@@ -52,10 +52,7 @@
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	xmlns:fcn="local-function"
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math saxon">
-	
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math">
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -411,14 +408,44 @@
 								
 								<!-- (d)Surface strength method -->
 								<xsl:variable name="RWY_sfc_strenght_method">
-									<!-- ? -->
+									<!-- Check for PCN: if properties ending in 'PCN' have values (not nil) -->
+									<xsl:variable name="has_PCN" select="
+										($RWY_sfc_ch/aixm:classPCN and not($RWY_sfc_ch/aixm:classPCN/@xsi:nil='true')) or
+										($RWY_sfc_ch/aixm:pavementTypePCN and not($RWY_sfc_ch/aixm:pavementTypePCN/@xsi:nil='true')) or
+										($RWY_sfc_ch/aixm:pavementSubgradePCN and not($RWY_sfc_ch/aixm:pavementSubgradePCN/@xsi:nil='true')) or
+										($RWY_sfc_ch/aixm:maxTyrePressurePCN and not($RWY_sfc_ch/aixm:maxTyrePressurePCN/@xsi:nil='true')) or
+										($RWY_sfc_ch/aixm:evaluationMethodPCN and not($RWY_sfc_ch/aixm:evaluationMethodPCN/@xsi:nil='true'))"/>
+									<!-- Check for LCN: if classLCN has value (not nil) -->
+									<xsl:variable name="has_LCN" select="$RWY_sfc_ch/aixm:classLCN and not($RWY_sfc_ch/aixm:classLCN/@xsi:nil='true')"/>
+									<!-- Prioritize PCN over LCN -->
+									<xsl:choose>
+										<xsl:when test="$has_PCN">PCN</xsl:when>
+										<xsl:when test="$has_LCN">LCN</xsl:when>
+									</xsl:choose>
 								</xsl:variable>
 								
 								<!-- (d)Surface strength -->
 								<xsl:variable name="RWY_sfc_strength">
-									<xsl:if test="$RWY_sfc_ch/aixm:classPCN and $RWY_sfc_ch/aixm:pavementTypePCN=('RIGID', 'FLEXIBLE') and $RWY_sfc_ch/aixm:pavementSubgradePCN=('A', 'B', 'C', 'D') and $RWY_sfc_ch/aixm:maxTyrePressurePCN=('W', 'X', 'Y', 'Z') and $RWY_sfc_ch/aixm:evaluationMethodPCN=('TECH', 'ACFT')">
-										<xsl:value-of select="concat($RWY_sfc_ch/aixm:classPCN, '/', substring($RWY_sfc_ch/aixm:pavementTypePCN, 1, 1), '/', $RWY_sfc_ch/aixm:pavementSubgradePCN, '/', $RWY_sfc_ch/aixm:maxTyrePressurePCN, '/', substring($RWY_sfc_ch/aixm:evaluationMethodPCN, 1, 1))"/>
-									</xsl:if>
+									<xsl:choose>
+										<!-- If PCN values are complete, show PCN format -->
+										<xsl:when test="$RWY_sfc_ch/aixm:classPCN and $RWY_sfc_ch/aixm:pavementTypePCN=('RIGID', 'FLEXIBLE') and $RWY_sfc_ch/aixm:pavementSubgradePCN=('A', 'B', 'C', 'D') and $RWY_sfc_ch/aixm:maxTyrePressurePCN=('W', 'X', 'Y', 'Z') and $RWY_sfc_ch/aixm:evaluationMethodPCN=('TECH', 'ACFT')">
+											<xsl:value-of select="concat($RWY_sfc_ch/aixm:classPCN, '/', substring($RWY_sfc_ch/aixm:pavementTypePCN, 1, 1), '/', $RWY_sfc_ch/aixm:pavementSubgradePCN, '/', $RWY_sfc_ch/aixm:maxTyrePressurePCN, '/', substring($RWY_sfc_ch/aixm:evaluationMethodPCN, 1, 1))"/>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:choose>
+												<!-- If PCN has partial values, show 'incomplete' -->
+												<xsl:when test="$RWY_sfc_ch/aixm:classPCN or $RWY_sfc_ch/aixm:pavementTypePCN=('RIGID', 'FLEXIBLE') or $RWY_sfc_ch/aixm:pavementSubgradePCN=('A', 'B', 'C', 'D') or $RWY_sfc_ch/aixm:maxTyrePressurePCN=('W', 'X', 'Y', 'Z') or $RWY_sfc_ch/aixm:evaluationMethodPCN=('TECH', 'ACFT')">
+													<xsl:value-of select="'incomplete'"/>
+												</xsl:when>
+												<!-- If LCN has value (and PCN is absent), show LCN value -->
+												<xsl:otherwise>
+													<xsl:if test="$RWY_sfc_ch/aixm:classLCN and not($RWY_sfc_ch/aixm:classLCN/@xsi:nil='true')">
+														<xsl:value-of select="fcn:insert-value($RWY_sfc_ch/aixm:classLCN)"/>
+													</xsl:if>
+												</xsl:otherwise>
+											</xsl:choose>
+										</xsl:otherwise>
+									</xsl:choose>
 								</xsl:variable>
 								
 								<!-- Surface composition -->
@@ -694,15 +721,27 @@
 								
 								<!-- Profile description -->
 								<xsl:variable name="RWY_profile_description">
-									<xsl:for-each select="aixm:annotation/aixm:Note[contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'txtProfile')]">
-										<xsl:value-of select="fcn:get-annotation-text(substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':'))"/>
+									<xsl:for-each select="aixm:annotation/aixm:Note[contains(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note, 'txtProfile')]">
+										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+											<xsl:choose>
+												<xsl:when test="contains(aixm:note, 'txtProfile')">
+													<xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
+												</xsl:when>
+											</xsl:choose>
+										</xsl:for-each>
 									</xsl:for-each>
 								</xsl:variable>
-
+								
 								<!-- Marking -->
 								<xsl:variable name="RWY_marking">
-									<xsl:for-each select="aixm:annotation/aixm:Note[contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'txtMarking')]">
-										<xsl:value-of select="fcn:get-annotation-text(substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':'))"/>
+									<xsl:for-each select="aixm:annotation/aixm:Note[contains(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note, 'txtMarking')]">
+										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+											<xsl:choose>
+												<xsl:when test="contains(aixm:note, 'txtMarking')">
+													<xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
+												</xsl:when>
+											</xsl:choose>
+										</xsl:for-each>
 									</xsl:for-each>
 								</xsl:variable>
 								
@@ -712,14 +751,21 @@
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
-									<xsl:for-each select="aixm:annotation/aixm:Note[aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+									<xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
 										<xsl:if test="
-											((aixm:propertyName and (not(aixm:propertyName/@xsi:nil='true') or not(aixm:propertyName/@xsi:nil)) and aixm:propertyName != 'classPCN') or not(aixm:propertyName)) and
-											(not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'txtPcnNote')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'txtProfile')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'txtMarking')) and
-											not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')))">
-											<xsl:value-of select="concat(' (', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+											((../../aixm:propertyName and (not(../../aixm:propertyName/@xsi:nil='true') or not(../../aixm:propertyName/@xsi:nil)) and ../../aixm:propertyName != 'classPCN') or not(../../aixm:propertyName)) and
+											(not(contains(aixm:note, 'txtPcnNote')) and
+											not(contains(aixm:note, 'txtProfile')) and
+											not(contains(aixm:note, 'txtMarking')) and
+											not(contains(aixm:note, 'CRC:')))">
+											<xsl:choose>
+												<xsl:when test="string-length($dataset_creation_date) = 0">
+													<xsl:value-of select="concat('(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="concat(' | ', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:if>
 									</xsl:for-each>
 								</xsl:variable>

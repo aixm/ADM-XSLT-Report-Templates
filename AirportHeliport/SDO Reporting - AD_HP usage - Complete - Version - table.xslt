@@ -26,6 +26,7 @@
   ===========================================================================
        featureTypes: aixm:AirportHeliport
   permanentBaseline: true
+          dataScope: ReleasedData
         AIXMversion: 5.1.1
 -->
 
@@ -49,10 +50,7 @@
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	xmlns:fcn="local-function"
 	xmlns:map="http://www.w3.org/2005/xpath-functions/map"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn map saxon">
-
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn map">
 
 	<xsl:strip-space elements="*"/>
 
@@ -142,8 +140,8 @@
 					<xsl:when test="$value = 'NON_SCHEDULED'">NS</xsl:when>
 					<xsl:when test="$value = 'PRIVATE'">P</xsl:when>
 					<xsl:when test="$value = 'AIR_TRAINING'">TRG</xsl:when>
-					<xsl:when test="$value = 'AIR_WORK'">WRK</xsl:when>
-					<xsl:when test="$value = 'PARTICIPANT'">PRT</xsl:when>
+					<xsl:when test="$value = 'AIR_WORK'">WORK</xsl:when>
+					<xsl:when test="$value = 'PARTICIPANT'">PARTICIPANT</xsl:when>
 					<xsl:when test="$value = 'ALL'">ANY</xsl:when>
 					<xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
 				</xsl:choose>
@@ -167,15 +165,22 @@
 					<xsl:when test="$value = 'HELICOPTER'">H</xsl:when>
 					<xsl:when test="$value = 'GYROCOPTER'">G</xsl:when>
 					<xsl:when test="$value = 'TILT_WING'">T</xsl:when>
-					<xsl:when test="$value = 'STOL'">STOL</xsl:when>
-					<xsl:when test="$value = 'GLIDER'">GLIDER</xsl:when>
-					<xsl:when test="$value = 'HANGGLIDER'">HANGGLIDER</xsl:when>
-					<xsl:when test="$value = 'PARAGLIDER'">PARAGLIDER</xsl:when>
-					<xsl:when test="$value = 'ULTRA_LIGHT'">ULM</xsl:when>
-					<xsl:when test="$value = 'BALLOON'">BALLOON</xsl:when>
-					<xsl:when test="$value = 'UAV'">UAV</xsl:when>
+					<xsl:when test="$value = 'STOL'">R</xsl:when>
+					<xsl:when test="$value = 'GLIDER'">E</xsl:when>
+					<xsl:when test="$value = 'HANGGLIDER'">N</xsl:when>
+					<xsl:when test="$value = 'PARAGLIDER'">P</xsl:when>
+					<xsl:when test="$value = 'ULTRA_LIGHT'">U</xsl:when>
+					<xsl:when test="$value = 'BALLOON'">B</xsl:when>
+					<xsl:when test="$value = 'UAV'">D</xsl:when>
 					<xsl:when test="$value = 'ALL'">ANY</xsl:when>
 					<xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
+				</xsl:choose>
+			</xsl:when>
+			<!-- Transform specific property values for EventInterpretation -->
+			<xsl:when test="$property-name = 'event-interpretation'">
+				<xsl:choose>
+					<xsl:when test="$value = 'EARLIEST'">E</xsl:when>
+					<xsl:when test="$value = 'LATEST'">L</xsl:when>
 				</xsl:choose>
 			</xsl:when>
 			<!-- Default: return value as-is -->
@@ -195,7 +200,7 @@
 					<xsl:for-each select="$availability-elements">
 						<xsl:choose>
 							<!-- insert 'H24' if there is an availability with operationalStatus='NORMAL' and no Timesheet -->
-							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'NORMAL'">
+							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'NORMAL'">
 								<xsl:value-of select="'H24'"/>
 							</xsl:when>
 							<!-- insert 'H24' if there is an availability with operationalStatus='NORMAL' and a continuous service 24/7 Timesheet -->
@@ -227,11 +232,11 @@
 								<xsl:value-of select="'CLSD'"/>
 							</xsl:when>
 							<!-- insert nil reason if provided -->
-							<xsl:when test="aixm:timeInterval/@xsi:nil='true' and aixm:timeInterval/@nilReason">
+							<xsl:when test="aixm:timeInterval/@xsi:nil='true' and aixm:timeInterval/@nilReason and not(aixm:timeInterval/@nilReason='inapplicable')">
 								<xsl:value-of select="concat('NIL:', aixm:timeInterval/@nilReason)"/>
 							</xsl:when>
 							<xsl:otherwise>
-								<xsl:value-of select="'TIMESH'"/>
+								<xsl:value-of select="'TIMSH'"/>
 							</xsl:otherwise>
 						</xsl:choose>
 					</xsl:for-each>
@@ -368,13 +373,13 @@
 
 		<!-- Extract same-level annotations for this timesheet -->
 		<xsl:variable name="timesheet-remarks">
-			<xsl:for-each select="$condition-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+			<xsl:for-each select="$condition-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
 				<xsl:choose>
 					<xsl:when test="position() = 1">
-						<xsl:value-of select="concat('(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+						<xsl:value-of select="concat('(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
 					</xsl:when>
 					<xsl:otherwise>
-						<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+						<xsl:value-of select="concat('&lt;br/&gt;(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
 					</xsl:otherwise>
 				</xsl:choose>
 			</xsl:for-each>
@@ -486,8 +491,11 @@
 				<xsl:when test="not($timesheet/aixm:startEventInterpretation)">
 					<xsl:value-of select="''"/>
 				</xsl:when>
-				<xsl:otherwise>
+				<xsl:when test="$timesheet/aixm:startEventInterpretation/@xsi:nil='true'">
 					<xsl:value-of select="fcn:insert-value($timesheet/aixm:startEventInterpretation)"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="fcn:transform-value(string($timesheet/aixm:startEventInterpretation), 'event-interpretation')"/>
 				</xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>
@@ -536,8 +544,11 @@
 				<xsl:when test="not($timesheet/aixm:endEventInterpretation)">
 					<xsl:value-of select="''"/>
 				</xsl:when>
-				<xsl:otherwise>
+				<xsl:when test="$timesheet/aixm:endEventInterpretation/@xsi:nil='true'">
 					<xsl:value-of select="fcn:insert-value($timesheet/aixm:endEventInterpretation)"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="fcn:transform-value(string($timesheet/aixm:endEventInterpretation), 'event-interpretation')"/>
 				</xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>
@@ -582,6 +593,17 @@
 						</xsl:when>
 						<xsl:otherwise>
 							<xsl:sequence select="string($current-aircraft/aixm:navigationSpecification)"/>
+						</xsl:otherwise>
+					</xsl:choose>
+					<xsl:choose>
+						<xsl:when test="not($current-aircraft/aixm:verticalSeparationCapability)">
+							<xsl:sequence select="string('nil')"/>
+						</xsl:when>
+						<xsl:when test="$current-aircraft/aixm:verticalSeparationCapability/@xsi:nil='true'">
+							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability)"/>
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:sequence select="string($current-aircraft/aixm:verticalSeparationCapability)"/>
 						</xsl:otherwise>
 					</xsl:choose>
 					<xsl:choose>
@@ -965,10 +987,10 @@
 							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
 							<!-- Get timeslices with the maximum sequenceNumber, then find max correctionNumber -->
 							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-							<!-- Select the latest timeslice -->
-							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+							<!-- Select the valid timeslice -->
+							<xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 
-							<xsl:for-each select="$latest-timeslice">
+							<xsl:for-each select="$valid-timeslice">
 
 								<xsl:sort select="aixm:designator" data-type="text" order="ascending"/>
 
@@ -1010,13 +1032,13 @@
 								
 								<!-- Remark to working hours -->
 								<xsl:variable name="working-hours-remarks">
-									<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+									<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
 										<xsl:choose>
 											<xsl:when test="position() = 1">
-												<xsl:value-of select="concat('(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+												<xsl:value-of select="concat('(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+												<xsl:value-of select="concat('&lt;br/&gt;(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:for-each>

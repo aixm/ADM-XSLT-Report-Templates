@@ -58,10 +58,7 @@ Copyright (c) 2025, EUROCONTROL
 	xmlns:aixm_ds_xslt="http://www.aixm.aero/xslt"
 	xmlns:fcn="local-function"
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit saxon">
-	
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit">
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -157,7 +154,7 @@ Copyright (c) 2025, EUROCONTROL
 					<xsl:for-each select="$availability-elements">
 						<xsl:choose>
 							<!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and no Timesheet -->
-							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'OPERATIONAL'">
+							<xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'OPERATIONAL'">
 								<xsl:value-of select="'H24'"/>
 							</xsl:when>
 							<!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and a continuous service 24/7 Timesheet -->
@@ -189,7 +186,7 @@ Copyright (c) 2025, EUROCONTROL
 								<xsl:value-of select="'U/S'"/>
 							</xsl:when>
 							<!-- insert nil reason if provided -->
-							<xsl:when test="aixm:timeInterval/@xsi:nil='true' and aixm:timeInterval/@nilReason">
+							<xsl:when test="aixm:timeInterval/@xsi:nil='true' and aixm:timeInterval/@nilReason and not(aixm:timeInterval/@nilReason='inapplicable')">
 								<xsl:value-of select="concat('NIL:', aixm:timeInterval/@nilReason)"/>
 							</xsl:when>
 							<xsl:otherwise>
@@ -255,6 +252,78 @@ Copyright (c) 2025, EUROCONTROL
 			</xsl:choose>
 		</xsl:variable>
 		<xsl:sequence select="string($result)"/>
+	</xsl:function>
+	
+	<!-- Recursively find STATE organization from an organization UUID -->
+	<xsl:function name="fcn:find-state-org" as="element()?">
+		<xsl:param name="org-uuid" as="xs:string"/>
+		<xsl:param name="visited-uuids" as="xs:string*"/>
+		<xsl:param name="root" as="document-node()"/>
+		<!-- Try to find a STATE -->
+		<xsl:variable name="state-result" select="fcn:find-state-recursive($org-uuid, $visited-uuids, $root)"/>
+		<xsl:choose>
+			<xsl:when test="$state-result">
+				<!-- Found a STATE, return it -->
+				<xsl:sequence select="$state-result"/>
+			</xsl:when>
+		</xsl:choose>
+	</xsl:function>
+	
+	<!-- Helper function to recursively find a STATE organization -->
+	<xsl:function name="fcn:find-state-recursive" as="element()?">
+		<xsl:param name="org-uuid" as="xs:string"/>
+		<xsl:param name="visited-uuids" as="xs:string*"/>
+		<xsl:param name="root" as="document-node()"/>
+		<!-- Prevent infinite loops by checking if we've already visited this UUID -->
+		<xsl:if test="not($org-uuid = $visited-uuids) and string-length($org-uuid) gt 0">
+			<!-- Get the organization feature -->
+			<xsl:variable name="org-feature" select="$root//aixm:OrganisationAuthority[gml:identifier = $org-uuid]"/>
+			<xsl:if test="$org-feature">
+				<!-- Get the valid baseline timeslice -->
+				<xsl:variable name="org-baseline-ts" select="$org-feature/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
+				<xsl:variable name="org-max-seq" select="max($org-baseline-ts/aixm:sequenceNumber)"/>
+				<xsl:variable name="org-max-corr" select="max($org-baseline-ts[aixm:sequenceNumber = $org-max-seq]/aixm:correctionNumber)"/>
+				<xsl:variable name="org-valid-ts" select="$org-baseline-ts[aixm:sequenceNumber = $org-max-seq and aixm:correctionNumber = $org-max-corr][1]"/>
+				<xsl:choose>
+					<!-- If this organization is a STATE, return it -->
+					<xsl:when test="$org-valid-ts/aixm:type = 'STATE'">
+						<xsl:sequence select="$org-valid-ts"/>
+					</xsl:when>
+					<!-- Otherwise, check if it has related organizations -->
+					<xsl:when test="$org-valid-ts/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation/aixm:theOrganisationAuthority/@xlink:href">
+						<!-- Iterate through all related organizations to find a STATE -->
+						<xsl:variable name="state-from-related" as="element()?">
+							<xsl:iterate select="$org-valid-ts/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation/aixm:theOrganisationAuthority/@xlink:href">
+								<xsl:param name="found-state" as="element()?" select="()"/>
+								<xsl:choose>
+									<xsl:when test="$found-state">
+										<!-- Already found a STATE, stop iteration -->
+										<xsl:break select="$found-state"/>
+									</xsl:when>
+									<xsl:otherwise>
+										<xsl:variable name="related-uuid" select="replace(., '^(urn:uuid:|#uuid\.)', '')"/>
+										<xsl:variable name="state-result" select="fcn:find-state-recursive($related-uuid, ($visited-uuids, $org-uuid), $root)"/>
+										<xsl:choose>
+											<xsl:when test="$state-result">
+												<!-- Found a STATE in this branch -->
+												<xsl:break select="$state-result"/>
+											</xsl:when>
+											<xsl:otherwise>
+												<!-- Continue to next related organization -->
+												<xsl:next-iteration>
+													<xsl:with-param name="found-state" select="()"/>
+												</xsl:next-iteration>
+											</xsl:otherwise>
+										</xsl:choose>
+									</xsl:otherwise>
+								</xsl:choose>
+							</xsl:iterate>
+						</xsl:variable>
+						<xsl:sequence select="$state-from-related"/>
+					</xsl:when>
+				</xsl:choose>
+			</xsl:if>
+		</xsl:if>
 	</xsl:function>
 	
 	<xsl:template match="/">
@@ -325,10 +394,10 @@ Copyright (c) 2025, EUROCONTROL
 							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
 							<!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
 							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-							<!-- Select the latest time slice -->
-							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+							<!-- Select the valid time slice -->
+							<xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 							
-							<xsl:for-each select="$latest-timeslice">
+							<xsl:for-each select="$valid-timeslice">
 								
 								<!-- Master gUID -->
 								<xsl:variable name="DME_UUID" select="../../gml:identifier"/>
@@ -362,43 +431,19 @@ Copyright (c) 2025, EUROCONTROL
 								
 								<!-- Responsible State -->
 								<xsl:variable name="OrgAuth_UUID" select="replace(aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-								<xsl:variable name="org-baseline-ts" select="//aixm:OrganisationAuthority[gml:identifier = $OrgAuth_UUID]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
-								<xsl:variable name="org-max-seq" select="max($org-baseline-ts/aixm:sequenceNumber)"/>
-								<xsl:variable name="org-max-corr" select="max($org-baseline-ts[aixm:sequenceNumber = $org-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="org-latest-ts" select="$org-baseline-ts[aixm:sequenceNumber = $org-max-seq and aixm:correctionNumber = $org-max-corr][1]"/>
-								<xsl:variable name="OwnerOrg_UUID" select="replace($org-latest-ts/aixm:relatedOrganisationAuthority/aixm:OrganisationAuthorityAssociation/aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-								<xsl:variable name="owner-baseline-ts" select="//aixm:OrganisationAuthority[gml:identifier = $OwnerOrg_UUID]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
-								<xsl:variable name="owner-max-seq" select="max($owner-baseline-ts/aixm:sequenceNumber)"/>
-								<xsl:variable name="owner-max-corr" select="max($owner-baseline-ts[aixm:sequenceNumber = $owner-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="owner-latest-ts" select="$owner-baseline-ts[aixm:sequenceNumber = $owner-max-seq and aixm:correctionNumber = $owner-max-corr][1]"/>
+								<!-- Recursively find the STATE organization -->
+								<xsl:variable name="state-org-ts" select="fcn:find-state-org($OrgAuth_UUID, (), root())"/>
 								<xsl:variable name="ResponsibleState">
-									<xsl:choose>
-										<xsl:when test="$org-latest-ts/aixm:type = 'STATE'">
-											<xsl:value-of select="$org-latest-ts/aixm:name"/>
-										</xsl:when>
-										<xsl:otherwise>
-											<xsl:value-of select="$owner-latest-ts/aixm:name"/>
-										</xsl:otherwise>
-									</xsl:choose>
+									<xsl:if test="$state-org-ts">
+										<xsl:value-of select="$state-org-ts/aixm:name"/>
+									</xsl:if>
 								</xsl:variable>
 								
 								<!-- Responsible State - Valid TimeSlice -->
 								<xsl:variable name="ResponsibleState_timeslice">
-									<xsl:choose>
-										<xsl:when test="$ResponsibleState">
-											<xsl:choose>
-												<xsl:when test="$org-latest-ts/aixm:type = 'STATE'">
-													<xsl:value-of select="concat('BASELINE ', $org-max-seq, '.', $org-max-corr)"/>
-												</xsl:when>
-												<xsl:otherwise>
-													<xsl:value-of select="concat('BASELINE ', $owner-max-seq, '.', $owner-max-corr)"/>
-												</xsl:otherwise>
-											</xsl:choose>
-										</xsl:when>
-										<xsl:otherwise>
-											<xsl:value-of select="''"/>
-										</xsl:otherwise>
-									</xsl:choose>
+									<xsl:if test="$state-org-ts">
+										<xsl:value-of select="concat('BASELINE ', $state-org-ts/aixm:sequenceNumber, '.', $state-org-ts/aixm:correctionNumber)"/>
+									</xsl:if>
 								</xsl:variable>
 								
 								<!-- Coordinates -->
@@ -409,14 +454,42 @@ Copyright (c) 2025, EUROCONTROL
 								<!-- Select the number of decimals -->
 								<xsl:variable name="coordinates_decimal_number" select="2"/>
 								
+								<!-- Datum -->
+								<xsl:variable name="DME_datum">
+									<xsl:value-of select="replace(replace(aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
+								
+								<!-- Extract coordinates depending on the coordinate system -->
 								<xsl:variable name="coordinates" select="aixm:location/aixm:ElevatedPoint/gml:pos"/>
-								<xsl:variable name="latitude_decimal" select="number(substring-before($coordinates, ' '))"/>
-								<xsl:variable name="longitude_decimal" select="number(substring-after($coordinates, ' '))"/>
+								<xsl:variable name="latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$DME_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($DME_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$DME_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($DME_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
 								<xsl:variable name="DME_lat">
-									<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									<xsl:if test="string-length($latitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
 								</xsl:variable>
 								<xsl:variable name="DME_long">
-									<xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									<xsl:if test="string-length($longitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
 								</xsl:variable>
 								
 								<!-- Collocated VOR - Identification -->
@@ -426,9 +499,9 @@ Copyright (c) 2025, EUROCONTROL
 										<xsl:variable name="navaid-baseline-ts" select="aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
 										<xsl:variable name="navaid-max-seq" select="max($navaid-baseline-ts/aixm:sequenceNumber)"/>
 										<xsl:variable name="navaid-max-corr" select="max($navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq]/aixm:correctionNumber)"/>
-										<xsl:variable name="navaid-latest-ts" select="$navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq and aixm:correctionNumber = $navaid-max-corr][1]"/>
+										<xsl:variable name="navaid-valid-ts" select="$navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq and aixm:correctionNumber = $navaid-max-corr][1]"/>
 										<!-- Find the specific xlink:href that references an aixm:VOR -->
-										<xsl:for-each select="$navaid-latest-ts/aixm:navaidEquipment">
+										<xsl:for-each select="$navaid-valid-ts/aixm:navaidEquipment">
 											<xsl:variable name="Xlink_UUID" select="replace(aixm:NavaidComponent/aixm:theNavaidEquipment/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 											<xsl:if test="//aixm:VOR[gml:identifier = $Xlink_UUID]">
 												<xsl:value-of select="$Xlink_UUID"/>
@@ -441,14 +514,14 @@ Copyright (c) 2025, EUROCONTROL
 								<xsl:variable name="VOR-baseline-ts" select="$VOR-feature/aixm:timeSlice/aixm:VORTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="VOR-max-seq" select="max($VOR-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="VOR-max-corr" select="max($VOR-baseline-ts[aixm:sequenceNumber = $VOR-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="VOR-latest-ts" select="$VOR-baseline-ts[aixm:sequenceNumber = $VOR-max-seq and aixm:correctionNumber = $VOR-max-corr][1]"/>
+								<xsl:variable name="VOR-valid-ts" select="$VOR-baseline-ts[aixm:sequenceNumber = $VOR-max-seq and aixm:correctionNumber = $VOR-max-corr][1]"/>
 								<xsl:variable name="collocated_VOR_designator">
 									<xsl:choose>
-										<xsl:when test="not($VOR-latest-ts/aixm:designator)">
+										<xsl:when test="not($VOR-valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($VOR-latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($VOR-valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -509,11 +582,11 @@ Copyright (c) 2025, EUROCONTROL
 											<xsl:variable name="navaid-baseline-ts" select="$navaid-with-dme/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
 											<xsl:variable name="navaid-max-seq" select="max($navaid-baseline-ts/aixm:sequenceNumber)"/>
 											<xsl:variable name="navaid-max-corr" select="max($navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq]/aixm:correctionNumber)"/>
-											<xsl:variable name="navaid-latest-ts" select="$navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq and aixm:correctionNumber = $navaid-max-corr][1]"/>
+											<xsl:variable name="navaid-valid-ts" select="$navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq and aixm:correctionNumber = $navaid-max-corr][1]"/>
 											<xsl:choose>
 												<!-- If Navaid has at least one availability (excluding xsi:nil='true') -->
-												<xsl:when test="$navaid-latest-ts/aixm:availability[not(@xsi:nil='true')]">
-													<xsl:value-of select="concat('(from Navaid)&lt;br/&gt;', fcn:format-working-hours($navaid-latest-ts/aixm:availability/aixm:NavaidOperationalStatus))"/>
+												<xsl:when test="$navaid-valid-ts/aixm:availability[not(@xsi:nil='true')]">
+													<xsl:value-of select="concat('(from Navaid)&lt;br/&gt;', fcn:format-working-hours($navaid-valid-ts/aixm:availability/aixm:NavaidOperationalStatus))"/>
 												</xsl:when>
 												<!-- If both DME and Navaid have no availability (or only with xsi:nil='true'), check if DME has xsi:nil='true' -->
 												<xsl:otherwise>

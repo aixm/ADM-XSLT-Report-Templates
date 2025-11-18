@@ -24,9 +24,8 @@
 <!--
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:DesignatedPoint aixm:Airspace
+                    featureTypes: aixm:DesignatedPoint
   includeReferencedFeaturesLevel: 3
-               featureOccurrence: aixm:Airspace.aixm:type EQUALS 'FIR'
                permanentBaseline: true
               spatialFilteringBy: Airspace
                  spatialAreaUUID: *select FIR airspace*
@@ -65,10 +64,7 @@
 	xmlns:fcn="local-function"
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
 	xmlns:map="http://www.w3.org/2005/xpath-functions/map"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math map saxon">
-	
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math map">
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -254,76 +250,360 @@
 		</xsl:choose>
 	</xsl:function>
 
+	<!-- Densify a linear segment by adding intermediate points using linear interpolation -->
+	<xsl:function name="fcn:densify-linear-segment" as="xs:double*">
+		<xsl:param name="lat1" as="xs:double"/>
+		<xsl:param name="lon1" as="xs:double"/>
+		<xsl:param name="lat2" as="xs:double"/>
+		<xsl:param name="lon2" as="xs:double"/>
+		<xsl:param name="max-segment-degrees" as="xs:double"/>
+		<!-- Calculate simple Euclidean distance for linear interpolation -->
+		<xsl:variable name="dlat" select="abs($lat2 - $lat1)"/>
+		<xsl:variable name="dlon" select="abs($lon2 - $lon1)"/>
+		<xsl:variable name="distance" select="math:sqrt($dlat * $dlat + $dlon * $dlon)"/>
+		<xsl:variable name="num-segments" select="xs:integer(ceiling($distance div $max-segment-degrees))"/>
+		<xsl:choose>
+			<xsl:when test="$num-segments le 1">
+				<!-- No interpolation needed -->
+				<xsl:sequence select="$lat1, $lon1"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<!-- Add first point -->
+				<xsl:sequence select="$lat1, $lon1"/>
+				<!-- Add intermediate points using simple linear interpolation -->
+				<xsl:for-each select="1 to ($num-segments - 1)">
+					<xsl:variable name="fraction" select=". div $num-segments"/>
+					<xsl:sequence select="$lat1 + $fraction * ($lat2 - $lat1)"/>
+					<xsl:sequence select="$lon1 + $fraction * ($lon2 - $lon1)"/>
+				</xsl:for-each>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+
+	<!-- Find exact matching point in coords, return 1-based index or empty if not found -->
+	<xsl:function name="fcn:find-exact-point-index" as="xs:integer?">
+		<xsl:param name="target-lat" as="xs:double"/>
+		<xsl:param name="target-lon" as="xs:double"/>
+		<xsl:param name="coords" as="xs:double*"/>
+		<xsl:param name="epsilon" as="xs:double"/>
+		<xsl:variable name="num-points" select="count($coords) div 2"/>
+		<xsl:variable name="matching-indices" as="xs:integer*">
+			<xsl:for-each select="1 to xs:integer($num-points)">
+				<xsl:variable name="idx" select=". * 2 - 1"/>
+				<xsl:variable name="lat" select="$coords[$idx]"/>
+				<xsl:variable name="lon" select="$coords[$idx + 1]"/>
+				<xsl:if test="exists($lat) and exists($lon)">
+					<xsl:variable name="lat-diff" select="abs($lat - $target-lat)"/>
+					<xsl:variable name="lon-diff" select="abs($lon - $target-lon)"/>
+					<xsl:if test="$lat-diff le $epsilon and $lon-diff le $epsilon">
+						<xsl:sequence select="xs:integer(.)"/>
+					</xsl:if>
+				</xsl:if>
+			</xsl:for-each>
+		</xsl:variable>
+		<xsl:sequence select="if (count($matching-indices) gt 0) then $matching-indices[1] else ()"/>
+	</xsl:function>
+
+	<!-- Extract segment from coords between two point indices (inclusive) -->
+	<xsl:function name="fcn:extract-segment" as="xs:double*">
+		<xsl:param name="coords" as="xs:double*"/>
+		<xsl:param name="start-index" as="xs:integer"/>
+		<xsl:param name="end-index" as="xs:integer"/>
+		<xsl:param name="reverse" as="xs:boolean"/>
+		<xsl:choose>
+			<xsl:when test="$reverse">
+				<!-- Extract in reverse order from start-index down to end-index -->
+				<xsl:for-each select="reverse($start-index to $end-index)">
+					<xsl:variable name="idx" select=". * 2 - 1"/>
+					<xsl:sequence select="$coords[$idx], $coords[$idx + 1]"/>
+				</xsl:for-each>
+			</xsl:when>
+			<xsl:otherwise>
+				<!-- Extract forward from start-index to end-index -->
+				<xsl:for-each select="$start-index to $end-index">
+					<xsl:variable name="idx" select=". * 2 - 1"/>
+					<xsl:sequence select="$coords[$idx], $coords[$idx + 1]"/>
+				</xsl:for-each>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+
+	<!-- Helper function to merge coordinates with global deduplication -->
+	<xsl:function name="fcn:merge-coords-deduplicated" as="xs:double*">
+		<xsl:param name="accumulated" as="xs:double*"/>
+		<xsl:param name="new-coords" as="xs:double*"/>
+		<xsl:param name="epsilon" as="xs:double"/>
+		<xsl:choose>
+			<!-- If accumulated is empty, just return new coords -->
+			<xsl:when test="count($accumulated) = 0">
+				<xsl:sequence select="$new-coords"/>
+			</xsl:when>
+			<!-- If new coords is empty, just return accumulated -->
+			<xsl:when test="count($new-coords) = 0">
+				<xsl:sequence select="$accumulated"/>
+			</xsl:when>
+			<!-- Check if first point of new-coords matches last point of accumulated -->
+			<xsl:otherwise>
+				<xsl:variable name="last-lat" select="$accumulated[count($accumulated) - 1]"/>
+				<xsl:variable name="last-lon" select="$accumulated[count($accumulated)]"/>
+				<xsl:variable name="first-lat" select="$new-coords[1]"/>
+				<xsl:variable name="first-lon" select="$new-coords[2]"/>
+				<xsl:variable name="lat-diff" select="abs($last-lat - $first-lat)"/>
+				<xsl:variable name="lon-diff" select="abs($last-lon - $first-lon)"/>
+				<xsl:choose>
+					<!-- If they match within epsilon, skip the first point of new-coords -->
+					<xsl:when test="$lat-diff le $epsilon and $lon-diff le $epsilon">
+						<xsl:sequence select="$accumulated, subsequence($new-coords, 3)"/>
+					</xsl:when>
+					<!-- Otherwise, concatenate all -->
+					<xsl:otherwise>
+						<xsl:sequence select="$accumulated, $new-coords"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+
 	<!-- Function to extract all polygon coordinates from a geometry including referenced GeoBorders -->
-	<!-- Now with geodesic interpolation for accurate geometry representation -->
 	<xsl:function name="fcn:get-all-polygon-coords" as="xs:double*">
 		<xsl:param name="airspace-volume" as="element()?"/>
 		<xsl:param name="root" as="document-node()"/>
-		<xsl:variable name="coords" as="xs:double*">
-			<!-- Process curveMember elements in their actual document order to maintain polygon sequence -->
-			<xsl:for-each select="$airspace-volume//gml:Ring/gml:curveMember">
-				<xsl:choose>
-					<!-- Handle xlink reference to GeoBorder FIRST (check before checking for posList) -->
-					<xsl:when test="@xlink:href and starts-with(@xlink:href, 'urn:uuid:')">
-						<xsl:variable name="uuid" select="substring-after(@xlink:href, 'urn:uuid:')"/>
-						<!-- Get the GeoBorder and find its latest BASELINE timeslice -->
-						<xsl:variable name="geoborder" select="$root//aixm:GeoBorder[gml:identifier = $uuid]"/>
-						<xsl:variable name="gb-baseline-ts" select="$geoborder/aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE']"/>
-						<xsl:variable name="gb-max-seq" select="max($gb-baseline-ts/aixm:sequenceNumber)"/>
-						<xsl:variable name="gb-max-corr" select="max($gb-baseline-ts[aixm:sequenceNumber = $gb-max-seq]/aixm:correctionNumber)"/>
-						<xsl:variable name="gb-latest-ts" select="$gb-baseline-ts[aixm:sequenceNumber = $gb-max-seq and aixm:correctionNumber = $gb-max-corr][1]"/>
-						<!-- Extract coordinates from the latest timeslice only, preserving segment order -->
-						<xsl:for-each select="$gb-latest-ts/aixm:border//gml:posList">
-							<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
-						</xsl:for-each>
-					</xsl:when>
-					<!-- Handle direct coordinates (including both GeodesicString and LineStringSegment) -->
-					<xsl:when test=".//gml:posList">
-						<!-- Process all posList elements in this curveMember in order -->
-						<xsl:for-each select=".//gml:posList">
-							<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
-						</xsl:for-each>
-					</xsl:when>
-				</xsl:choose>
-			</xsl:for-each>
+		<xsl:variable name="epsilon" select="0.01" as="xs:double"/>
+		<xsl:variable name="max-segment-degrees" select="1.0" as="xs:double"/>
+		<xsl:variable name="all-curve-members" select="$airspace-volume//gml:Ring/gml:curveMember"/>
+		<!-- Process curveMember elements sequentially to handle GeoBorder extraction -->
+		<xsl:call-template name="process-curve-members-seq">
+			<xsl:with-param name="curve-members" select="$all-curve-members"/>
+			<xsl:with-param name="position" select="1"/>
+			<xsl:with-param name="root" select="$root"/>
+			<xsl:with-param name="epsilon" select="$epsilon"/>
+			<xsl:with-param name="max-segment-degrees" select="$max-segment-degrees"/>
+			<xsl:with-param name="accumulated" select="()"/>
+		</xsl:call-template>
+	</xsl:function>
+
+	<!-- Recursively process curveMember elements -->
+	<xsl:template name="process-curve-members-seq">
+		<xsl:param name="curve-members" as="element()*"/>
+		<xsl:param name="position" as="xs:integer"/>
+		<xsl:param name="root" as="document-node()"/>
+		<xsl:param name="epsilon" as="xs:double"/>
+		<xsl:param name="max-segment-degrees" as="xs:double"/>
+		<xsl:param name="accumulated" as="xs:double*"/>
+		<xsl:choose>
+			<xsl:when test="$position gt count($curve-members)">
+				<xsl:sequence select="$accumulated"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:variable name="current" select="$curve-members[$position]"/>
+				<xsl:variable name="prev" select="$curve-members[$position - 1]"/>
+				<xsl:variable name="next" select="$curve-members[$position + 1]"/>
+				<xsl:variable name="new-coords" as="xs:double*">
+					<xsl:choose>
+						<!-- GeoBorder reference -->
+						<xsl:when test="$current/@xlink:href and starts-with($current/@xlink:href, 'urn:uuid:')">
+							<xsl:variable name="uuid" select="substring-after($current/@xlink:href, 'urn:uuid:')"/>
+							<xsl:variable name="geoborder" select="$root//aixm:GeoBorder[gml:identifier = $uuid]"/>
+							<xsl:variable name="gb-baseline-ts" select="$geoborder/aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE']"/>
+							<xsl:variable name="gb-max-seq" select="max($gb-baseline-ts/aixm:sequenceNumber)"/>
+							<xsl:variable name="gb-max-corr" select="max($gb-baseline-ts[aixm:sequenceNumber = $gb-max-seq]/aixm:correctionNumber)"/>
+							<xsl:variable name="gb-valid-ts" select="$gb-baseline-ts[aixm:sequenceNumber = $gb-max-seq and aixm:correctionNumber = $gb-max-corr][1]"/>
+							<!-- Get ALL GeoBorder coordinates (flattened) -->
+							<xsl:variable name="gb-all-coords" as="xs:double*">
+								<xsl:for-each select="$gb-valid-ts/aixm:border//gml:segments/*">
+									<xsl:for-each select=".//gml:posList">
+										<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
+									</xsl:for-each>
+									<xsl:for-each select=".//gml:pos">
+										<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
+									</xsl:for-each>
+								</xsl:for-each>
+							</xsl:variable>
+							<!-- Extract relevant portion -->
+							<xsl:call-template name="extract-geoborder-portion">
+								<xsl:with-param name="gb-coords" select="$gb-all-coords"/>
+								<xsl:with-param name="prev-member" select="$prev"/>
+								<xsl:with-param name="next-member" select="$next"/>
+								<xsl:with-param name="epsilon" select="$epsilon"/>
+								<xsl:with-param name="max-segment-degrees" select="$max-segment-degrees"/>
+								<xsl:with-param name="root" select="$root"/>
+							</xsl:call-template>
+						</xsl:when>
+						<!-- Direct coordinates -->
+						<xsl:otherwise>
+							<xsl:for-each select="$current//gml:segments/*">
+								<xsl:variable name="is-geodesic" select="local-name() = 'GeodesicString'"/>
+								<xsl:variable name="segment-coords" as="xs:double*">
+									<xsl:for-each select=".//gml:posList">
+										<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
+									</xsl:for-each>
+									<xsl:for-each select=".//gml:pos">
+										<xsl:sequence select="for $coord in tokenize(normalize-space(.), '\s+') return xs:double($coord)"/>
+									</xsl:for-each>
+								</xsl:variable>
+								<xsl:call-template name="densify-segment">
+									<xsl:with-param name="coords" select="$segment-coords"/>
+									<xsl:with-param name="is-geodesic" select="$is-geodesic"/>
+									<xsl:with-param name="max-segment-degrees" select="$max-segment-degrees"/>
+									<xsl:with-param name="epsilon" select="$epsilon"/>
+								</xsl:call-template>
+							</xsl:for-each>
+						</xsl:otherwise>
+					</xsl:choose>
+				</xsl:variable>
+				<!-- Merge new coordinates with global deduplication -->
+				<xsl:variable name="merged-coords" select="fcn:merge-coords-deduplicated($accumulated, $new-coords, $epsilon)"/>
+				<xsl:call-template name="process-curve-members-seq">
+					<xsl:with-param name="curve-members" select="$curve-members"/>
+					<xsl:with-param name="position" select="$position + 1"/>
+					<xsl:with-param name="root" select="$root"/>
+					<xsl:with-param name="epsilon" select="$epsilon"/>
+					<xsl:with-param name="max-segment-degrees" select="$max-segment-degrees"/>
+					<xsl:with-param name="accumulated" select="$merged-coords"/>
+				</xsl:call-template>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+
+	<!-- Extract the relevant portion of a GeoBorder based on surrounding coordinates -->
+	<xsl:template name="extract-geoborder-portion">
+		<xsl:param name="gb-coords" as="xs:double*"/>
+		<xsl:param name="prev-member" as="element()?"/>
+		<xsl:param name="next-member" as="element()?"/>
+		<xsl:param name="epsilon" as="xs:double"/>
+		<xsl:param name="max-segment-degrees" as="xs:double"/>
+		<xsl:param name="root" as="document-node()"/>
+		<!-- Get last coordinate from previous member -->
+		<xsl:variable name="prev-coords" as="xs:double*">
+			<xsl:if test="$prev-member and not($prev-member/@xlink:href)">
+				<xsl:for-each select="$prev-member//gml:segments/*">
+					<xsl:for-each select=".//gml:posList">
+						<xsl:sequence select="for $c in tokenize(normalize-space(.), '\s+') return xs:double($c)"/>
+					</xsl:for-each>
+					<xsl:for-each select=".//gml:pos">
+						<xsl:sequence select="for $c in tokenize(normalize-space(.), '\s+') return xs:double($c)"/>
+					</xsl:for-each>
+				</xsl:for-each>
+			</xsl:if>
 		</xsl:variable>
-		<!-- Remove consecutive duplicate coordinate pairs (degenerate edges) -->
-		<xsl:variable name="epsilon" select="0.000001" as="xs:double"/>
+		<!-- Get first coordinate from next member -->
+		<xsl:variable name="next-coords" as="xs:double*">
+			<xsl:if test="$next-member and not($next-member/@xlink:href)">
+				<xsl:for-each select="$next-member//gml:segments/*">
+					<xsl:for-each select=".//gml:posList">
+						<xsl:sequence select="for $c in tokenize(normalize-space(.), '\s+') return xs:double($c)"/>
+					</xsl:for-each>
+					<xsl:for-each select=".//gml:pos">
+						<xsl:sequence select="for $c in tokenize(normalize-space(.), '\s+') return xs:double($c)"/>
+					</xsl:for-each>
+				</xsl:for-each>
+			</xsl:if>
+		</xsl:variable>
+		<xsl:variable name="start-lat" select="if (count($prev-coords) ge 2) then $prev-coords[count($prev-coords) - 1] else ()" as="xs:double?"/>
+		<xsl:variable name="start-lon" select="if (count($prev-coords) ge 2) then $prev-coords[count($prev-coords)] else ()" as="xs:double?"/>
+		<xsl:variable name="end-lat" select="if (count($next-coords) ge 2) then $next-coords[1] else ()" as="xs:double?"/>
+		<xsl:variable name="end-lon" select="if (count($next-coords) ge 2) then $next-coords[2] else ()" as="xs:double?"/>
+		<!-- Try to find coordinates with progressive epsilon increase -->
+		<xsl:call-template name="find-with-progressive-epsilon">
+			<xsl:with-param name="gb-coords" select="$gb-coords"/>
+			<xsl:with-param name="start-lat" select="$start-lat"/>
+			<xsl:with-param name="start-lon" select="$start-lon"/>
+			<xsl:with-param name="end-lat" select="$end-lat"/>
+			<xsl:with-param name="end-lon" select="$end-lon"/>
+			<xsl:with-param name="epsilon" select="$epsilon"/>
+			<xsl:with-param name="max-epsilon" select="1.0"/>
+		</xsl:call-template>
+	</xsl:template>
+
+	<!-- Recursive template to find coordinates with progressively increasing epsilon -->
+	<xsl:template name="find-with-progressive-epsilon">
+		<xsl:param name="gb-coords" as="xs:double*"/>
+		<xsl:param name="start-lat" as="xs:double?"/>
+		<xsl:param name="start-lon" as="xs:double?"/>
+		<xsl:param name="end-lat" as="xs:double?"/>
+		<xsl:param name="end-lon" as="xs:double?"/>
+		<xsl:param name="epsilon" as="xs:double"/>
+		<xsl:param name="max-epsilon" as="xs:double"/>
+		<!-- Find start and end in GeoBorder with current epsilon -->
+		<xsl:variable name="start-idx" select="if (exists($start-lat)) then fcn:find-exact-point-index($start-lat, $start-lon, $gb-coords, $epsilon) else ()" as="xs:integer?"/>
+		<xsl:variable name="end-idx" select="if (exists($end-lat)) then fcn:find-exact-point-index($end-lat, $end-lon, $gb-coords, $epsilon) else ()" as="xs:integer?"/>
+		<xsl:choose>
+			<!-- Both found: extract between them -->
+			<xsl:when test="exists($start-idx) and exists($end-idx)">
+				<xsl:choose>
+					<xsl:when test="$start-idx lt $end-idx">
+						<!-- Forward -->
+						<xsl:sequence select="fcn:extract-segment($gb-coords, $start-idx, $end-idx, false())"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<!-- Backward -->
+						<xsl:sequence select="fcn:extract-segment($gb-coords, $end-idx, $start-idx, true())"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:when>
+			<!-- Not found: try with increased epsilon -->
+			<xsl:when test="$epsilon lt $max-epsilon">
+				<xsl:call-template name="find-with-progressive-epsilon">
+					<xsl:with-param name="gb-coords" select="$gb-coords"/>
+					<xsl:with-param name="start-lat" select="$start-lat"/>
+					<xsl:with-param name="start-lon" select="$start-lon"/>
+					<xsl:with-param name="end-lat" select="$end-lat"/>
+					<xsl:with-param name="end-lon" select="$end-lon"/>
+					<xsl:with-param name="epsilon" select="$epsilon + 0.01"/>
+					<xsl:with-param name="max-epsilon" select="$max-epsilon"/>
+				</xsl:call-template>
+			</xsl:when>
+			<!-- Max epsilon reached: use all GeoBorder as last resort -->
+			<xsl:otherwise>
+				<xsl:sequence select="$gb-coords"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+
+	<!-- Template to densify a segment with deduplication and appropriate interpolation -->
+	<xsl:template name="densify-segment">
+		<xsl:param name="coords" as="xs:double*"/>
+		<xsl:param name="is-geodesic" as="xs:boolean"/>
+		<xsl:param name="max-segment-degrees" as="xs:double"/>
+		<xsl:param name="epsilon" as="xs:double"/>
+		<!-- First deduplicate consecutive points within this segment -->
 		<xsl:variable name="deduplicated" as="xs:double*">
 			<xsl:for-each select="1 to count($coords) div 2">
 				<xsl:variable name="idx" select=". * 2 - 1"/>
 				<xsl:variable name="lat" select="$coords[$idx]"/>
 				<xsl:variable name="lon" select="$coords[$idx + 1]"/>
-				<!-- Only include this point if it's different from the previous point -->
+				<!-- Only include if different from previous point -->
 				<xsl:if test=". = 1 or abs($lat - $coords[$idx - 2]) ge $epsilon or abs($lon - $coords[$idx - 1]) ge $epsilon">
-					<xsl:sequence select="$lat"/>
-					<xsl:sequence select="$lon"/>
+					<xsl:sequence select="$lat, $lon"/>
 				</xsl:if>
 			</xsl:for-each>
 		</xsl:variable>
-		<!-- Apply geodesic densification - add intermediate points for segments longer than 1 degree -->
-		<xsl:variable name="max-segment-degrees" select="1.0" as="xs:double"/>
-		<xsl:variable name="densified" as="xs:double*">
-			<xsl:for-each select="1 to (count($deduplicated) div 2)">
-				<xsl:variable name="idx" select=". * 2 - 1"/>
-				<xsl:variable name="lat1" select="$deduplicated[$idx]"/>
-				<xsl:variable name="lon1" select="$deduplicated[$idx + 1]"/>
-				<xsl:choose>
-					<xsl:when test=". lt (count($deduplicated) div 2)">
-						<!-- Not the last point - densify segment to next point -->
-						<xsl:variable name="lat2" select="$deduplicated[$idx + 2]"/>
-						<xsl:variable name="lon2" select="$deduplicated[$idx + 3]"/>
-						<xsl:sequence select="fcn:densify-geodesic-segment($lat1, $lon1, $lat2, $lon2, $max-segment-degrees)"/>
-					</xsl:when>
-					<xsl:otherwise>
-						<!-- Last point - just add it -->
-						<xsl:sequence select="$lat1, $lon1"/>
-					</xsl:otherwise>
-				</xsl:choose>
-			</xsl:for-each>
-		</xsl:variable>
-		<xsl:sequence select="$densified"/>
-	</xsl:function>
+		<!-- Now densify with appropriate interpolation -->
+		<xsl:for-each select="1 to (count($deduplicated) div 2)">
+			<xsl:variable name="idx" select=". * 2 - 1"/>
+			<xsl:variable name="lat1" select="$deduplicated[$idx]"/>
+			<xsl:variable name="lon1" select="$deduplicated[$idx + 1]"/>
+			<xsl:choose>
+				<xsl:when test=". lt (count($deduplicated) div 2)">
+					<!-- Not the last point - densify segment to next point -->
+					<xsl:variable name="lat2" select="$deduplicated[$idx + 2]"/>
+					<xsl:variable name="lon2" select="$deduplicated[$idx + 3]"/>
+					<xsl:choose>
+						<xsl:when test="$is-geodesic">
+							<xsl:sequence select="fcn:densify-geodesic-segment($lat1, $lon1, $lat2, $lon2, $max-segment-degrees)"/>
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:sequence select="fcn:densify-linear-segment($lat1, $lon1, $lat2, $lon2, $max-segment-degrees)"/>
+						</xsl:otherwise>
+					</xsl:choose>
+				</xsl:when>
+				<xsl:otherwise>
+					<!-- Last point - just add it -->
+					<xsl:sequence select="$lat1, $lon1"/>
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:for-each>
+	</xsl:template>
 	
 	<!-- Function to check if a point is inside a polygon using ray-casting algorithm -->
 	<!-- Uses robust handling for edge cases near polygon boundaries -->
@@ -379,8 +659,8 @@
 		</xsl:choose>
 	</xsl:function>
 	
-	<!-- Function to get the latest BASELINE timeslice for an Airspace -->
-	<xsl:function name="fcn:get-latest-airspace-timeslice" as="element()?">
+	<!-- Function to get the valid BASELINE timeslice for an Airspace -->
+	<xsl:function name="fcn:get-valid-airspace-timeslice" as="element()?">
 		<xsl:param name="airspace" as="element()?"/>
 		<xsl:variable name="baseline-timeslices" select="$airspace/aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']"/>
 		<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
@@ -399,14 +679,14 @@
 			<xsl:for-each select="$fir-airspaces">
 				<xsl:variable name="airspace" select="."/>
 				<xsl:variable name="uuid" select="string(gml:identifier)"/>
-				<xsl:variable name="latest-ts" select="fcn:get-latest-airspace-timeslice($airspace)"/>
-				<xsl:if test="$latest-ts">
-					<xsl:variable name="airspace-type" select="string($latest-ts/aixm:type)"/>
-					<xsl:variable name="designator" select="string($latest-ts/aixm:designator)"/>
-					<xsl:variable name="seq-num" select="string($latest-ts/aixm:sequenceNumber)"/>
-					<xsl:variable name="corr-num" select="string($latest-ts/aixm:correctionNumber)"/>
+				<xsl:variable name="valid-ts" select="fcn:get-valid-airspace-timeslice($airspace)"/>
+				<xsl:if test="$valid-ts">
+					<xsl:variable name="airspace-type" select="string($valid-ts/aixm:type)"/>
+					<xsl:variable name="designator" select="string($valid-ts/aixm:designator)"/>
+					<xsl:variable name="seq-num" select="string($valid-ts/aixm:sequenceNumber)"/>
+					<xsl:variable name="corr-num" select="string($valid-ts/aixm:correctionNumber)"/>
 					<!-- Get geometry - handle both direct geometry and contributorAirspace references -->
-					<xsl:variable name="geom-components" select="$latest-ts/aixm:geometryComponent/aixm:AirspaceGeometryComponent"/>
+					<xsl:variable name="geom-components" select="$valid-ts/aixm:geometryComponent/aixm:AirspaceGeometryComponent"/>
 					<!-- Collect all coordinate sequences for this airspace -->
 					<xsl:variable name="all-coords" as="array(xs:double*)*">
 						<xsl:for-each select="$geom-components">
@@ -424,9 +704,9 @@
 									<xsl:for-each select="$airspace-volume/aixm:contributorAirspace/aixm:AirspaceVolumeDependency">
 										<xsl:variable name="ref-uuid" select="substring-after(aixm:theAirspace/@xlink:href, 'urn:uuid:')"/>
 										<xsl:variable name="ref-airspace" select="$root//aixm:Airspace[gml:identifier = $ref-uuid]"/>
-										<xsl:variable name="ref-latest-ts" select="fcn:get-latest-airspace-timeslice($ref-airspace)"/>
-										<xsl:if test="$ref-latest-ts">
-											<xsl:variable name="ref-volume" select="$ref-latest-ts/aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume"/>
+										<xsl:variable name="ref-valid-ts" select="fcn:get-valid-airspace-timeslice($ref-airspace)"/>
+										<xsl:if test="$ref-valid-ts">
+											<xsl:variable name="ref-volume" select="$ref-valid-ts/aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume"/>
 											<xsl:variable name="ref-coords" select="fcn:get-all-polygon-coords($ref-volume/aixm:horizontalProjection, $root)"/>
 											<xsl:if test="count($ref-coords) ge 6">
 												<xsl:sequence select="[$ref-coords]"/>
@@ -511,7 +791,7 @@
 					<!-- Find FIR that references this FIR_P -->
 					<xsl:variable name="parent-fir" select="($root//aixm:Airspace[aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:type = 'FIR' and aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume/aixm:contributorAirspace/aixm:AirspaceVolumeDependency/aixm:theAirspace/@xlink:href = concat('urn:uuid:', $containing-uuid)]])[1]"/>
 					<xsl:if test="$parent-fir">
-						<xsl:variable name="parent-ts" select="fcn:get-latest-airspace-timeslice($parent-fir)"/>
+						<xsl:variable name="parent-ts" select="fcn:get-valid-airspace-timeslice($parent-fir)"/>
 						<xsl:sequence select="map{
 							'designator': string($parent-ts/aixm:designator),
 							'sequenceNumber': string($parent-ts/aixm:sequenceNumber),
@@ -575,8 +855,6 @@
 					<b>Designated Point with FIR</b>
 				</center>
 				<hr/>
-				<mark>DISCLAIMER</mark> For some features the XSLT transformation might not successfully identify the <i>FIR - Coded identifier</i>
-				<hr/>
 				
 				<table border="0" style="border-spacing: 8px 4px">
 					<tbody>
@@ -636,10 +914,10 @@
 							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
 							<!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
 							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-							<!-- Select the latest time slice -->
-							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+							<!-- Select the valid time slice -->
+							<xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 							
-							<xsl:for-each select="$latest-timeslice">
+							<xsl:for-each select="$valid-timeslice">
 								
 								<!-- Identification -->
 								<xsl:variable name="DPN_designator">
@@ -653,7 +931,7 @@
 									</xsl:choose>
 								</xsl:variable>
 								
-								<!-- Latitude and Longitude -->
+								<!-- Coordinates -->
 								
 								<!-- Select the type of coordinates: 'DMS' or 'DEC' -->
 								<xsl:variable name="coordinates_type" select="'DMS'"/>
@@ -661,14 +939,42 @@
 								<!-- Select the number of decimals -->
 								<xsl:variable name="coordinates_decimal_number" select="2"/>
 								
+								<!-- Datum -->
+								<xsl:variable name="DPN_datum">
+									<xsl:value-of select="replace(replace(aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
+								
+								<!-- Extract coordinates depending on the coordinate system -->
 								<xsl:variable name="DPN_coordinates" select="aixm:location/aixm:Point/gml:pos"/>
-								<xsl:variable name="DPN_latitude_decimal" select="number(substring-before($DPN_coordinates, ' '))"/>
-								<xsl:variable name="DPN_longitude_decimal" select="number(substring-after($DPN_coordinates, ' '))"/>
+								<xsl:variable name="DPN_latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($DPN_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($DPN_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="DPN_longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($DPN_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($DPN_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
 								<xsl:variable name="DPN_latitude">
-									<xsl:value-of select="fcn:format-latitude($DPN_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									<xsl:if test="string-length($DPN_latitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-latitude($DPN_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
 								</xsl:variable>
 								<xsl:variable name="DPN_longitude">
-									<xsl:value-of select="fcn:format-longitude($DPN_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									<xsl:if test="string-length($DPN_longitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-longitude($DPN_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
 								</xsl:variable>
 								
 								<!-- TLOF -->
@@ -676,48 +982,48 @@
 								<xsl:variable name="TLOF-baseline-ts" select="//aixm:TouchDownLiftOff[gml:identifier = $TLOF_UUID]/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="TLOF-max-seq" select="max($TLOF-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="TLOF-max-corr" select="max($TLOF-baseline-ts[aixm:sequenceNumber = $TLOF-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="TLOF-latest-ts" select="$TLOF-baseline-ts[aixm:sequenceNumber = $TLOF-max-seq and aixm:correctionNumber = $TLOF-max-corr][1]"/>
+								<xsl:variable name="TLOF-valid-ts" select="$TLOF-baseline-ts[aixm:sequenceNumber = $TLOF-max-seq and aixm:correctionNumber = $TLOF-max-corr][1]"/>
 								<xsl:variable name="TLOF_AHP_UUID">
-									<xsl:if test="$TLOF-latest-ts/aixm:associatedAirportHeliport/@xlink:href">
-										<xsl:value-of select="replace($TLOF-latest-ts/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+									<xsl:if test="$TLOF-valid-ts/aixm:associatedAirportHeliport/@xlink:href">
+										<xsl:value-of select="replace($TLOF-valid-ts/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 									</xsl:if>
 								</xsl:variable>
 								<!-- TLOF centre - Designator -->
 								<xsl:variable name="TLOF_designator">
 									<xsl:choose>
-										<xsl:when test="not($TLOF-latest-ts/aixm:designator)">
+										<xsl:when test="not($TLOF-valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($TLOF-latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($TLOF-valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
 								<!-- AHP containing the TLOF -->
-								<!-- Get the latest BASELINE TimeSlice for this AHP -->
+								<!-- Get the valid BASELINE TimeSlice for this AHP -->
 								<xsl:variable name="TLOF-AHP-baseline-ts" select="//aixm:AirportHeliport[gml:identifier = $TLOF_AHP_UUID]/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="TLOF-AHP-max-seq" select="max($TLOF-AHP-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="TLOF-AHP-max-corr" select="max($TLOF-AHP-baseline-ts[aixm:sequenceNumber = $TLOF-AHP-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="TLOF-AHP-latest-ts" select="$TLOF-AHP-baseline-ts[aixm:sequenceNumber = $TLOF-AHP-max-seq and aixm:correctionNumber = $TLOF-AHP-max-corr][1]"/>
+								<xsl:variable name="TLOF-AHP-valid-ts" select="$TLOF-AHP-baseline-ts[aixm:sequenceNumber = $TLOF-AHP-max-seq and aixm:correctionNumber = $TLOF-AHP-max-corr][1]"/>
 								<!-- TLOF centre Aerodrome / Heliport - Identification -->
 								<xsl:variable name="TLOF_AHP_designator">
 									<xsl:choose>
-										<xsl:when test="not($TLOF-AHP-latest-ts/aixm:designator)">
+										<xsl:when test="not($TLOF-AHP-valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($TLOF-AHP-latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($TLOF-AHP-valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
 								<!-- TLOF centre Aerodrome / Heliport - ICAO Code -->
 								<xsl:variable name="TLOF_AHP_ICAO_code">
 									<xsl:choose>
-										<xsl:when test="not($TLOF-AHP-latest-ts/aixm:locationIndicatorICAO)">
+										<xsl:when test="not($TLOF-AHP-valid-ts/aixm:locationIndicatorICAO)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($TLOF-AHP-latest-ts/aixm:locationIndicatorICAO)"/>
+											<xsl:value-of select="fcn:insert-value($TLOF-AHP-valid-ts/aixm:locationIndicatorICAO)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -727,37 +1033,65 @@
 								<xsl:variable name="DPN-AHP-baseline-ts" select="//aixm:AirportHeliport[gml:identifier = $DPN_AHP_UUID]/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="DPN-AHP-max-seq" select="max($DPN-AHP-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="DPN-AHP-max-corr" select="max($DPN-AHP-baseline-ts[aixm:sequenceNumber = $DPN-AHP-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="DPN-AHP-latest-ts" select="$DPN-AHP-baseline-ts[aixm:sequenceNumber = $DPN-AHP-max-seq and aixm:correctionNumber = $DPN-AHP-max-corr][1]"/>
+								<xsl:variable name="DPN-AHP-valid-ts" select="$DPN-AHP-baseline-ts[aixm:sequenceNumber = $DPN-AHP-max-seq and aixm:correctionNumber = $DPN-AHP-max-corr][1]"/>
 								<!-- Associated Aerodrome / Heliport - Identification -->
 								<xsl:variable name="DPN_AHP_designator">
 									<xsl:choose>
-										<xsl:when test="not($DPN-AHP-latest-ts/aixm:designator)">
+										<xsl:when test="not($DPN-AHP-valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($DPN-AHP-latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($DPN-AHP-valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
 								<!-- Associated Aerodrome / Heliport - ICAO Code -->
 								<xsl:variable name="DPN_AHP_ICAO_code">
 									<xsl:choose>
-										<xsl:when test="not($DPN-AHP-latest-ts/aixm:locationIndicatorICAO)">
+										<xsl:when test="not($DPN-AHP-valid-ts/aixm:locationIndicatorICAO)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($DPN-AHP-latest-ts/aixm:locationIndicatorICAO)"/>
+											<xsl:value-of select="fcn:insert-value($DPN-AHP-valid-ts/aixm:locationIndicatorICAO)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
+								<!-- AHP Datum -->
+								<xsl:variable name="AHP_datum">
+									<xsl:value-of select="replace(replace($DPN-AHP-valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
 								<!-- AHP coordinates -->
-								<xsl:variable name="DPN_AHP_coordinates" select="$DPN-AHP-latest-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
-								<xsl:variable name="DPN_AHP_latitude_decimal" select="number(substring-before($DPN_AHP_coordinates, ' '))"/>
-								<xsl:variable name="DPN_AHP_longitude_decimal" select="number(substring-after($DPN_AHP_coordinates, ' '))"/>
-								<!-- ARP Aerodrome / Heliport - Latitude -->
-								<xsl:variable name="DPN_AHP_ARP_lat" select="if ($DPN-AHP-latest-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos) then fcn:format-latitude($DPN_AHP_latitude_decimal, $coordinates_type, $coordinates_decimal_number) else ''"/>
-								<!-- ARP Aerodrome / Heliport - Longitude -->
-								<xsl:variable name="DPN_AHP_ARP_long" select="if ($DPN-AHP-latest-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos) then fcn:format-longitude($DPN_AHP_longitude_decimal, $coordinates_type, $coordinates_decimal_number) else ''"/>
+								<xsl:variable name="DPN_AHP_coordinates" select="$DPN-AHP-valid-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
+								<xsl:variable name="DPN_AHP_latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$AHP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($DPN_AHP_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($AHP_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($DPN_AHP_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="DPN_AHP_longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$AHP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($DPN_AHP_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($AHP_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($DPN_AHP_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="DPN_AHP_latitude">
+									<xsl:if test="string-length($DPN_AHP_latitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-latitude($DPN_AHP_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
+								</xsl:variable>
+								<xsl:variable name="DPN_AHP_longitude">
+									<xsl:if test="string-length($DPN_AHP_longitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-longitude($DPN_AHP_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
+								</xsl:variable>
 								
 								<!-- RWY/FATO -->
 								<xsl:variable name="RCP_UUID" select="replace(aixm:runwayPoint/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
@@ -765,162 +1099,195 @@
 								<xsl:variable name="RCP-baseline-ts" select="//aixm:RunwayCentrelinePoint[gml:identifier = $RCP_UUID]/aixm:timeSlice/aixm:RunwayCentrelinePointTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="RCP-max-seq" select="max($RCP-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="RCP-max-corr" select="max($RCP-baseline-ts[aixm:sequenceNumber = $RCP-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RCP-latest-ts" select="$RCP-baseline-ts[aixm:sequenceNumber = $RCP-max-seq and aixm:correctionNumber = $RCP-max-corr][1]"/>
+								<xsl:variable name="RCP-valid-ts" select="$RCP-baseline-ts[aixm:sequenceNumber = $RCP-max-seq and aixm:correctionNumber = $RCP-max-corr][1]"/>
 								<!-- Get the RunwayDirection feature for the RunwayCentrelinePoint -->
-								<xsl:variable name="RDN_UUID" select="replace($RCP-latest-ts/aixm:onRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+								<xsl:variable name="RDN_UUID" select="replace($RCP-valid-ts/aixm:onRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 								<xsl:variable name="RDN-baseline-ts" select="//aixm:RunwayDirection[gml:identifier = $RDN_UUID]/aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="RDN-max-seq" select="max($RDN-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="RDN-max-corr" select="max($RDN-baseline-ts[aixm:sequenceNumber = $RDN-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RDN-latest-ts" select="$RDN-baseline-ts[aixm:sequenceNumber = $RDN-max-seq and aixm:correctionNumber = $RDN-max-corr][1]"/>
+								<xsl:variable name="RDN-valid-ts" select="$RDN-baseline-ts[aixm:sequenceNumber = $RDN-max-seq and aixm:correctionNumber = $RDN-max-corr][1]"/>
 								<!-- Get the Runway feature for the RunwayDirection -->
-								<xsl:variable name="RWY_UUID" select="replace($RDN-latest-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+								<xsl:variable name="RWY_UUID" select="replace($RDN-valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 								<xsl:variable name="RWY-baseline-ts" select="//aixm:Runway[gml:identifier = $RWY_UUID]/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="RWY-max-seq" select="max($RWY-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="RWY-max-corr" select="max($RWY-baseline-ts[aixm:sequenceNumber = $RWY-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RWY-latest-ts" select="$RWY-baseline-ts[aixm:sequenceNumber = $RWY-max-seq and aixm:correctionNumber = $RWY-max-corr][1]"/>
+								<xsl:variable name="RWY-valid-ts" select="$RWY-baseline-ts[aixm:sequenceNumber = $RWY-max-seq and aixm:correctionNumber = $RWY-max-corr][1]"/>
 								<!-- AirportHeliport associated with Runway -->
-								<xsl:variable name="RWY_AHP_UUID" select="if ($RWY-latest-ts/aixm:associatedAirportHeliport/@xlink:href) then replace($RWY-latest-ts/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '') else ''"/>
+								<xsl:variable name="RWY_AHP_UUID" select="if ($RWY-valid-ts/aixm:associatedAirportHeliport/@xlink:href) then replace($RWY-valid-ts/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '') else ''"/>
 								<xsl:variable name="RWY-AHP-baseline-ts" select="//aixm:AirportHeliport[gml:identifier = $RWY_AHP_UUID]/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="RWY-AHP-max-seq" select="max($RWY-AHP-baseline-ts/aixm:sequenceNumber)"/>
 								<xsl:variable name="RWY-AHP-max-corr" select="max($RWY-AHP-baseline-ts[aixm:sequenceNumber = $RWY-AHP-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RWY-AHP-latest-ts" select="$RWY-AHP-baseline-ts[aixm:sequenceNumber = $RWY-AHP-max-seq and aixm:correctionNumber = $RWY-AHP-max-corr][1]"/>
+								<xsl:variable name="RWY-AHP-valid-ts" select="$RWY-AHP-baseline-ts[aixm:sequenceNumber = $RWY-AHP-max-seq and aixm:correctionNumber = $RWY-AHP-max-corr][1]"/>
 																
 								<!-- RWY -->
 								<!-- RWY centre line Aerodrome / Heliport - Identification -->
 								<xsl:variable name="RWY_AHP_designator">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'RWY'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'RWY'">
 										<xsl:choose>
-											<xsl:when test="not($RWY-AHP-latest-ts/aixm:designator)">
+											<xsl:when test="not($RWY-AHP-valid-ts/aixm:designator)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($RWY-AHP-latest-ts/aixm:designator)"/>
+												<xsl:value-of select="fcn:insert-value($RWY-AHP-valid-ts/aixm:designator)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
 								<!-- RWY centre line Aerodrome / Heliport - ICAO Code -->
 								<xsl:variable name="RWY_AHP_ICAO_code">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'RWY'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'RWY'">
 										<xsl:choose>
-											<xsl:when test="not($RWY-AHP-latest-ts/aixm:locationIndicatorICAO)">
+											<xsl:when test="not($RWY-AHP-valid-ts/aixm:locationIndicatorICAO)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($RWY-AHP-latest-ts/aixm:locationIndicatorICAO)"/>
+												<xsl:value-of select="fcn:insert-value($RWY-AHP-valid-ts/aixm:locationIndicatorICAO)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
 								<!-- RWY centre line - Designator -->
 								<xsl:variable name="RWY_designator">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'RWY'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'RWY'">
 										<xsl:choose>
-											<xsl:when test="not($RWY-latest-ts/aixm:designator)">
+											<xsl:when test="not($RWY-valid-ts/aixm:designator)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($RWY-latest-ts/aixm:designator)"/>
+												<xsl:value-of select="fcn:insert-value($RWY-valid-ts/aixm:designator)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
+								<!-- RWY RCP Datum -->
+								<xsl:variable name="RWY_RCP_datum">
+									<xsl:value-of select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
 								<!-- RWY RCP coordinates -->
-								<xsl:variable name="RWY_RCP_coordinates" select="$RCP-latest-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
-								<xsl:variable name="RWY_RCP_latitude_decimal" select="number(substring-before($RWY_RCP_coordinates, ' '))"/>
-								<xsl:variable name="RWY_RCP_longitude_decimal" select="number(substring-after($RWY_RCP_coordinates, ' '))"/>
-								<!-- RWY centre line - Latitude -->
-								<xsl:variable name="RWY_RCP_lat">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'RWY'">
-										<xsl:value-of select="if ($RWY_RCP_coordinates) then fcn:format-latitude($RWY_RCP_latitude_decimal, $coordinates_type, $coordinates_decimal_number) else ''"/>
+								<xsl:variable name="RWY_RCP_coordinates" select="$RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
+								<xsl:variable name="RWY_RCP_latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$RWY_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($RWY_RCP_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($RWY_RCP_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($RWY_RCP_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="RWY_RCP_longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$RWY_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($RWY_RCP_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($RWY_RCP_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($RWY_RCP_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="RWY_RCP_latitude">
+									<xsl:if test="string-length($RWY_RCP_latitude_decimal) gt 0 and $RWY-valid-ts/aixm:type = 'RWY'">
+										<xsl:value-of select="fcn:format-latitude($RWY_RCP_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 									</xsl:if>
 								</xsl:variable>
-								<!-- RWY centre line - Longitude -->
-								<xsl:variable name="RWY_RCP_long">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'RWY'">
-										<xsl:value-of select="if ($RWY_RCP_coordinates) then fcn:format-latitude($RWY_RCP_longitude_decimal, $coordinates_type, $coordinates_decimal_number) else ''"/>
+								<xsl:variable name="RWY_RCP_longitude">
+									<xsl:if test="string-length($RWY_RCP_longitude_decimal) gt 0 and $RWY-valid-ts/aixm:type = 'RWY'">
+										<xsl:value-of select="fcn:format-longitude($RWY_RCP_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 									</xsl:if>
 								</xsl:variable>
 								
 								<!-- FATO -->
 								<!-- FATO centre line Aerodrome / Heliport - Identification -->
 								<xsl:variable name="FATO_AHP_designator">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'FATO'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'FATO'">
 										<xsl:choose>
-											<xsl:when test="not($RWY-AHP-latest-ts/aixm:designator)">
+											<xsl:when test="not($RWY-AHP-valid-ts/aixm:designator)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($RWY-AHP-latest-ts/aixm:designator)"/>
+												<xsl:value-of select="fcn:insert-value($RWY-AHP-valid-ts/aixm:designator)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
 								<!-- FATO centre line Aerodrome / Heliport - ICAO Code -->
 								<xsl:variable name="FATO_AHP_ICAO_code">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'FATO'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'FATO'">
 										<xsl:choose>
-											<xsl:when test="not($RWY-AHP-latest-ts/aixm:locationIndicatorICAO)">
+											<xsl:when test="not($RWY-AHP-valid-ts/aixm:locationIndicatorICAO)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($RWY-AHP-latest-ts/aixm:locationIndicatorICAO)"/>
+												<xsl:value-of select="fcn:insert-value($RWY-AHP-valid-ts/aixm:locationIndicatorICAO)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
 								<!-- FATO centre line TLOF - Designator -->
 								<xsl:variable name="FATO_TLOF_designator">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'FATO'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'FATO'">
 										<!-- Find all TouchDownLiftOff features that point to this FATO -->
 										<xsl:variable name="TLOF-for-FATO-baseline-ts" select="//aixm:TouchDownLiftOff/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE'][replace(aixm:approachTakeOffArea/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RWY_UUID]"/>
 										<xsl:variable name="TLOF-for-FATO-max-seq" select="max($TLOF-for-FATO-baseline-ts/aixm:sequenceNumber)"/>
 										<xsl:variable name="TLOF-for-FATO-max-corr" select="max($TLOF-for-FATO-baseline-ts[aixm:sequenceNumber = $TLOF-for-FATO-max-seq]/aixm:correctionNumber)"/>
-										<xsl:variable name="TLOF-for-FATO-latest-ts" select="$TLOF-for-FATO-baseline-ts[aixm:sequenceNumber = $TLOF-for-FATO-max-seq and aixm:correctionNumber = $TLOF-for-FATO-max-corr][1]"/>
+										<xsl:variable name="TLOF-for-FATO-valid-ts" select="$TLOF-for-FATO-baseline-ts[aixm:sequenceNumber = $TLOF-for-FATO-max-seq and aixm:correctionNumber = $TLOF-for-FATO-max-corr][1]"/>
 										<xsl:choose>
-											<xsl:when test="not($TLOF-for-FATO-latest-ts/aixm:designator)">
+											<xsl:when test="not($TLOF-for-FATO-valid-ts/aixm:designator)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($TLOF-for-FATO-latest-ts/aixm:designator)"/>
+												<xsl:value-of select="fcn:insert-value($TLOF-for-FATO-valid-ts/aixm:designator)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
 								<!-- Final approach and take-off area [FATO] - Designator -->
 								<xsl:variable name="FATO_designator">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'FATO'">
+									<xsl:if test="$RWY-valid-ts/aixm:type = 'FATO'">
 										<xsl:choose>
-											<xsl:when test="not($RWY-latest-ts/aixm:designator)">
+											<xsl:when test="not($RWY-valid-ts/aixm:designator)">
 												<xsl:value-of select="''"/>
 											</xsl:when>
 											<xsl:otherwise>
-												<xsl:value-of select="fcn:insert-value($RWY-latest-ts/aixm:designator)"/>
+												<xsl:value-of select="fcn:insert-value($RWY-valid-ts/aixm:designator)"/>
 											</xsl:otherwise>
 										</xsl:choose>
 									</xsl:if>
 								</xsl:variable>
+								<!-- FATO RCP Datum -->
+								<xsl:variable name="FATO_RCP_datum">
+									<xsl:value-of select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
 								<!-- FATO RCP coordinates -->
-								<xsl:variable name="FATO_RCP_coordinates" select="$RCP-latest-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
-								<xsl:variable name="FATO_RCP_latitude_decimal" select="number(substring-before($RWY_RCP_coordinates, ' '))"/>
-								<xsl:variable name="FATO_RCP_longitude_decimal" select="number(substring-after($RWY_RCP_coordinates, ' '))"/>
-								<!-- FATO centre line - Latitude -->
-								<xsl:variable name="FATO_RCP_lat">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'FATO'">
-										<xsl:value-of select="if ($FATO_RCP_coordinates) then fcn:format-latitude($FATO_RCP_latitude_decimal, $coordinates_type, $coordinates_decimal_number) else ''"/>
+								<xsl:variable name="FATO_RCP_coordinates" select="$RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
+								<xsl:variable name="FATO_RCP_latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$FATO_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($FATO_RCP_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($FATO_RCP_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($FATO_RCP_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="FATO_RCP_longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$FATO_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($FATO_RCP_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($FATO_RCP_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($FATO_RCP_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="FATO_RCP_latitude">
+									<xsl:if test="string-length($FATO_RCP_latitude_decimal) gt 0 and $RWY-valid-ts/aixm:type = 'FATO'">
+										<xsl:value-of select="fcn:format-latitude($FATO_RCP_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 									</xsl:if>
 								</xsl:variable>
-								<!-- FATO centre line - Longitude -->
-								<xsl:variable name="FATO_RCP_long">
-									<xsl:if test="$RWY-latest-ts/aixm:type = 'FATO'">
-										<xsl:value-of select="if ($FATO_RCP_coordinates) then fcn:format-latitude($FATO_RCP_longitude_decimal, $coordinates_type, $coordinates_decimal_number) else ''"/>
-									</xsl:if>
-								</xsl:variable>
-								
-								<!-- Datum -->
-								<xsl:variable name="DPN_datum">
-									<xsl:if test="aixm:location/aixm:Point/@srsName">
-										<xsl:value-of select="concat(substring(aixm:location/aixm:Point/@srsName, 17,5), substring(aixm:location/aixm:Point/@srsName, 23,4))"/>
+								<xsl:variable name="FATO_RCP_longitude">
+									<xsl:if test="string-length($FATO_RCP_longitude_decimal) gt 0 and $RWY-valid-ts/aixm:type = 'FATO'">
+										<xsl:value-of select="fcn:format-longitude($FATO_RCP_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 									</xsl:if>
 								</xsl:variable>
 								
@@ -978,11 +1345,18 @@
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
-									<xsl:for-each select="aixm:annotation/aixm:Note[aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+									<xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
 										<xsl:if test="
-											((aixm:propertyName and (not(aixm:propertyName/@xsi:nil='true') or not(aixm:propertyName/@xsi:nil))) or not(aixm:propertyName)) and
-											not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:'))">
-											<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+											((../../aixm:propertyName and (not(../../aixm:propertyName/@xsi:nil='true') or not(../../aixm:propertyName/@xsi:nil))) or not(../../aixm:propertyName)) and
+											not(contains(aixm:note, 'CRC:'))">
+											<xsl:choose>
+												<xsl:when test="string-length($dataset_creation_date) = 0">
+													<xsl:value-of select="concat('(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="concat('&lt;br/&gt;', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:if>
 									</xsl:for-each>
 								</xsl:variable>
@@ -1014,12 +1388,8 @@
 								<!-- FIR - Coded identifier -->
 								<xsl:variable name="FIR_info" as="map(xs:string, xs:string)?">
 									<xsl:choose>
-										<xsl:when test="aixm:location/aixm:Point/gml:pos">
-											<xsl:variable name="DPN-coords" select="aixm:location/aixm:Point/gml:pos"/>
-											<xsl:variable name="DPN-lat" select="xs:double(substring-before($DPN-coords, ' '))"/>
-											<xsl:variable name="DPN-lon" select="xs:double(substring-after($DPN-coords, ' '))"/>
-											<!-- OPTIMIZED: Use pre-built FIR geometry cache instead of rebuilding geometries -->
-											<xsl:sequence select="fcn:find-containing-fir-optimized($DPN-lat, $DPN-lon, $fir-geometry-cache, $doc-root)"/>
+										<xsl:when test="string($DPN_latitude_decimal) != '' and string($DPN_longitude_decimal) != ''">
+											<xsl:sequence select="fcn:find-containing-fir-optimized($DPN_latitude_decimal, $DPN_longitude_decimal, $fir-geometry-cache, $doc-root)"/>
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:sequence select="()"/>
@@ -1045,19 +1415,19 @@
 									<td><xsl:value-of select="if (string-length($TLOF_designator) gt 0) then $TLOF_designator else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($DPN_AHP_designator) gt 0) then $DPN_AHP_designator else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($DPN_AHP_ICAO_code) gt 0) then $DPN_AHP_ICAO_code else '&#160;'"/></td>
-									<td><xsl:value-of select="if (string-length($DPN_AHP_ARP_lat) gt 0) then $DPN_AHP_ARP_lat else '&#160;'"/></td>
-									<td><xsl:value-of select="if (string-length($DPN_AHP_ARP_long) gt 0) then $DPN_AHP_ARP_long else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($DPN_AHP_latitude) gt 0) then $DPN_AHP_latitude else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($DPN_AHP_longitude) gt 0) then $DPN_AHP_longitude else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($RWY_AHP_designator) gt 0) then $RWY_AHP_designator else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($RWY_AHP_ICAO_code) gt 0) then $RWY_AHP_ICAO_code else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($RWY_designator) gt 0) then $RWY_designator else '&#160;'"/></td>
-									<td><xsl:value-of select="if (string-length($RWY_RCP_lat) gt 0) then $RWY_RCP_lat else '&#160;'"/></td>
-									<td><xsl:value-of select="if (string-length($RWY_RCP_long) gt 0) then $RWY_RCP_long else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($RWY_RCP_latitude) gt 0) then $RWY_RCP_latitude else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($RWY_RCP_longitude) gt 0) then $RWY_RCP_longitude else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($FATO_AHP_designator) gt 0) then $FATO_AHP_designator else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($FATO_AHP_ICAO_code) gt 0) then $FATO_AHP_ICAO_code else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($FATO_TLOF_designator) gt 0) then $FATO_TLOF_designator else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($FATO_designator) gt 0) then $FATO_designator else '&#160;'"/></td>
-									<td><xsl:value-of select="if (string-length($FATO_RCP_lat) gt 0) then $FATO_RCP_lat else '&#160;'"/></td>
-									<td><xsl:value-of select="if (string-length($FATO_RCP_long) gt 0) then $FATO_RCP_long else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($FATO_RCP_latitude) gt 0) then $FATO_RCP_latitude else '&#160;'"/></td>
+									<td><xsl:value-of select="if (string-length($FATO_RCP_longitude) gt 0) then $FATO_RCP_longitude else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($DPN_datum) gt 0) then $DPN_datum else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($DPN_geo_accuracy) gt 0) then $DPN_geo_accuracy else '&#160;'"/></td>
 									<td><xsl:value-of select="if (string-length($DPN_geo_acc_uom) gt 0) then $DPN_geo_acc_uom else '&#160;'"/></td>

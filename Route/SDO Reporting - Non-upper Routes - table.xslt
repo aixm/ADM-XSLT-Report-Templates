@@ -50,10 +50,7 @@
 	xmlns:aixm_ds_xslt="http://www.aixm.aero/xslt"
 	xmlns:fcn="local-function"
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit saxon">
-	
-	<xsl:output method="html" indent="yes"  saxon:line-length="999999"/>
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt fcn ead-audit">
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -140,21 +137,21 @@
 							<td><strong>Originator</strong></td>
 						</tr>
 						
-						<!-- Group segments by route (which have level = 'LOWER') - using only latest timeslices -->
+						<!-- Group segments by route (which have level = 'LOWER') - using only valid timeslices -->
 						<!-- First, group all RouteSegments by identifier to find the valid timeslice for each -->
-						<xsl:variable name="latest-segments" as="element()*">
+						<xsl:variable name="valid-segments" as="element()*">
 							<xsl:for-each-group select="//aixm:RouteSegment" group-by="gml:identifier">
 								<xsl:variable name="baseline-timeslices" select="current-group()/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
 								<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-								<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+								<xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 								<!-- Only include segments with level = 'LOWER' -->
-								<xsl:if test="$latest-timeslice/aixm:level = 'LOWER'">
-									<!-- Create a temporary element with the segment and its latest timeslice -->
+								<xsl:if test="$valid-timeslice/aixm:level = 'LOWER'">
+									<!-- Create a temporary element with the segment and its valid timeslice -->
 									<xsl:element name="aixm:RouteSegment" namespace="http://www.aixm.aero/schema/5.1.1">
 										<xsl:copy-of select="current-group()[1]/gml:identifier"/>
 										<xsl:element name="aixm:timeSlice" namespace="http://www.aixm.aero/schema/5.1.1">
-											<xsl:copy-of select="$latest-timeslice"/>
+											<xsl:copy-of select="$valid-timeslice"/>
 										</xsl:element>
 									</xsl:element>
 								</xsl:if>
@@ -162,7 +159,7 @@
 						</xsl:variable>
 
 						<!-- Now group the segments by route -->
-						<xsl:for-each-group select="$latest-segments" group-by="replace(aixm:timeSlice/aixm:RouteSegmentTimeSlice/aixm:routeFormed/@xlink:href, '^(urn:uuid:|#uuid\.)', '')">
+						<xsl:for-each-group select="$valid-segments" group-by="replace(aixm:timeSlice/aixm:RouteSegmentTimeSlice/aixm:routeFormed/@xlink:href, '^(urn:uuid:|#uuid\.)', '')">
 
 							<!-- Natural sort by Route Designator: prefix then numeric -->
 							<xsl:sort
@@ -189,7 +186,7 @@
 
 							<xsl:variable name="Route_uuid" select="current-grouping-key()"/>
 							<xsl:variable name="Route" select="key('route-by-uuid', $Route_uuid, $doc-root)"/>
-							<!-- Get the latest Route timeslice -->
+							<!-- Get the valid Route timeslice -->
 							<xsl:variable name="route-baseline-timeslices" select="$Route/aixm:timeSlice/aixm:RouteTimeSlice[aixm:interpretation = 'BASELINE']"/>
 							<xsl:variable name="route-max-sequence" select="max($route-baseline-timeslices/aixm:sequenceNumber)"/>
 							<xsl:variable name="route-max-correction" select="max($route-baseline-timeslices[aixm:sequenceNumber = $route-max-sequence]/aixm:correctionNumber)"/>
@@ -571,16 +568,16 @@
 		<xsl:variable name="start_baseline_timeslices" select="$start_point/aixm:timeSlice/*[aixm:interpretation = 'BASELINE']"/>
 		<xsl:variable name="start_max_sequence" select="max($start_baseline_timeslices/aixm:sequenceNumber)"/>
 		<xsl:variable name="start_max_correction" select="max($start_baseline_timeslices[aixm:sequenceNumber = $start_max_sequence]/aixm:correctionNumber)"/>
-		<xsl:variable name="start_latest_timeslice" select="$start_baseline_timeslices[aixm:sequenceNumber = $start_max_sequence and aixm:correctionNumber = $start_max_correction][1]"/>
+		<xsl:variable name="start_valid_timeslice" select="$start_baseline_timeslices[aixm:sequenceNumber = $start_max_sequence and aixm:correctionNumber = $start_max_correction][1]"/>
 
-		<xsl:variable name="start_designator" select="$start_latest_timeslice/aixm:designator"/>
+		<xsl:variable name="start_designator" select="$start_valid_timeslice/aixm:designator"/>
 		<xsl:variable name="start_type">
 			<xsl:choose>
-				<xsl:when test="$start_latest_timeslice/self::aixm:DesignatedPointTimeSlice/aixm:type">
-					<xsl:value-of select="concat('WPT', ' (', $start_latest_timeslice/aixm:type, ')')"/>
+				<xsl:when test="$start_valid_timeslice/self::aixm:DesignatedPointTimeSlice/aixm:type">
+					<xsl:value-of select="concat('WPT', ' (', $start_valid_timeslice/aixm:type, ')')"/>
 				</xsl:when>
-				<xsl:when test="$start_latest_timeslice/self::aixm:NavaidTimeSlice/aixm:type">
-					<xsl:value-of select="$start_latest_timeslice/aixm:type"/>
+				<xsl:when test="$start_valid_timeslice/self::aixm:NavaidTimeSlice/aixm:type">
+					<xsl:value-of select="$start_valid_timeslice/aixm:type"/>
 				</xsl:when>
 			</xsl:choose>
 		</xsl:variable>
@@ -590,16 +587,16 @@
 		<xsl:variable name="end_baseline_timeslices" select="$end_point/aixm:timeSlice/*[aixm:interpretation = 'BASELINE']"/>
 		<xsl:variable name="end_max_sequence" select="max($end_baseline_timeslices/aixm:sequenceNumber)"/>
 		<xsl:variable name="end_max_correction" select="max($end_baseline_timeslices[aixm:sequenceNumber = $end_max_sequence]/aixm:correctionNumber)"/>
-		<xsl:variable name="end_latest_timeslice" select="$end_baseline_timeslices[aixm:sequenceNumber = $end_max_sequence and aixm:correctionNumber = $end_max_correction][1]"/>
+		<xsl:variable name="end_valid_timeslice" select="$end_baseline_timeslices[aixm:sequenceNumber = $end_max_sequence and aixm:correctionNumber = $end_max_correction][1]"/>
 
-		<xsl:variable name="end_designator" select="$end_latest_timeslice/aixm:designator"/>
+		<xsl:variable name="end_designator" select="$end_valid_timeslice/aixm:designator"/>
 		<xsl:variable name="end_type">
 			<xsl:choose>
-				<xsl:when test="$end_latest_timeslice/self::aixm:DesignatedPointTimeSlice/aixm:type">
-					<xsl:value-of select="concat('WPT', ' (', $end_latest_timeslice/aixm:type, ')')"/>
+				<xsl:when test="$end_valid_timeslice/self::aixm:DesignatedPointTimeSlice/aixm:type">
+					<xsl:value-of select="concat('WPT', ' (', $end_valid_timeslice/aixm:type, ')')"/>
 				</xsl:when>
-				<xsl:when test="$end_latest_timeslice/self::aixm:NavaidTimeSlice/aixm:type">
-					<xsl:value-of select="$end_latest_timeslice/aixm:type"/>
+				<xsl:when test="$end_valid_timeslice/self::aixm:NavaidTimeSlice/aixm:type">
+					<xsl:value-of select="$end_valid_timeslice/aixm:type"/>
 				</xsl:when>
 			</xsl:choose>
 		</xsl:variable>

@@ -185,11 +185,39 @@
 							<!-- Select the number of decimals -->
 							<xsl:variable name="coordinates_decimal_number" select="2"/>
 							
+							<!-- Datum -->
+							<xsl:variable name="DPN_datum">
+								<xsl:value-of select="replace(replace(aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+							</xsl:variable>
+							
+							<!-- Extract coordinates depending on the coordinate system -->
 							<xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
-							<xsl:variable name="latitude_decimal" select="number(substring-before($coordinates, ' '))"/>
-							<xsl:variable name="longitude_decimal" select="number(substring-after($coordinates, ' '))"/>
-							<geoLat><xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/></geoLat>
-							<geoLong><xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/></geoLong>
+							<xsl:variable name="latitude_decimal">
+								<xsl:choose>
+									<xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+										<xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
+									</xsl:when>
+									<xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+										<xsl:value-of select="number(substring-after($coordinates, ' '))"/>
+									</xsl:when>
+								</xsl:choose>
+							</xsl:variable>
+							<xsl:variable name="longitude_decimal">
+								<xsl:choose>
+									<xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+										<xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
+									</xsl:when>
+									<xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+										<xsl:value-of select="number(substring-before($coordinates, ' '))"/>
+									</xsl:when>
+								</xsl:choose>
+							</xsl:variable>
+							<xsl:if test="string-length($latitude_decimal) gt 0">
+								<geoLat><xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/></geoLat>
+							</xsl:if>
+							<xsl:if test="string-length($longitude_decimal) gt 0">
+								<geoLong><xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/></geoLong>
+							</xsl:if>
 							
 							<!-- Type -->
 							<xsl:choose>

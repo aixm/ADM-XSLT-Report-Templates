@@ -220,10 +220,10 @@
 							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
 							<!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
 							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-							<!-- Select the latest time slice -->
-							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+							<!-- Select the valid time slice -->
+							<xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 							
-							<xsl:for-each select="$latest-timeslice">
+							<xsl:for-each select="$valid-timeslice">
 								
 								<!-- Designator -->
 								<xsl:variable name="designator">
@@ -245,9 +245,33 @@
 								<!-- Select the number of decimals -->
 								<xsl:variable name="coordinates_decimal_number" select="2"/>
 								
+								<!-- Datum -->
+								<xsl:variable name="DPN_datum">
+									<xsl:value-of select="replace(replace(aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
+								
+								<!-- Extract coordinates depending on the coordinate system -->
 								<xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
-								<xsl:variable name="latitude_decimal" select="number(substring-before($coordinates, ' '))"/>
-								<xsl:variable name="longitude_decimal" select="number(substring-after($coordinates, ' '))"/>
+								<xsl:variable name="latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
 								<xsl:variable name="latitude">
 									<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 								</xsl:variable>
@@ -279,7 +303,7 @@
 								
 								<!-- Originator -->
 								<xsl:variable name="originator">
-									<xsl:value-of select="$latest-timeslice/aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+									<xsl:value-of select="$valid-timeslice/aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
 								</xsl:variable>
 								
 								<tr>

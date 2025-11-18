@@ -60,10 +60,7 @@
 	xmlns:ead-audit="http://www.aixm.aero/schema/5.1.1/extensions/EUR/iNM/EAD-Audit"
 	xmlns:fcn="local-function"
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math saxon">
-
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math">
 	
 	<xsl:strip-space elements="*"/>
 	
@@ -267,36 +264,36 @@
 								let $rd_baseline := aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE'],
 								$rd_max_seq := max($rd_baseline/aixm:sequenceNumber),
 								$rd_max_corr := max($rd_baseline[aixm:sequenceNumber = $rd_max_seq]/aixm:correctionNumber),
-								$rd_latest := $rd_baseline[aixm:sequenceNumber = $rd_max_seq and aixm:correctionNumber = $rd_max_corr][1],
-								$rwy_uuid := replace($rd_latest/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
+								$rd_valid := $rd_baseline[aixm:sequenceNumber = $rd_max_seq and aixm:correctionNumber = $rd_max_corr][1],
+								$rwy_uuid := replace($rd_valid/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
 								$rwy := //aixm:Runway[gml:identifier = $rwy_uuid],
 								$rwy_baseline := $rwy/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE'],
 								$rwy_max_seq := max($rwy_baseline/aixm:sequenceNumber),
 								$rwy_max_corr := max($rwy_baseline[aixm:sequenceNumber = $rwy_max_seq]/aixm:correctionNumber),
-								$rwy_latest := $rwy_baseline[aixm:sequenceNumber = $rwy_max_seq and aixm:correctionNumber = $rwy_max_corr][1],
-								$ahp_uuid := replace($rwy_latest/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
+								$rwy_valid := $rwy_baseline[aixm:sequenceNumber = $rwy_max_seq and aixm:correctionNumber = $rwy_max_corr][1],
+								$ahp_uuid := replace($rwy_valid/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
 								$ahp := key('AirportHeliport-by-uuid', $ahp_uuid, $doc-root),
 								$ahp_baseline := $ahp/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
 								$ahp_max_seq := max($ahp_baseline/aixm:sequenceNumber),
 								$ahp_max_corr := max($ahp_baseline[aixm:sequenceNumber = $ahp_max_seq]/aixm:correctionNumber),
-								$ahp_latest := $ahp_baseline[aixm:sequenceNumber = $ahp_max_seq and aixm:correctionNumber = $ahp_max_corr][1]
-								return $ahp_latest/aixm:designator"
+								$ahp_valid := $ahp_baseline[aixm:sequenceNumber = $ahp_max_seq and aixm:correctionNumber = $ahp_max_corr][1]
+								return $ahp_valid/aixm:designator"
 								data-type="text" order="ascending"/>
 
 							<xsl:sort select="
 								let $baseline := aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE'],
 								$max_seq := max($baseline/aixm:sequenceNumber),
 								$max_corr := max($baseline[aixm:sequenceNumber = $max_seq]/aixm:correctionNumber),
-								$latest := $baseline[aixm:sequenceNumber = $max_seq and aixm:correctionNumber = $max_corr][1]
-								return $latest/aixm:designator"
+								$valid := $baseline[aixm:sequenceNumber = $max_seq and aixm:correctionNumber = $max_corr][1]
+								return $valid/aixm:designator"
 								data-type="text" order="ascending"/>
 
 							<xsl:variable name="RDN-baseline-timeslices" select="aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE']"/>
 							<xsl:variable name="RDN-max-sequence" select="max($RDN-baseline-timeslices/aixm:sequenceNumber)"/>
 							<xsl:variable name="RDN-max-correction" select="max($RDN-baseline-timeslices[aixm:sequenceNumber = $RDN-max-sequence]/aixm:correctionNumber)"/>
-							<xsl:variable name="RDN-latest-timeslice" select="$RDN-baseline-timeslices[aixm:sequenceNumber = $RDN-max-sequence and aixm:correctionNumber = $RDN-max-correction][1]"/>
+							<xsl:variable name="RDN-valid-timeslice" select="$RDN-baseline-timeslices[aixm:sequenceNumber = $RDN-max-sequence and aixm:correctionNumber = $RDN-max-correction][1]"/>
 
-							<xsl:for-each select="$RDN-latest-timeslice">
+							<xsl:for-each select="$RDN-valid-timeslice">
 								
 								<!-- Internal UID (master) -->
 								<xsl:variable name="RDN_UUID" select="../../gml:identifier"/>
@@ -310,26 +307,26 @@
 								<xsl:variable name="RWY-baseline" select="$RWY/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="RWY-max-seq" select="max($RWY-baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="RWY-max-corr" select="max($RWY-baseline[aixm:sequenceNumber = $RWY-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RWY-latest-ts" select="$RWY-baseline[aixm:sequenceNumber = $RWY-max-seq and aixm:correctionNumber = $RWY-max-corr][1]"/>
+								<xsl:variable name="RWY-valid-ts" select="$RWY-baseline[aixm:sequenceNumber = $RWY-max-seq and aixm:correctionNumber = $RWY-max-corr][1]"/>
 								<xsl:variable name="RWY_timeslice" select="concat('BASELINE ', $RWY-max-seq, '.', $RWY-max-corr)"/>
 								
-								<!-- Get latest AirportHeliport timeslice -->
-								<xsl:variable name="AHP_UUID" select="replace($RWY-latest-ts/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+								<!-- Get valid AirportHeliport timeslice -->
+								<xsl:variable name="AHP_UUID" select="replace($RWY-valid-ts/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 								<xsl:variable name="AHP" select="key('AirportHeliport-by-uuid', $AHP_UUID, $doc-root)"/>
 								<xsl:variable name="AHP-baseline" select="$AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="AHP-max-seq" select="max($AHP-baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="AHP-max-corr" select="max($AHP-baseline[aixm:sequenceNumber = $AHP-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="AHP-latest-ts" select="$AHP-baseline[aixm:sequenceNumber = $AHP-max-seq and aixm:correctionNumber = $AHP-max-corr][1]"/>
+								<xsl:variable name="AHP-valid-ts" select="$AHP-baseline[aixm:sequenceNumber = $AHP-max-seq and aixm:correctionNumber = $AHP-max-corr][1]"/>
 								<xsl:variable name="AHP_timeslice" select="concat('BASELINE ', $AHP-max-seq, '.', $AHP-max-corr)"/>
 								
 								<!-- Aerodrome / Heliport - Identification -->
 								<xsl:variable name="AHP_designator">
 									<xsl:choose>
-										<xsl:when test="not($AHP-latest-ts/aixm:designator)">
+										<xsl:when test="not($AHP-valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AHP-latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($AHP-valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -337,11 +334,11 @@
 								<!-- Aerodrome / Heliport - ICAO Code -->
 								<xsl:variable name="AHP_ICAO_code">
 									<xsl:choose>
-										<xsl:when test="not($AHP-latest-ts/aixm:locationIndicatorICAO)">
+										<xsl:when test="not($AHP-valid-ts/aixm:locationIndicatorICAO)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AHP-latest-ts/aixm:locationIndicatorICAO)"/>
+											<xsl:value-of select="fcn:insert-value($AHP-valid-ts/aixm:locationIndicatorICAO)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -349,11 +346,11 @@
 								<!-- Runway Designator -->
 								<xsl:variable name="RWY_designator">
 									<xsl:choose>
-										<xsl:when test="not($RWY-latest-ts/aixm:designator)">
+										<xsl:when test="not($RWY-valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($RWY-latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($RWY-valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -361,11 +358,11 @@
 								<!-- Runway Type -->
 								<xsl:variable name="RWY_type">
 									<xsl:choose>
-										<xsl:when test="not($RWY-latest-ts/aixm:type)">
+										<xsl:when test="not($RWY-valid-ts/aixm:type)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($RWY-latest-ts/aixm:type)"/>
+											<xsl:value-of select="fcn:insert-value($RWY-valid-ts/aixm:type)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -393,23 +390,47 @@
 								<xsl:variable name="RCP-baseline" select="//aixm:RunwayCentrelinePointTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:onRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RDN_UUID]"/>
 								<xsl:variable name="RCP-max-seq" select="max($RCP-baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="RCP-max-corr" select="max($RCP-baseline[aixm:sequenceNumber = $RCP-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RCP-latest-ts" select="$RCP-baseline[aixm:sequenceNumber = $RCP-max-seq and aixm:correctionNumber = $RCP-max-corr][1]"/>
+								<xsl:variable name="RCP-valid-ts" select="$RCP-baseline[aixm:sequenceNumber = $RCP-max-seq and aixm:correctionNumber = $RCP-max-corr][1]"/>
 								<xsl:variable name="RDN_THR_timeslice">
-									<xsl:if test="$RCP-latest-ts">
+									<xsl:if test="$RCP-valid-ts">
 										<xsl:value-of select="concat('BASELINE ', $RCP-max-seq, '.', $RCP-max-corr)"/>
 									</xsl:if>
 								</xsl:variable>
 								
-								<xsl:variable name="RDN_THR_coordinates" select="$RCP-latest-ts[aixm:role = ('THR','DISTHR')]/aixm:location/aixm:ElevatedPoint/gml:pos"/>
-								<xsl:variable name="RDN_THR_latitude_decimal" select="number(substring-before($RDN_THR_coordinates, ' '))"/>
-								<xsl:variable name="RDN_THR_longitude_decimal" select="number(substring-after($RDN_THR_coordinates, ' '))"/>
+								<!-- RDN THR Datum -->
+								<xsl:variable name="RDN_THR_datum">
+									<xsl:value-of select="replace(replace($RCP-valid-ts[aixm:role = ('THR','DISTHR')]/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+								</xsl:variable>
+								
+								<!-- Extract coordinates depending on the coordinate system -->
+								<xsl:variable name="RDN_THR_coordinates" select="$RCP-valid-ts[aixm:role = ('THR','DISTHR')]/aixm:location/aixm:ElevatedPoint/gml:pos"/>
+								<xsl:variable name="RDN_THR_latitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$RDN_THR_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-before($RDN_THR_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($RDN_THR_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-after($RDN_THR_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
+								<xsl:variable name="RDN_THR_longitude_decimal">
+									<xsl:choose>
+										<xsl:when test="$RDN_THR_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+											<xsl:value-of  select="number(substring-after($RDN_THR_coordinates, ' '))"/>
+										</xsl:when>
+										<xsl:when test="matches($RDN_THR_datum, '^OGC:.*CRS84$')">
+											<xsl:value-of select="number(substring-before($RDN_THR_coordinates, ' '))"/>
+										</xsl:when>
+									</xsl:choose>
+								</xsl:variable>
 								<xsl:variable name="RDN_THR_latitude">
-									<xsl:if test="$RDN_THR_coordinates">
+									<xsl:if test="string-length($RDN_THR_latitude_decimal) gt 0">
 										<xsl:value-of select="fcn:format-latitude($RDN_THR_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 									</xsl:if>
 								</xsl:variable>
 								<xsl:variable name="RDN_THR_longitude">
-									<xsl:if test="$RDN_THR_coordinates">
+									<xsl:if test="string-length($RDN_THR_longitude_decimal) gt 0">
 										<xsl:value-of select="fcn:format-longitude($RDN_THR_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
 									</xsl:if>
 								</xsl:variable>
@@ -454,9 +475,9 @@
 								<xsl:variable name="VASIS-baseline" select="//aixm:VisualGlideSlopeIndicatorTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:runwayDirection/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RDN_UUID]"/>
 								<xsl:variable name="VASIS-max-seq" select="max($VASIS-baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="VASIS-max-corr" select="max($VASIS-baseline[aixm:sequenceNumber = $VASIS-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="VASIS-latest-ts" select="$VASIS-baseline[aixm:sequenceNumber = $VASIS-max-seq and aixm:correctionNumber = $VASIS-max-corr][1]"/>
+								<xsl:variable name="VASIS-valid-ts" select="$VASIS-baseline[aixm:sequenceNumber = $VASIS-max-seq and aixm:correctionNumber = $VASIS-max-corr][1]"/>
 								<xsl:variable name="RDN_VASIS_timeslice">
-									<xsl:if test="$VASIS-latest-ts">
+									<xsl:if test="$VASIS-valid-ts">
 										<xsl:value-of select="concat('BASELINE ', $VASIS-max-seq, '.', $VASIS-max-corr)"/>
 									</xsl:if>
 								</xsl:variable>
@@ -464,21 +485,23 @@
 								<!-- VASIS Position -->
 								<xsl:variable name="RDN_VASIS_position">
 									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
+										<xsl:when test="$VASIS-valid-ts">
 											<xsl:choose>
-												<xsl:when test="not($VASIS-latest-ts/aixm:position)">
+												<xsl:when test="not($VASIS-valid-ts/aixm:position)">
 													<xsl:value-of select="''"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="fcn:insert-value($VASIS-latest-ts/aixm:position)"/>
+													<xsl:value-of select="fcn:insert-value($VASIS-valid-ts/aixm:position)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:when>
-										<xsl:when test="not($VASIS-latest-ts/aixm:position)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:position)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
 												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'vasis position: '), ' ')"/>
+													<xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
+													<xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'vasis position: ')) + string-length('vasis position: ')"/>
+													<xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -488,11 +511,11 @@
 								<!-- VASIS number of boxes -->
 								<xsl:variable name="RDN_VASIS_nr_box">
 									<xsl:choose>
-										<xsl:when test="not($VASIS-latest-ts/aixm:numberBox)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:numberBox)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($VASIS-latest-ts/aixm:numberBox)"/>
+											<xsl:value-of select="fcn:insert-value($VASIS-valid-ts/aixm:numberBox)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -500,21 +523,23 @@
 								<!-- Portable VASIS -->
 								<xsl:variable name="RDN_portable_VASIS">
 									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
+										<xsl:when test="$VASIS-valid-ts">
 											<xsl:choose>
-												<xsl:when test="not($VASIS-latest-ts/aixm:portable)">
+												<xsl:when test="not($VASIS-valid-ts/aixm:portable)">
 													<xsl:value-of select="''"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="fcn:insert-value($VASIS-latest-ts/aixm:portable)"/>
+													<xsl:value-of select="fcn:insert-value($VASIS-valid-ts/aixm:portable)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:when>
-										<xsl:when test="not($VASIS-latest-ts/aixm:portable)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:portable)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
 												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'portablevasis')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'portablevasis: '), ' ')"/>
+													<xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
+													<xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'portablevasis: ')) + string-length('portablevasis: ')"/>
+													<xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -544,21 +569,23 @@
 								<!-- Type -->
 								<xsl:variable name="RDN_VASIS_type">
 									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
+										<xsl:when test="$VASIS-valid-ts">
 											<xsl:choose>
-												<xsl:when test="not($VASIS-latest-ts/aixm:type)">
+												<xsl:when test="not($VASIS-valid-ts/aixm:type)">
 													<xsl:value-of select="''"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="fcn:insert-value($VASIS-latest-ts/aixm:type)"/>
+													<xsl:value-of select="fcn:insert-value($VASIS-valid-ts/aixm:type)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:when>
-										<xsl:when test="not($VASIS-latest-ts/aixm:type)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:type)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
 												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'type of vasis')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'type of vasis: '), ' ')"/>
+													<xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
+													<xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'type of vasis: ')) + string-length('type of vasis: ')"/>
+													<xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -567,41 +594,35 @@
 								
 								<!-- (d)VASIS position description -->
 								<xsl:variable name="RDN_VASIS_position_desc">
-									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
-											<xsl:value-of select="fcn:get-annotation-text($VASIS-latest-ts/aixm:annotation/aixm:Note[aixm:propertyName = 'position']/aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')])"/>
-										</xsl:when>
-										<xsl:otherwise>
-											<xsl:if test="not($VASIS-latest-ts/aixm:annotation/aixm:Note[aixm:propertyName = 'position']/aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')])">
-												<xsl:for-each select="aixm:annotation/aixm:Note">
-													<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')">
-														<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-														<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'vasis position: '), ' ')"/>
-													</xsl:if>
-												</xsl:for-each>
-											</xsl:if>
-										</xsl:otherwise>
-									</xsl:choose>
+									<xsl:if test="$VASIS-valid-ts">
+										<xsl:for-each select="$VASIS-valid-ts/aixm:annotation/aixm:Note[aixm:propertyName = ('position')]">
+											<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+												<xsl:value-of select="concat(if (position() = 1) then '' else '&lt;br/&gt;', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
+											</xsl:for-each>
+										</xsl:for-each>
+									</xsl:if>
 								</xsl:variable>
 								
 								<!-- Approach slope angle -->
 								<xsl:variable name="RDN_app_slope_ang">
 									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
+										<xsl:when test="$VASIS-valid-ts">
 											<xsl:choose>
-												<xsl:when test="not($VASIS-latest-ts/aixm:slopeAngle)">
+												<xsl:when test="not($VASIS-valid-ts/aixm:slopeAngle)">
 													<xsl:value-of select="''"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="fcn:insert-value($VASIS-latest-ts/aixm:slopeAngle)"/>
+													<xsl:value-of select="fcn:insert-value($VASIS-valid-ts/aixm:slopeAngle)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:when>
-										<xsl:when test="not($VASIS-latest-ts/aixm:slopeAngle)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:slopeAngle)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
 												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'approach slope angle')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'approach slope angle: '), ' ')"/>
+													<xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
+													<xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'approach slope angle: ')) + string-length('approach slope angle: ')"/>
+													<xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -611,21 +632,23 @@
 								<!-- Minimun eye height over threshold -->
 								<xsl:variable name="RDN_MEH">
 									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
+										<xsl:when test="$VASIS-valid-ts">
 											<xsl:choose>
-												<xsl:when test="not($VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold)">
+												<xsl:when test="not($VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold)">
 													<xsl:value-of select="''"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="fcn:insert-value($VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold)"/>
+													<xsl:value-of select="fcn:insert-value($VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold)"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:when>
-										<xsl:when test="not($VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
 												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'minimum eye height over threshold')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'minimum eye height over threshold: '), ' ')"/>
+													<xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
+													<xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'minimum eye height over threshold: ')) + string-length('minimum eye height over threshold: ')"/>
+													<xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -635,14 +658,16 @@
 								<!-- Unit of measurement [minimum eye height over threshold] -->
 								<xsl:variable name="RDN_MEH_uom">
 									<xsl:choose>
-										<xsl:when test="$VASIS-latest-ts">
-											<xsl:value-of select="$VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold/@uom"/>
+										<xsl:when test="$VASIS-valid-ts">
+											<xsl:value-of select="$VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold/@uom"/>
 										</xsl:when>
-										<xsl:when test="not($VASIS-latest-ts/aixm:minimumEyeHeightOverThreshold/@uom)">
+										<xsl:when test="not($VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold/@uom)">
 											<xsl:for-each select="aixm:annotation/aixm:Note">
 												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'unit of measurement [minimum eye height over threshold]')">
 													<xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
-													<xsl:value-of select="substring-before(substring-after(lower-case($annotation_text), 'unit of measurement [minimum eye height over threshold]: '), ' ')"/>
+													<xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
+													<xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'unit of measurement [minimum eye height over threshold]: ')) + string-length('unit of measurement [minimum eye height over threshold]: ')"/>
+													<xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
 												</xsl:if>
 											</xsl:for-each>
 										</xsl:when>
@@ -653,29 +678,36 @@
 								<xsl:variable name="ArrestingGear-baseline" select="//aixm:ArrestingGearTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:runwayDirection/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RDN_UUID]"/>
 								<xsl:variable name="ArrestingGear-max-seq" select="max($ArrestingGear-baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="ArrestingGear-max-corr" select="max($ArrestingGear-baseline[aixm:sequenceNumber = $ArrestingGear-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="ArrestingGear-latest-ts" select="$ArrestingGear-baseline[aixm:sequenceNumber = $ArrestingGear-max-seq and aixm:correctionNumber = $ArrestingGear-max-corr][1]"/>
+								<xsl:variable name="ArrestingGear-valid-ts" select="$ArrestingGear-baseline[aixm:sequenceNumber = $ArrestingGear-max-seq and aixm:correctionNumber = $ArrestingGear-max-corr][1]"/>
 								<xsl:variable name="RDN_ArrestingGear_timeslice">
-									<xsl:if test="$ArrestingGear-latest-ts">
+									<xsl:if test="$ArrestingGear-valid-ts">
 										<xsl:value-of select="concat('BASELINE ', $ArrestingGear-max-seq, '.', $ArrestingGear-max-corr)"/>
 									</xsl:if>
 								</xsl:variable>
 								<xsl:variable name="RDN_ArrestingGear">
 									<xsl:choose>
-										<xsl:when test="$ArrestingGear-latest-ts">
+										<xsl:when test="$ArrestingGear-valid-ts">
 											<xsl:choose>
-												<xsl:when test="not($ArrestingGear-latest-ts/aixm:engageDevice)">
+												<xsl:when test="not($ArrestingGear-valid-ts/aixm:engageDevice)">
 													<xsl:value-of select="''"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="normalize-space(fcn:insert-value($ArrestingGear-latest-ts/aixm:engageDevice))"/>
+													<xsl:value-of select="normalize-space(fcn:insert-value($ArrestingGear-valid-ts/aixm:engageDevice))"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:when>
-										<xsl:when test="not($ArrestingGear-latest-ts)">
-											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'arresting gear')">
-													<xsl:value-of select="fcn:get-annotation-text(substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':'))"/>
-												</xsl:if>
+										<xsl:when test="not($ArrestingGear-valid-ts)">
+											<xsl:for-each select="aixm:annotation/aixm:Note[contains(lower-case(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note), 'arresting gear')]">
+												<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+													<xsl:choose>
+														<xsl:when test="contains(lower-case(aixm:note), 'arresting gear')">
+															<xsl:value-of select="concat(if (position() = 1) then '' else '&lt;br/&gt;', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
+														</xsl:when>
+														<xsl:otherwise>
+															<xsl:value-of select="concat(if (position() = 1) then '' else '&lt;br/&gt;', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(aixm:note))"/>
+														</xsl:otherwise>
+													</xsl:choose>
+												</xsl:for-each>
 											</xsl:for-each>
 										</xsl:when>
 									</xsl:choose>
@@ -685,16 +717,16 @@
 								<xsl:variable name="RVR-baseline" select="//aixm:RunwayVisualRangeTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:associatedRunwayDirection/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RDN_UUID]"/>
 								<xsl:variable name="RVR-max-seq" select="max($RVR-baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="RVR-max-corr" select="max($RVR-baseline[aixm:sequenceNumber = $RVR-max-seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="RVR-latest-ts" select="$RVR-baseline[aixm:sequenceNumber = $RVR-max-seq and aixm:correctionNumber = $RVR-max-corr]"/>
+								<xsl:variable name="RVR-valid-ts" select="$RVR-baseline[aixm:sequenceNumber = $RVR-max-seq and aixm:correctionNumber = $RVR-max-corr]"/>
 								<xsl:variable name="RDN_RVR_timeslice">
-									<xsl:if test="$RVR-latest-ts">
+									<xsl:if test="$RVR-valid-ts">
 										<xsl:value-of select="concat('BASELINE ', $RVR-max-seq, '.', $RVR-max-corr)"/>
 									</xsl:if>
 								</xsl:variable>
 								<xsl:variable name="RDN_RVR_equipment">
 									<xsl:choose>
-										<xsl:when test="$RVR-latest-ts">
-											<xsl:iterate select="$RVR-latest-ts/aixm:readingPosition">
+										<xsl:when test="$RVR-valid-ts">
+											<xsl:iterate select="$RVR-valid-ts/aixm:readingPosition">
 												<xsl:param name="result" select="' '"/>
 												<xsl:on-completion>
 													<xsl:variable name="result">
@@ -707,11 +739,18 @@
 												</xsl:next-iteration>
 											</xsl:iterate>
 										</xsl:when>
-										<xsl:when test="not($RVR-latest-ts)">
-											<xsl:for-each select="aixm:annotation/aixm:Note">
-												<xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'runway visual range')">
-													<xsl:value-of select="fcn:get-annotation-text(substring-after(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], ':'))"/>
-												</xsl:if>
+										<xsl:when test="not($RVR-valid-ts)">
+											<xsl:for-each select="aixm:annotation/aixm:Note[contains(lower-case(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note), 'runway visual range')]">
+												<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+													<xsl:choose>
+														<xsl:when test="contains(lower-case(aixm:note), 'runway visual range')">
+															<xsl:value-of select="concat(if (position() = 1) then '' else '&lt;br/&gt;', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
+														</xsl:when>
+														<xsl:otherwise>
+															<xsl:value-of select="concat(if (position() = 1) then '' else '&lt;br/&gt;', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(aixm:note))"/>
+														</xsl:otherwise>
+													</xsl:choose>
+												</xsl:for-each>
 											</xsl:for-each>
 										</xsl:when>
 									</xsl:choose>
@@ -735,28 +774,27 @@
 									<xsl:if test="string-length($dataset_creation_date) gt 0">
 										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
 									</xsl:if>
-								</xsl:variable>
-								
-								<!-- Remarks -->
-								<xsl:variable name="RDN_remarks">
-									<xsl:variable name="dataset_creation_date" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
-									<xsl:if test="string-length($dataset_creation_date) gt 0">
-										<xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
-									</xsl:if>
-									<xsl:for-each select="aixm:annotation/aixm:Note[aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]]">
+									<xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
 										<xsl:if test="
-											((aixm:propertyName and (not(aixm:propertyName/@xsi:nil='true') or not(aixm:propertyName/@xsi:nil))) or not(aixm:propertyName)) and
-											(not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'portablevasis')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'type of vasis')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'approach slope angle')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'minimum eye height over threshold')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'unit of measurement [minimum eye height over threshold]')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'arresting gear')) and
-											not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'runway visual range')) and
-											not(contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')))">
-											<xsl:value-of select="concat('&lt;br/&gt;(', aixm:purpose, ') ', fcn:get-annotation-text(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]))"/>
+											((../../aixm:propertyName and (not(../../aixm:propertyName/@xsi:nil='true') or not(../../aixm:propertyName/@xsi:nil))) or not(../../aixm:propertyName)) and
+											(not(contains(lower-case(aixm:note), 'vasis position')) and
+											not(contains(lower-case(aixm:note), 'portablevasis')) and
+											not(contains(lower-case(aixm:note), 'type of vasis')) and
+											not(contains(lower-case(aixm:note), 'vasis position')) and
+											not(contains(lower-case(aixm:note), 'approach slope angle')) and
+											not(contains(lower-case(aixm:note), 'minimum eye height over threshold')) and
+											not(contains(lower-case(aixm:note), 'unit of measurement [minimum eye height over threshold]')) and
+											not(contains(lower-case(aixm:note), 'arresting gear')) and
+											not(contains(lower-case(aixm:note), 'runway visual range')) and
+											not(contains(aixm:note, 'CRC:')))">
+											<xsl:choose>
+												<xsl:when test="string-length($dataset_creation_date) = 0">
+													<xsl:value-of select="concat('(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+												</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="concat('&lt;br/&gt;', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+												</xsl:otherwise>
+											</xsl:choose>
 										</xsl:if>
 									</xsl:for-each>
 								</xsl:variable>
