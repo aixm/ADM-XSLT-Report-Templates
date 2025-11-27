@@ -62,6 +62,8 @@
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
 	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math">
 	
+	<xsl:output method="html" indent="yes"/>
+	
 	<xsl:strip-space elements="*"/>
 	
 	<xsl:key name="AirportHeliport-by-uuid" match="aixm:AirportHeliport" use="gml:identifier"/>

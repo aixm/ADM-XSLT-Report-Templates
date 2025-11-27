@@ -54,6 +54,8 @@
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
 	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math">
 	
+	<xsl:output method="html" indent="yes"/>
+	
 	<xsl:strip-space elements="*"/>
 	
 	<xsl:key name="AirportHeliport-by-uuid" match="aixm:AirportHeliport" use="gml:identifier"/>
@@ -199,22 +201,22 @@
 								let $rwy_baseline := aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE'],
 									$rwy_max_seq := max($rwy_baseline/aixm:sequenceNumber),
 									$rwy_max_corr := max($rwy_baseline[aixm:sequenceNumber = $rwy_max_seq]/aixm:correctionNumber),
-									$rwy_latest := $rwy_baseline[aixm:sequenceNumber = $rwy_max_seq and aixm:correctionNumber = $rwy_max_corr][1],
-									$ahp_uuid := replace($rwy_latest/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
+									$rwy_valid := $rwy_baseline[aixm:sequenceNumber = $rwy_max_seq and aixm:correctionNumber = $rwy_max_corr][1],
+									$ahp_uuid := replace($rwy_valid/aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
 									$ahp := key('AirportHeliport-by-uuid', $ahp_uuid, $doc-root),
 									$ahp_baseline := $ahp/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
 									$ahp_max_seq := max($ahp_baseline/aixm:sequenceNumber),
 									$ahp_max_corr := max($ahp_baseline[aixm:sequenceNumber = $ahp_max_seq]/aixm:correctionNumber),
-									$ahp_latest := $ahp_baseline[aixm:sequenceNumber = $ahp_max_seq and aixm:correctionNumber = $ahp_max_corr][1]
-								return $ahp_latest/aixm:designator"
+									$ahp_valid := $ahp_baseline[aixm:sequenceNumber = $ahp_max_seq and aixm:correctionNumber = $ahp_max_corr][1]
+								return $ahp_valid/aixm:designator"
 								data-type="text" order="ascending"/>
 
 							<xsl:sort select="
 								let $baseline := aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE'],
 									$max_seq := max($baseline/aixm:sequenceNumber),
 									$max_corr := max($baseline[aixm:sequenceNumber = $max_seq]/aixm:correctionNumber),
-									$latest := $baseline[aixm:sequenceNumber = $max_seq and aixm:correctionNumber = $max_corr][1]
-								return $latest/aixm:designator"
+									$valid := $baseline[aixm:sequenceNumber = $max_seq and aixm:correctionNumber = $max_corr][1]
+								return $valid/aixm:designator"
 								data-type="text" order="ascending"/>
 
 							<!-- Get all BASELINE time slices for this feature -->
@@ -223,10 +225,10 @@
 							<xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
 							<!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
 							<xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-							<!-- Select the latest time slice -->
-							<xsl:variable name="latest-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+							<!-- Select the valid time slice -->
+							<xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
 							
-							<xsl:for-each select="$latest-timeslice">
+							<xsl:for-each select="$valid-timeslice">
 								
 								<!-- Internal UID (master) -->
 								<xsl:variable name="RWY_UUID" select="../../gml:identifier"/>
@@ -234,23 +236,23 @@
 								<!-- Valid TimeSlice -->
 								<xsl:variable name="RWY_timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
 
-								<!-- Get latest AirportHeliport timeslice -->
+								<!-- Get valid AirportHeliport timeslice -->
 								<xsl:variable name="AHP_UUID" select="replace(aixm:associatedAirportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 								<xsl:variable name="AHP" select="key('AirportHeliport-by-uuid', $AHP_UUID, $doc-root)"/>
 								<xsl:variable name="AHP_baseline" select="$AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="AHP_max_seq" select="max($AHP_baseline/aixm:sequenceNumber)"/>
 								<xsl:variable name="AHP_max_corr" select="max($AHP_baseline[aixm:sequenceNumber = $AHP_max_seq]/aixm:correctionNumber)"/>
-								<xsl:variable name="AHP_latest-ts" select="$AHP_baseline[aixm:sequenceNumber = $AHP_max_seq and aixm:correctionNumber = $AHP_max_corr][1]"/>
+								<xsl:variable name="AHP_valid-ts" select="$AHP_baseline[aixm:sequenceNumber = $AHP_max_seq and aixm:correctionNumber = $AHP_max_corr][1]"/>
 								<xsl:variable name="AHP_timeslice" select="concat('BASELINE ', $AHP_max_seq, '.', $AHP_max_corr)"/>
 
 								<!-- Aerodrome / Heliport - Identification -->
 								<xsl:variable name="AHP_designator">
 									<xsl:choose>
-										<xsl:when test="not($AHP_latest-ts/aixm:designator)">
+										<xsl:when test="not($AHP_valid-ts/aixm:designator)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AHP_latest-ts/aixm:designator)"/>
+											<xsl:value-of select="fcn:insert-value($AHP_valid-ts/aixm:designator)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -258,11 +260,11 @@
 								<!-- Aerodrome / Heliport - ICAO Code -->
 								<xsl:variable name="AHP_ICAO_code">
 									<xsl:choose>
-										<xsl:when test="not($AHP_latest-ts/aixm:locationIndicatorICAO)">
+										<xsl:when test="not($AHP_valid-ts/aixm:locationIndicatorICAO)">
 											<xsl:value-of select="''"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="fcn:insert-value($AHP_latest-ts/aixm:locationIndicatorICAO)"/>
+											<xsl:value-of select="fcn:insert-value($AHP_valid-ts/aixm:locationIndicatorICAO)"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -613,21 +615,21 @@
 									<xsl:variable name="RDN-baseline-timeslices" select="//aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RWY_UUID]"/>
 									<xsl:variable name="RDN-max-sequence" select="max($RDN-baseline-timeslices/aixm:sequenceNumber)"/>
 									<xsl:variable name="RDN-max-correction" select="max($RDN-baseline-timeslices[aixm:sequenceNumber = $RDN-max-sequence]/aixm:correctionNumber)"/>
-									<xsl:variable name="RDN-latest-timeslices" select="$RDN-baseline-timeslices[aixm:sequenceNumber = $RDN-max-sequence and aixm:correctionNumber = $RDN-max-correction]"/>
+									<xsl:variable name="RDN-valid-timeslices" select="$RDN-baseline-timeslices[aixm:sequenceNumber = $RDN-max-sequence and aixm:correctionNumber = $RDN-max-correction]"/>
 									<xsl:choose>
-										<xsl:when test="count($RDN-latest-timeslices) = count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='NORMAL']) and count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='NORMAL']) gt 0">
+										<xsl:when test="count($RDN-valid-timeslices) = count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='NORMAL']) and count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='NORMAL']) gt 0">
 											<xsl:value-of select="'Normal'"/>
 										</xsl:when>
-										<xsl:when test="count($RDN-latest-timeslices) = count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) and count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) gt 0">
+										<xsl:when test="count($RDN-valid-timeslices) = count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) and count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) gt 0">
 											<xsl:value-of select="'Closed'"/>
 										</xsl:when>
-										<xsl:when test="count($RDN-latest-timeslices) gt count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) and count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) gt 0">
+										<xsl:when test="count($RDN-valid-timeslices) gt count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) and count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) gt 0">
 											<xsl:value-of select="'Limited'"/>
 										</xsl:when>
-										<xsl:when test="count($RDN-latest-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='LIMITED']) gt 0">
+										<xsl:when test="count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='LIMITED']) gt 0">
 											<xsl:value-of select="'Limited'"/>
 										</xsl:when>
-										<xsl:when test="count($RDN-latest-timeslices/aixm:availability) = 0">
+										<xsl:when test="count($RDN-valid-timeslices/aixm:availability) = 0">
 											<xsl:value-of select="'No availability data'"/>
 										</xsl:when>
 									</xsl:choose>
