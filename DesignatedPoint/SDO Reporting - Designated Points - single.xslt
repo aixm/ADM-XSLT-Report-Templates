@@ -273,10 +273,14 @@
 									</xsl:choose>
 								</xsl:variable>
 								<xsl:variable name="latitude">
-									<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									<xsl:if test="string-length($latitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
 								</xsl:variable>
 								<xsl:variable name="longitude">
-									<xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									<xsl:if test="string-length($longitude_decimal) gt 0">
+										<xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
+									</xsl:if>
 								</xsl:variable>
 								
 								<!-- Type -->
