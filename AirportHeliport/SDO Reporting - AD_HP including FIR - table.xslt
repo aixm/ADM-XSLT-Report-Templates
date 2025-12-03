@@ -65,10 +65,9 @@
 	xmlns:fcn="local-function"
 	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
 	xmlns:map="http://www.w3.org/2005/xpath-functions/map"
-	xmlns:saxon="http://saxon.sf.net/"
-	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math map saxon">
+	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn math map">
 	
-	<xsl:output method="html" indent="yes" saxon:line-length="999999"/>
+	<xsl:output method="html" indent="yes"/>
 	
 	<xsl:strip-space elements="*"/>
 	

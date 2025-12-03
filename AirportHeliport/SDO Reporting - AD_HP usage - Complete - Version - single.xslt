@@ -51,6 +51,8 @@
 	xmlns:fcn="local-function"
 	xmlns:map="http://www.w3.org/2005/xpath-functions/map"
 	exclude-result-prefixes="xsl uuid message gts gco xsd gml gss gsr gmd aixm event xlink xs xsi aixm_ds_xslt ead-audit fcn map">
+	
+	<xsl:output method="html" indent="yes"/>
 
 	<xsl:strip-space elements="*"/>
 

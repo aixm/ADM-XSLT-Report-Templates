@@ -990,10 +990,10 @@
 							<xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote[(($rnp_count gt 1 or (not(contains(aixm:note, 'codeRnp')) or not(contains(aixm:note, 'requiredNavigationPerformance')))) and not(contains(aixm:note, 'codeTransId')))]">
 								<xsl:choose>
 									<xsl:when test="position() = 1">
-										<xsl:value-of select="concat('(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+										<xsl:value-of select="concat('(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
 									</xsl:when>
 									<xsl:otherwise>
-										<xsl:value-of select="concat('&#10;', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+										<xsl:value-of select="concat('&#10;', '(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
 									</xsl:otherwise>
 								</xsl:choose>
 							</xsl:for-each>

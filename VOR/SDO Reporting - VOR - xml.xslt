@@ -24,13 +24,13 @@ Copyright (c) 2025, EUROCONTROL
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:Navaid aixm:OrganisationAuthority aixm:InformationService
+                    featureTypes: aixm:Navaid aixm:OrganisationAuthority
   includeReferencedFeaturesLevel: 2
                featureOccurrence: aixm:Navaid.aixm:type EQUALS 'VOR' OR aixm:Navaid.aixm:type EQUALS 'VOR_DME' OR aixm:Navaid.aixm:type EQUALS 'VORTAC'
                permanentBaseline: true
                        dataScope: ReleasedData
                      AIXMversion: 5.1.1
-  include indirect reference from Service
+              indirectReferences: aixm:Navaid -> aixm:InformationService
 -->
 
 <!--
@@ -488,11 +488,11 @@ Copyright (c) 2025, EUROCONTROL
 							<!-- Then add annotation notes -->
 							<xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
 								<xsl:choose>
-									<xsl:when test="position() = 1 and string-length($trimmed_warnings) = 0">
-										<xsl:value-of select="concat('(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+									<xsl:when test="position() = 1">
+										<xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
 									</xsl:when>
 									<xsl:otherwise>
-										<xsl:value-of select="concat('&#10;(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+										<xsl:value-of select="concat('&#10;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
 									</xsl:otherwise>
 								</xsl:choose>
 							</xsl:for-each>
@@ -507,11 +507,11 @@ Copyright (c) 2025, EUROCONTROL
 							<xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
 								<xsl:if test="((../../aixm:propertyName and (not(../../aixm:propertyName/@xsi:nil='true') or not(../../aixm:propertyName/@xsi:nil))) or not(../../aixm:propertyName)) and not(contains(aixm:note, 'CRC:'))">
 									<xsl:choose>
-										<xsl:when test="string-length($dataset_creation_date) = 0">
-											<xsl:value-of select="concat('(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+										<xsl:when test="position() = 1 and string-length($dataset_creation_date) = 0">
+											<xsl:value-of select="concat('(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:value-of select="concat('&#10;', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
+											<xsl:value-of select="concat('&#10;', '(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:if>
@@ -547,6 +547,7 @@ Copyright (c) 2025, EUROCONTROL
 							</xsl:if>
 							<!-- Create individual <Org> element for each responsible authority -->
 							<xsl:for-each select="aixm:authority/aixm:AuthorityForNavaidEquipment">
+								<xsl:variable name="org_role" select="aixm:type"/>
 								<xsl:variable name="OrgAuth_UUID" select="replace(aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
 								<xsl:variable name="org-baseline-ts" select="//aixm:OrganisationAuthority[gml:identifier = $OrgAuth_UUID]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
 								<xsl:variable name="org-max-seq" select="max($org-baseline-ts/aixm:sequenceNumber)"/>
@@ -556,9 +557,12 @@ Copyright (c) 2025, EUROCONTROL
 									<Org>
 										<txtName><xsl:value-of select="$org-valid-ts/aixm:name"/></txtName>
 										<txtRmk>
-											<xsl:text>Role: </xsl:text>
-											<xsl:value-of select="aixm:type"/>
-											<xsl:text>&#10;Valid TimeSlice: BASELINE </xsl:text>
+											<xsl:if test="string-length($org_role) gt 0">
+												<xsl:text>Role: </xsl:text>
+												<xsl:value-of select="$org_role"/>
+												<xsl:text>&#10;</xsl:text>
+											</xsl:if>
+											<xsl:text>Valid TimeSlice: BASELINE </xsl:text>
 											<xsl:value-of select="concat($org-max-seq, '.', $org-max-corr)"/>
 										</txtRmk>
 									</Org>
