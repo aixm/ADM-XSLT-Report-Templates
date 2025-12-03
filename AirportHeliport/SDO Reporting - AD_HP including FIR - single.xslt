@@ -1509,10 +1509,10 @@
 										<xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
 											<xsl:choose>
 												<xsl:when test="contains(lower-case(aixm:note), 'aerodrome reference point')">
-													<xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (aixm:note/@lang) then (concat('(', aixm:note/@lang), ') ') else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
+													<xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(substring-after(aixm:note, ':')))"/>
 												</xsl:when>
 												<xsl:otherwise>
-													<xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (aixm:note/@lang) then (concat('(', aixm:note/@lang), ') ') else '', fcn:get-annotation-text(aixm:note))"/>
+													<xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (aixm:note/@lang) then (concat('(', aixm:note/@lang, ') ')) else '', fcn:get-annotation-text(aixm:note))"/>
 												</xsl:otherwise>
 											</xsl:choose>
 										</xsl:for-each>
