@@ -24,8 +24,8 @@ Copyright (c) 2025, EUROCONTROL
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:DME aixm:Navaid
-  includeReferencedFeaturesLevel: 2
+                    featureTypes: aixm:DME aixm:Navaid aixm:OrganisationAuthority
+  includeReferencedFeaturesLevel: no
                permanentBaseline: true
                        dataScope: ReleasedData
                      AIXMversion: 5.1.1
@@ -430,15 +430,41 @@ Copyright (c) 2025, EUROCONTROL
 								</xsl:variable>
 								
 								<!-- Responsible State -->
-								<xsl:variable name="OrgAuth_UUID" select="replace(aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-								<!-- Recursively find the STATE organization -->
-								<xsl:variable name="state-org-ts" select="fcn:find-state-org($OrgAuth_UUID, (), root())"/>
+								<!-- Try each organization authority link until a STATE is found -->
+								<xsl:variable name="state-org-ts" as="element()?">
+									<xsl:iterate select="aixm:authority/aixm:AuthorityForNavaidEquipment/aixm:theOrganisationAuthority/@xlink:href">
+										<xsl:param name="found-state" as="element()?" select="()"/>
+										<xsl:choose>
+											<xsl:when test="$found-state">
+												<!-- Already found a STATE, stop iteration -->
+												<xsl:break select="$found-state"/>
+											</xsl:when>
+											<xsl:otherwise>
+												<xsl:variable name="OrgAuth_UUID" select="replace(., '^(urn:uuid:|#uuid\.)', '')"/>
+												<!-- Recursively find the STATE organization -->
+												<xsl:variable name="state-result" select="fcn:find-state-org($OrgAuth_UUID, (), root())"/>
+												<xsl:choose>
+													<xsl:when test="$state-result">
+														<!-- Found a STATE, stop iteration -->
+														<xsl:break select="$state-result"/>
+													</xsl:when>
+													<xsl:otherwise>
+														<!-- Continue to next organization authority link -->
+														<xsl:next-iteration>
+															<xsl:with-param name="found-state" select="()"/>
+														</xsl:next-iteration>
+													</xsl:otherwise>
+												</xsl:choose>
+											</xsl:otherwise>
+										</xsl:choose>
+									</xsl:iterate>
+								</xsl:variable>
 								<xsl:variable name="ResponsibleState">
 									<xsl:if test="$state-org-ts">
 										<xsl:value-of select="$state-org-ts/aixm:name"/>
 									</xsl:if>
 								</xsl:variable>
-								
+
 								<!-- Responsible State - Valid TimeSlice -->
 								<xsl:variable name="ResponsibleState_timeslice">
 									<xsl:if test="$state-org-ts">
