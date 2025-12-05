@@ -574,97 +574,107 @@
 		<!-- Extract aircraft info for current aixm:aircraft -->
 		<xsl:variable name="aircraft-equipment">
 			<xsl:if test="$current-aircraft">
-				<xsl:variable name="equip-list" as="xs:string*">
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:navigationEquipment)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:navigationEquipment/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:navigationEquipment)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:navigationEquipment)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:navigationSpecification)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:navigationSpecification/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:navigationSpecification)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:navigationSpecification)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:verticalSeparationCapability)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:verticalSeparationCapability/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:verticalSeparationCapability)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:antiCollisionAndSeparationEquipment)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:antiCollisionAndSeparationEquipment/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:antiCollisionAndSeparationEquipment)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:antiCollisionAndSeparationEquipment)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:communicationEquipment)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:communicationEquipment/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:communicationEquipment)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:communicationEquipment)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:surveillanceEquipment)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:surveillanceEquipment/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:surveillanceEquipment)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:surveillanceEquipment)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:aircraftLandingCategory)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:aircraftLandingCategory/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:aircraftLandingCategory)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:aircraftLandingCategory)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-					<xsl:choose>
-						<xsl:when test="not($current-aircraft/aixm:wakeTurbulence)">
-							<xsl:sequence select="string('nil')"/>
-						</xsl:when>
-						<xsl:when test="$current-aircraft/aixm:wakeTurbulence/@xsi:nil='true'">
-							<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:wakeTurbulence)"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:sequence select="string($current-aircraft/aixm:wakeTurbulence)"/>
-						</xsl:otherwise>
-					</xsl:choose>
-				</xsl:variable>
-				<xsl:value-of select="string-join($equip-list, ' | ')"/>
+				<!-- Check if at least one property exists -->
+				<xsl:if test="$current-aircraft/aixm:navigationEquipment or
+				  $current-aircraft/aixm:navigationSpecification or
+				  $current-aircraft/aixm:verticalSeparationCapability or
+				  $current-aircraft/aixm:antiCollisionAndSeparationEquipment or
+				  $current-aircraft/aixm:communicationEquipment or
+				  $current-aircraft/aixm:surveillanceEquipment or
+				  $current-aircraft/aixm:aircraftLandingCategory or
+				  $current-aircraft/aixm:wakeTurbulence">
+					<xsl:variable name="equip-list" as="xs:string*">
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:navigationEquipment)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:navigationEquipment/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:navigationEquipment)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:navigationEquipment)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:navigationSpecification)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:navigationSpecification/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:navigationSpecification)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:navigationSpecification)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:verticalSeparationCapability)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:verticalSeparationCapability/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:verticalSeparationCapability)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:antiCollisionAndSeparationEquipment)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:antiCollisionAndSeparationEquipment/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:antiCollisionAndSeparationEquipment)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:antiCollisionAndSeparationEquipment)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:communicationEquipment)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:communicationEquipment/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:communicationEquipment)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:communicationEquipment)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:surveillanceEquipment)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:surveillanceEquipment/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:surveillanceEquipment)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:surveillanceEquipment)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:aircraftLandingCategory)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:aircraftLandingCategory/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:aircraftLandingCategory)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:aircraftLandingCategory)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:choose>
+							<xsl:when test="not($current-aircraft/aixm:wakeTurbulence)">
+								<xsl:sequence select="string('nil')"/>
+							</xsl:when>
+							<xsl:when test="$current-aircraft/aixm:wakeTurbulence/@xsi:nil='true'">
+								<xsl:sequence select="fcn:insert-value($current-aircraft/aixm:wakeTurbulence)"/>
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:sequence select="string($current-aircraft/aixm:wakeTurbulence)"/>
+							</xsl:otherwise>
+						</xsl:choose>
+					</xsl:variable>
+					<xsl:value-of select="string-join($equip-list, ' | ')"/>
+				</xsl:if>
 			</xsl:if>
 		</xsl:variable>
 
