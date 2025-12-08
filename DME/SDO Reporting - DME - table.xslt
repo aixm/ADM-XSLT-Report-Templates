@@ -24,8 +24,8 @@ Copyright (c) 2025, EUROCONTROL
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:DME aixm:Navaid aixm:OrganisationAuthority
-  includeReferencedFeaturesLevel: no
+                    featureTypes: aixm:Navaid aixm:OrganisationAuthority
+  includeReferencedFeaturesLevel: 1
                featureOccurrence: aixm:Navaid.aixm:type EQUALS 'DME' OR aixm:Navaid.aixm:type EQUALS 'ILS_DME' OR aixm:Navaid.aixm:type EQUALS 'MLS_DME' OR aixm:Navaid.aixm:type EQUALS 'VOR_DME' OR aixm:Navaid.aixm:type EQUALS 'NDB_DME' OR aixm:Navaid.aixm:type EQUALS 'LOC_DME'
                permanentBaseline: true
                        dataScope: ReleasedData
@@ -591,9 +591,6 @@ Copyright (c) 2025, EUROCONTROL
 								
 								<!-- UOM -->
 								<xsl:variable name="DME_virtual_freq_uom" select="aixm:ghostFrequency/@uom"/>
-								
-								<!-- Datum -->
-								<xsl:variable name="DME_datum" select="concat(substring(aixm:location/aixm:ElevatedPoint/@srsName, 17,5), substring(aixm:location/aixm:ElevatedPoint/@srsName, 23,4))"/>
 								
 								<!-- Working hours -->
 								<xsl:variable name="DME_working_hours">
