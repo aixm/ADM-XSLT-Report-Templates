@@ -26,6 +26,7 @@
   ===========================================================================
                     featureTypes: aixm:DME aixm:Navaid aixm:OrganisationAuthority
   includeReferencedFeaturesLevel: no
+               featureOccurrence: aixm:Navaid.aixm:type EQUALS 'DME' OR aixm:Navaid.aixm:type EQUALS 'ILS_DME' OR aixm:Navaid.aixm:type EQUALS 'MLS_DME' OR aixm:Navaid.aixm:type EQUALS 'VOR_DME' OR aixm:Navaid.aixm:type EQUALS 'NDB_DME' OR aixm:Navaid.aixm:type EQUALS 'LOC_DME'
                permanentBaseline: true
                        dataScope: ReleasedData
                      AIXMversion: 5.1.1
