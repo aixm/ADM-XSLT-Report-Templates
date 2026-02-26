@@ -21,7 +21,15 @@
   http://www.opensource.org/licenses/bsd-license.php
 -->
 
-<!-- for successful transformation, the XML file must contain the following feature: aixm:OrganisationAuthority -->
+<!-- 
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
+                    featureTypes: aixm:VerticalStructure
+  includeReferencedFeaturesLevel: 1
+               permanentBaseline: true
+                       dataScope: ReleasedData
+                     AIXMversion: 5.1.1
+-->
 
 <xsl:transform version="3.0" 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -134,7 +142,7 @@
     <xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
     <xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
     <xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
-    <xsl:value-of select="string-join($non_empty_lines, '&#10;')"/>
+    <xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
   </xsl:function>
   
   <xsl:template match="/">
@@ -145,8 +153,8 @@
       <xsl:attribute name="origin" select="'SDD'"/>
       <xsl:attribute name="version" select="'4.1'"/>
       <SdoReportResult>
-        
-        <xsl:for-each select="//aixm:OrganisationAuthority/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice">
+            
+        <xsl:for-each select="//aixm:VerticalStructure/aixm:timeSlice/aixm:VerticalStructureTimeSlice">
           
           <xsl:sort select="aixm:name" order="ascending"/>
           <xsl:sort select="aixm:sequenceNumber" order="descending" data-type="number"/>
@@ -245,18 +253,6 @@
             </xsl:choose>
           </xsl:variable>
           
-          <!-- Designator -->
-          <xsl:variable name="designator">
-            <xsl:choose>
-              <xsl:when test="not(aixm:designator)">
-                <xsl:value-of select="''"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:value-of select="fcn:insert-value(aixm:designator)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-          </xsl:variable>
-          
           <!-- Type -->
           <xsl:variable name="type">
             <xsl:choose>
@@ -269,14 +265,147 @@
             </xsl:choose>
           </xsl:variable>
           
-          <!-- Military -->
-          <xsl:variable name="military">
+          <!-- Lighted -->
+          <xsl:variable name="lighted">
             <xsl:choose>
-              <xsl:when test="not(aixm:military)">
+              <xsl:when test="not(aixm:lighted)">
                 <xsl:value-of select="''"/>
               </xsl:when>
               <xsl:otherwise>
-                <xsl:value-of select="fcn:insert-value(aixm:military)"/>
+                <xsl:value-of select="fcn:insert-value(aixm:lighted)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- MarkingICAOStandard -->
+          <xsl:variable name="marking_ICAO_standard">
+            <xsl:choose>
+              <xsl:when test="not(aixm:markingICAOStandard)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:markingICAOStandard)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Group -->
+          <xsl:variable name="group">
+            <xsl:choose>
+              <xsl:when test="not(aixm:group)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:group)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Length -->
+          <xsl:variable name="length">
+            <xsl:choose>
+              <xsl:when test="not(aixm:length)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:length)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- LengthUom -->
+          <xsl:variable name="length_uom" select="aixm:length/@uom"/>
+          
+          <!-- Width -->
+          <xsl:variable name="width">
+            <xsl:choose>
+              <xsl:when test="not(aixm:width)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:width)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- WidthUom -->
+          <xsl:variable name="width_uom" select="aixm:width/@uom"/>
+          
+          <!-- Radius -->
+          <xsl:variable name="radius">
+            <xsl:choose>
+              <xsl:when test="not(aixm:radius)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:radius)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- RadiusUom -->
+          <xsl:variable name="radius_uom" select="aixm:radius/@uom"/>
+          
+          <!-- LightingICAOStandard -->
+          <xsl:variable name="lighting_ICAO_standard">
+            <xsl:choose>
+              <xsl:when test="not(aixm:lightingICAOStandard)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:lightingICAOStandard)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- SynchronisedLighting -->
+          <xsl:variable name="synchronised_lighting">
+            <xsl:choose>
+              <xsl:when test="not(aixm:synchronisedLighting)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:synchronisedLighting)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Marker -->
+          <xsl:variable name="MarkerBeacon_UUID" select="replace(aixm:marker/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+          <xsl:variable name="MarkerBeacon" select="//aixm:MarkerBeacon[gml:identifier = $MarkerBeacon_UUID]"/>
+          <xsl:variable name="MarkerBeacon_baseline" select="$MarkerBeacon/aixm:timeSlice/aixm:MarkerBeaconTimeSlice[aixm:interpretation = 'BASELINE']"/>
+          <xsl:variable name="MarkerBeacon_max-seq" select="max($MarkerBeacon_baseline/aixm:sequenceNumber)"/>
+          <xsl:variable name="MarkerBeacon_max-corr" select="max($MarkerBeacon_baseline[aixm:sequenceNumber = $MarkerBeacon_max-seq]/aixm:correctionNumber)"/>
+          <xsl:variable name="MarkerBeacon_valid-ts" select="$MarkerBeacon_baseline[aixm:sequenceNumber = $MarkerBeacon_max-seq and aixm:correctionNumber = $MarkerBeacon_max-corr][1]"/>
+          <xsl:variable name="MarkerBeacon_ts" select="if ($MarkerBeacon_valid-ts) then concat('BASELINE ', $MarkerBeacon_max-seq, '.', $MarkerBeacon_max-corr) else ''"/>
+          
+          <!-- Marker/featureIdentifier -->
+          <xsl:variable name="marker_identifier">
+            <xsl:if test="not(empty($MarkerBeacon_UUID))">
+              <xsl:value-of select="$MarkerBeacon_UUID"/>
+            </xsl:if>
+          </xsl:variable>
+          
+          <!-- Marker/Designator -->
+          <xsl:variable name="marker_designator">
+            <xsl:choose>
+              <xsl:when test="not($MarkerBeacon_valid-ts/aixm:designator)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value($MarkerBeacon_valid-ts/aixm:designator)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Marker/Name -->
+          <xsl:variable name="marker_name">
+            <xsl:choose>
+              <xsl:when test="not($MarkerBeacon_valid-ts/aixm:name)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value($MarkerBeacon_valid-ts/aixm:name)"/>
               </xsl:otherwise>
             </xsl:choose>
           </xsl:variable>
@@ -296,7 +425,7 @@
                       <xsl:value-of select="concat('[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
                     </xsl:when>
                     <xsl:otherwise>
-                      <xsl:value-of select="concat('&#10;', '[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                      <xsl:value-of select="concat('&lt;br/&gt;', '[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
                     </xsl:otherwise>
                   </xsl:choose>
                 </xsl:for-each>
@@ -305,7 +434,7 @@
           </xsl:variable>
           
           <!-- EAD-Audit -->
-          <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:OrganisationAuthorityExtension/ead-audit:auditInformation/ead-audit:Audit"/>
+          <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:VerticalStructureExtension/ead-audit:auditInformation/ead-audit:Audit"/>
           
           <!-- EAD-AUDIT:CreatedBy -->
           <xsl:variable name="created-by">
@@ -420,14 +549,50 @@
             <xsl:if test="string-length($name) gt 0">
               <NAME><xsl:value-of select="$name"/></NAME>
             </xsl:if>
-            <xsl:if test="string-length($designator) gt 0">
-              <DESG><xsl:value-of select="$designator"/></DESG>
-            </xsl:if>
             <xsl:if test="string-length($type) gt 0">
               <TYPE><xsl:value-of select="$type"/></TYPE>
             </xsl:if>
-            <xsl:if test="string-length($military) gt 0">
-              <MILITARY><xsl:value-of select="$military"/></MILITARY>
+            <xsl:if test="string-length($lighted) gt 0">
+              <LGTD><xsl:value-of select="$lighted"/></LGTD>
+            </xsl:if>
+            <xsl:if test="string-length($marking_ICAO_standard) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($group) gt 0">
+              <GRP><xsl:value-of select="$group"/></GRP>
+            </xsl:if>
+            <xsl:if test="string-length($length) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($length_uom) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($width) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($width_uom) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($radius) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($radius_uom) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($lighting_ICAO_standard) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($synchronised_lighting) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($marker_identifier) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($marker_designator) gt 0">
+              
+            </xsl:if>
+            <xsl:if test="string-length($marker_name) gt 0">
+              
             </xsl:if>
             <xsl:if test="string-length($annotation) gt 0">
               <annotation><xsl:value-of select="$annotation"/></annotation>
@@ -484,7 +649,7 @@
           </Record>
           
         </xsl:for-each>
-        
+            
       </SdoReportResult>
     </xsl:element>
     

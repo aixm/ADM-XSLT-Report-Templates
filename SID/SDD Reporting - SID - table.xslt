@@ -5,14 +5,14 @@
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
-  Copyright (c) 2025, EUROCONTROL
+  Copyright (c) 2026, EUROCONTROL
   =====================================
   All rights reserved.
   Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-  * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-  * Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
-  
+    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    * Neither the names of EUROCONTROL or FAA nor the names of their contributors may be used to endorse or promote products derived from this specification without specific prior written permission.
+
   THIS SPECIFICATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   ==========================================
@@ -24,10 +24,11 @@
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-       featureTypes: aixm:Airspace
-  permanentBaseline: true
-          dataScope: ReleasedData
-        AIXMversion: 5.1.1
+                    featureTypes: aixm:StandardInstrumentDeparture
+  includeReferencedFeaturesLevel: 1
+               permanentBaseline: true
+                       dataScope: ReleasedData
+                     AIXMversion: 5.1.1
 -->
 
 <xsl:transform version="3.0" 
@@ -55,17 +56,10 @@
   
   <xsl:strip-space elements="*"/>
   
-  <xsl:function name="fcn:format-date" as="xs:string">
-    <xsl:param name="text" as="xs:string"/>
-    <xsl:variable name="date-time" select="$text"/>
-    <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
-    <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
-    <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
-    <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
-  </xsl:function>
+  <xsl:key name="AirportHeliport-by-uuid" match="aixm:AirportHeliport" use="gml:identifier"/>
+  
+  <!-- Global variable to capture document root for use in key() functions -->
+  <xsl:variable name="doc-root" select="/"/>
   
   <!-- Function to get the valid BASELINE timeslice for any feature type -->
   <!-- Accepts pre-filtered BASELINE timeslice elements (e.g. AirspaceTimeSlice, DMETimeSlice, VORTimeSlice, etc.) -->
@@ -113,6 +107,18 @@
     </xsl:choose>
   </xsl:function>
   
+  <xsl:function name="fcn:format-date" as="xs:string">
+    <xsl:param name="input" as="xs:string"/>
+    <xsl:variable name="date-time" select="$input"/>
+    <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
+    <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
+    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
+      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
+      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
+    <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
+  </xsl:function>
+  
   <!-- Insert value or NIL + nilReason -->
   <xsl:function name="fcn:insert-value" as="xs:string">
     <xsl:param name="feature_property" as="element()"/>
@@ -132,70 +138,15 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:function>
-
-  <!-- Function to get sort order for airspace types -->
-  <xsl:function name="fcn:get-airspace-type-sort-order" as="xs:integer">
-    <xsl:param name="type" as="xs:string"/>
-    <xsl:choose>
-      <xsl:when test="$type = 'NAS'">1</xsl:when>
-      <xsl:when test="$type = 'NAS_P'">2</xsl:when>
-      <xsl:when test="$type = 'FIR'">3</xsl:when>
-      <xsl:when test="$type = 'FIR_P'">4</xsl:when>
-      <xsl:when test="$type = 'UIR'">5</xsl:when>
-      <xsl:when test="$type = 'UIR_P'">6</xsl:when>
-      <xsl:when test="$type = 'CTA'">7</xsl:when>
-      <xsl:when test="$type = 'CTA_P'">8</xsl:when>
-      <xsl:when test="$type = 'OCA'">9</xsl:when>
-      <xsl:when test="$type = 'OCA_P'">10</xsl:when>
-      <xsl:when test="$type = 'UTA'">11</xsl:when>
-      <xsl:when test="$type = 'UTA_P'">12</xsl:when>
-      <xsl:when test="$type = 'TMA'">13</xsl:when>
-      <xsl:when test="$type = 'TMA_P'">14</xsl:when>
-      <xsl:when test="$type = 'CTR'">15</xsl:when>
-      <xsl:when test="$type = 'CTR_P'">16</xsl:when>
-      <xsl:when test="$type = 'OTA'">17</xsl:when>
-      <xsl:when test="$type = 'SECTOR'">18</xsl:when>
-      <xsl:when test="$type = 'SECTOR_C'">19</xsl:when>
-      <xsl:when test="$type = 'TSA'">20</xsl:when>
-      <xsl:when test="$type = 'CBA'">21</xsl:when>
-      <xsl:when test="$type = 'RCA'">22</xsl:when>
-      <xsl:when test="$type = 'RAS'">23</xsl:when>
-      <xsl:when test="$type = 'AWY'">24</xsl:when>
-      <xsl:when test="$type = 'MTR'">25</xsl:when>
-      <xsl:when test="$type = 'P'">26</xsl:when>
-      <xsl:when test="$type = 'R'">27</xsl:when>
-      <xsl:when test="$type = 'D'">28</xsl:when>
-      <xsl:when test="$type = 'AIDZ'">29</xsl:when>
-      <xsl:when test="$type = 'NO_FIR'">30</xsl:when>
-      <xsl:when test="$type = 'PART'">31</xsl:when>
-      <xsl:when test="$type = 'CLASS'">32</xsl:when>
-      <xsl:when test="$type = 'POLITICAL'">33</xsl:when>
-      <xsl:when test="$type = 'D_OTHER'">34</xsl:when>
-      <xsl:when test="$type = 'A'">35</xsl:when>
-      <xsl:when test="$type = 'W'">36</xsl:when>
-      <xsl:when test="$type = 'PROTECT'">37</xsl:when>
-      <xsl:when test="$type = 'AMA'">38</xsl:when>
-      <xsl:when test="$type = 'ASR'">39</xsl:when>
-      <xsl:when test="$type = 'ADV'">40</xsl:when>
-      <xsl:when test="$type = 'UADV'">41</xsl:when>
-      <xsl:when test="$type = 'ATZ'">42</xsl:when>
-      <xsl:when test="$type = 'ATZ_P'">43</xsl:when>
-      <xsl:when test="$type = 'HTZ'">44</xsl:when>
-      <xsl:when test="$type = 'NTZ'">45</xsl:when>
-      <xsl:when test="$type = 'NOZ'">46</xsl:when>
-      <xsl:when test="$type = 'FBZ'">47</xsl:when>
-      <xsl:when test="$type = 'FIZ'">48</xsl:when>
-      <xsl:when test="$type = 'FRA'">49</xsl:when>
-      <xsl:when test="$type = 'MOA'">50</xsl:when>
-      <xsl:when test="$type = 'NPZ'">51</xsl:when>
-      <xsl:when test="$type = 'RCZ'">52</xsl:when>
-      <xsl:when test="$type = 'RMZ'">53</xsl:when>
-      <xsl:when test="$type = 'TMZ'">54</xsl:when>
-      <!-- Types starting with OTHER -->
-      <xsl:when test="starts-with($type, 'OTHER')">100</xsl:when>
-      <!-- All other types not in the list -->
-      <xsl:otherwise>99</xsl:otherwise>
-    </xsl:choose>
+  
+  <!-- Get annotation text preserving line breaks and escaping special HTML characters -->
+  <xsl:function name="fcn:get-annotation-text" as="xs:string">
+    <xsl:param name="raw_text" as="xs:string"/>
+    <!-- First, escape special HTML characters in the raw text before processing -->
+    <xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
+    <xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
+    <xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
+    <xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
   </xsl:function>
   
   <xsl:template match="/">
@@ -205,7 +156,7 @@
       <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta http-equiv="Expires" content="120"/>
-        <title>SDO Reporting - Airspaces of all types with lower and upper limits</title>
+        <title>SDD Reporting - SDD Standard Instrument Departure</title>
         <style>
           html, body {
             margin: 0;
@@ -275,7 +226,7 @@
             </tbody>
           </table>
           <hr/>
-          <center><b>Airspaces of all types with lower and upper limits</b></center>
+          <center><b>SDD Standard Instrument Departure</b></center>
           <hr/>
         </div>
         
@@ -284,66 +235,233 @@
             
             <thead>
               <tr>
-                <td><strong>Type</strong></td>
-                <td><strong>Coded identifier</strong></td>
+                <td><strong>FeatureIdentifier</strong></td>
+                <td><strong>FeatureLifetimeBegin</strong></td>
+                <td><strong>FeatureLifetimeEnd</strong></td>
+                <td><strong>ValidityFrom</strong></td>
+                <td><strong>ValidityTo</strong></td>
+                <td><strong>SequenceNumber</strong></td>
+                <td><strong>CorrectionNumber</strong></td>
+                <td><strong>CommunicationFailureInstruction</strong></td>
+                <td><strong>Instruction</strong></td>
+                <td><strong>DesignCriteria</strong></td>
+                <td><strong>CodingStandard</strong></td>
+                <td><strong>FlightChecked</strong></td>
                 <td><strong>Name</strong></td>
-                <td><strong>Location indicator<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[ICAO doc. 7910]</strong></td>
-                <td><strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>upper limit</strong></td>
-                <td><strong>Upper limit</strong></td>
-                <td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[upper limit]</strong></td>
-                <td><strong>Reference for<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>lower limit</strong></td>
-                <td><strong>Lower limit</strong></td>
-                <td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[lower limit]</strong></td>
-                <td><strong>UUID</strong></td>
-                <td><strong>Valid TimeSlice</strong></td>
-                <td><strong>Originator</strong></td>
+                <td><strong>RNAV</strong></td>
+                <td><strong>AirportHeliport/featureIdentifier</strong></td>
+                <td><strong>AirportHeliport/Name</strong></td>
+                <td><strong>AirportHeliport/Designator</strong></td>
+                <td><strong>Annotation</strong></td>
+                <td><strong>Designator</strong></td>
+                <td><strong>ContingencyRoute</strong></td>
+                <td><strong>EAD-AUDIT:CreatedBy</strong></td>
+                <td><strong>EAD-AUDIT:CreationDate</strong></td>
+                <td><strong>EAD-AUDIT:CreatedByOrganisation</strong></td>
+                <td><strong>EAD-AUDIT:CreatedOnBehalfOfUser</strong></td>
+                <td><strong>EAD-AUDIT:CreatedOnBehalfOfOrganisation</strong></td>
+                <td><strong>EAD-AUDIT:ReasonForChange</strong></td>
+                <td><strong>EAD-AUDIT:ResponsibleSubsystem</strong></td>
               </tr>
             </thead>
             
             <tbody>
               
-              <xsl:for-each select="//aixm:Airspace">
+              <xsl:for-each select="//aixm:StandardInstrumentDeparture">
                 
-                <!-- First sort by type priority, then by designator -->
-                <xsl:sort select="fcn:get-airspace-type-sort-order(string((aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:type))" data-type="number" order="ascending"/>
-                <xsl:sort select="string((aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:designator)" data-type="text" order="ascending"/>
+                <!-- Sort by AirportHeliport designator (ascending), then by SID designator (ascending), then by SID sequenceNumber (descending), then by SID correctionNumber (descending) -->
+                <xsl:sort select="
+                  let $SID_baseline := aixm:timeSlice/aixm:StandardInstrumentDepartureTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $SID_max-seq := max($SID_baseline/aixm:sequenceNumber),
+                  $SID_max-corr := max($SID_baseline[aixm:sequenceNumber = $SID_max-seq]/aixm:correctionNumber),
+                  $SID_valid-ts := $SID_baseline[aixm:sequenceNumber = $SID_max-seq and aixm:correctionNumber = $SID_max-corr][1],
+                  $AHP_uuid := replace($SID_valid-ts/aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
+                  $AHP := key('AirportHeliport-by-uuid', $AHP_uuid, $doc-root),
+                  $AHP_baseline := $AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
+                  $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
+                  $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                  return $AHP_valid-ts/aixm:designator"
+                  data-type="text" order="ascending"/>
+                
+                <xsl:sort select="
+                  let $SID_baseline := aixm:timeSlice/aixm:StandardInstrumentDepartureTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $SID_max-seq := max($SID_baseline/aixm:sequenceNumber),
+                  $SID_max-corr := max($SID_baseline[aixm:sequenceNumber = $SID_max-seq]/aixm:correctionNumber),
+                  $SID_valid-ts := $SID_baseline[aixm:sequenceNumber = $SID_max-seq and aixm:correctionNumber = $SID_max-corr][1]
+                  return $SID_valid-ts/aixm:designator"
+                  data-type="text" order="ascending"/>
+  
+                <xsl:sort select="
+                  let $SID_baseline := aixm:timeSlice/aixm:StandardInstrumentDepartureTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $SID_max-seq := max($SID_baseline/aixm:sequenceNumber),
+                  $SID_max-corr := max($SID_baseline[aixm:sequenceNumber = $SID_max-seq]/aixm:correctionNumber),
+                  $SID_valid-ts := $SID_baseline[aixm:sequenceNumber = $SID_max-seq and aixm:correctionNumber = $SID_max-corr][1]
+                  return $SID_valid-ts/aixm:sequenceNumber"
+                  data-type="number" order="descending"/>
+  
+                <xsl:sort select="
+                  let $SID_baseline := aixm:timeSlice/aixm:StandardInstrumentDepartureTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $SID_max-seq := max($SID_baseline/aixm:sequenceNumber),
+                  $SID_max-corr := max($SID_baseline[aixm:sequenceNumber = $SID_max-seq]/aixm:correctionNumber),
+                  $SID_valid-ts := $SID_baseline[aixm:sequenceNumber = $SID_max-seq and aixm:correctionNumber = $SID_max-corr][1]
+                  return $SID_valid-ts/aixm:correctionNumber"
+                  data-type="number" order="descending"/>
+  
                 <!-- Get all BASELINE time slices for this feature -->
-                <xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:AirspaceTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <!-- Find the maximum sequenceNumber -->
-                <xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
-                <!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
-                <xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-                <!-- Select the valid time slice -->
-                <xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+                <xsl:variable name="baseline-timeslice" select="aixm:timeSlice/aixm:StandardInstrumentDepartureTimeSlice[aixm:interpretation = 'BASELINE']"/>
                 
-                <xsl:for-each select="$valid-timeslice">
+                <xsl:for-each select="$baseline-timeslice">
                   
-                  <!-- Type -->
-                  <xsl:variable name="type">
+                  <!-- FeatureIdentifier -->
+                  <xsl:variable name="SID_identifier" select="../../gml:identifier"/>
+                  
+                  <!-- FeatureLifetimeBegin -->
+                  <xsl:variable name="SID_lifetime-begin">
                     <xsl:choose>
-                      <xsl:when test="not(aixm:type)">
+                      <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)">
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:value-of select="fcn:insert-value(aixm:type)"/>
+                        <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Coded identifier -->
-                  <xsl:variable name="designator">
+                  <!-- FeatureLifetimeEnd -->
+                  <xsl:variable name="SID_lifetime-end">
                     <xsl:choose>
-                      <xsl:when test="not(aixm:designator)">
+                      <xsl:when test="aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
+                        <xsl:value-of select="'31-DEC-9999'"/>
+                      </xsl:when>
+                      <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition) and aixm:featureLifetime/gml:TimePeriod/gml:endPosition">
+                        <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)"/>
+                      </xsl:when>
+                      <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)">
+                        <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)"/>
+                      </xsl:when>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- ValidityFrom -->
+                  <xsl:variable name="SID_validity-begin">
+                    <xsl:choose>
+                      <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:beginPosition)">
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:value-of select="fcn:insert-value(aixm:designator)"/>
+                        <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:beginPosition)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- ValidityTo -->
+                  <xsl:variable name="SID_validity-end">
+                    <xsl:choose>
+                      <xsl:when test="gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
+                        <xsl:value-of select="'31-DEC-9999'"/>
+                      </xsl:when>
+                      <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition) and gml:validTime/gml:TimePeriod/gml:endPosition">
+                        <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:endPosition)"/>
+                      </xsl:when>
+                      <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:endPosition)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- SequenceNumber -->
+                  <xsl:variable name="SID_sequence-number">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:sequenceNumber)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:sequenceNumber)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- CorrectionNumber -->
+                  <xsl:variable name="SID_correction-number">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:correctionNumber)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:correctionNumber)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- Communication Failure Instruction -->
+                  <xsl:variable name="SID_comm-failure-instruction">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:communicationFailureInstruction)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:when test="aixm:communicationFailureInstruction/@xsi:nil = 'true'">
+                        <xsl:value-of select="fcn:insert-value(aixm:communicationFailureInstruction)"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:get-annotation-text(aixm:communicationFailureInstruction)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- Instruction -->
+                  <xsl:variable name="SID_instruction">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:instruction)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:when test="aixm:instruction/@xsi:nil = 'true'">
+                        <xsl:value-of select="fcn:insert-value(aixm:instruction)"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:get-annotation-text(aixm:instruction)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- Design Criteria -->
+                  <xsl:variable name="SID_design-criteria">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:designCriteria)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:designCriteria)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- Coding Standard -->
+                  <xsl:variable name="SID_coding-standard">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:codingStandard)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:codingStandard)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- Flight Checked -->
+                  <xsl:variable name="SID_flight-checked">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:flightChecked)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:flightChecked)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
                   <!-- Name -->
-                  <xsl:variable name="name">
+                  <xsl:variable name="SID_name">
                     <xsl:choose>
                       <xsl:when test="not(aixm:name)">
                         <xsl:value-of select="''"/>
@@ -354,138 +472,213 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Location indicator [ICAO doc. 7910] -->
-                  <xsl:variable name="loc_indicator_ICAO">
-                    <xsl:if test="aixm:designatorICAO = 'YES'">
-                      <xsl:value-of select="aixm:designator"/>
-                    </xsl:if>
-                  </xsl:variable>
-                  
-                  <xsl:variable name="AirspaceVolume" select="aixm:geometryComponent/aixm:AirspaceGeometryComponent/aixm:theAirspaceVolume/aixm:AirspaceVolume"/>
-                  
-                  <!-- Reference for upper limit -->
-                  <xsl:variable name="upper_limit_ref">
+                  <!-- RNAV -->
+                  <xsl:variable name="SID_RNAV">
                     <xsl:choose>
-                      <xsl:when test="not($AirspaceVolume/aixm:upperLimitReference)">
+                      <xsl:when test="not(aixm:RNAV)">
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:choose>
-                          <xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
-                            <xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:upperLimitReference)"/>
-                          </xsl:when>
-                          <xsl:otherwise>
-                            <xsl:value-of select="''"/>
-                          </xsl:otherwise>
-                        </xsl:choose>
+                        <xsl:value-of select="fcn:insert-value(aixm:RNAV)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Upper limit -->
-                  <xsl:variable name="upper_limit">
+                  <!-- Associated AirportHeliport -->
+                  <xsl:variable name="AHP_UUID" select="replace(aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                  <xsl:variable name="AHP" select="key('AirportHeliport-by-uuid', $AHP_UUID, $doc-root)"/>
+                  <xsl:variable name="AHP_baseline" select="$AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
+                  <xsl:variable name="AHP_max-seq" select="max($AHP_baseline/aixm:sequenceNumber)"/>
+                  <xsl:variable name="AHP_max-corr" select="max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber)"/>
+                  <xsl:variable name="AHP_valid-ts" select="$AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]"/>
+                  <xsl:variable name="AHP_timeslice" select="if ($AHP_valid-ts) then concat('BASELINE ', $AHP_max-seq, '.', $AHP_max-corr) else ''"/>
+                  
+                  <!-- Associated AirportHeliport - name -->
+                  <xsl:variable name="AHP_name">
                     <xsl:choose>
-                      <xsl:when test="not($AirspaceVolume/aixm:upperLimit)">
+                      <xsl:when test="not($AHP_valid-ts/aixm:name)">
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:choose>
-                          <xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
-                            <xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:upperLimit)"/>
-                          </xsl:when>
-                          <xsl:otherwise>
-                            <xsl:value-of select="''"/>
-                          </xsl:otherwise>
-                        </xsl:choose>
+                        <xsl:value-of select="fcn:insert-value($AHP_valid-ts/aixm:name)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Unit of measurement [upper limit] -->
-                  <xsl:variable name="upper_limit_uom">
+                  <!-- Associated AirportHeliport - designator -->
+                  <xsl:variable name="AHP_designator">
                     <xsl:choose>
-                      <xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
-                        <xsl:value-of select="$AirspaceVolume[1]/aixm:upperLimit/@uom"/>
+                      <xsl:when test="not($AHP_valid-ts/aixm:designator)">
+                        <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:value-of select="''"/>
+                        <xsl:value-of select="fcn:insert-value($AHP_valid-ts/aixm:designator)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Reference for lower limit -->
-                  <xsl:variable name="lower_limit_ref">
+                  <!-- Designator -->
+                  <xsl:variable name="SID_designator">
                     <xsl:choose>
-                      <xsl:when test="not($AirspaceVolume/aixm:lowerLimitReference)">
+                      <xsl:when test="not(aixm:designator)">
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:choose>
-                          <xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
-                            <xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:lowerLimitReference)"/>
-                          </xsl:when>
-                          <xsl:otherwise>
-                            <xsl:value-of select="''"/>
-                          </xsl:otherwise>
-                        </xsl:choose>
+                        <xsl:value-of select="fcn:insert-value(aixm:designator)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Lower limit -->
-                  <xsl:variable name="lower_limit">
+                  <!-- Contingency Route -->
+                  <xsl:variable name="SID_contingency-route">
                     <xsl:choose>
-                      <xsl:when test="not($AirspaceVolume/aixm:lowerLimit)">
+                      <xsl:when test="not(aixm:contingencyRoute)">
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:choose>
-                          <xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
-                            <xsl:value-of select="fcn:insert-value($AirspaceVolume[1]/aixm:lowerLimit)"/>
-                          </xsl:when>
-                          <xsl:otherwise>
-                            <xsl:value-of select="''"/>
-                          </xsl:otherwise>
-                        </xsl:choose>
+                        <xsl:value-of select="fcn:insert-value(aixm:contingencyRoute)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Unit of measurement [lower limit] -->
-                  <xsl:variable name="lower_limit_uom">
+                  <!-- Annotation -->
+                  <xsl:variable name="SID_annotation">
                     <xsl:choose>
-                      <xsl:when test="count(distinct-values($AirspaceVolume/aixm:lowerLimit)) = 1 and count(distinct-values($AirspaceVolume/aixm:upperLimit)) = 1">
-                        <xsl:value-of select="$AirspaceVolume[1]/aixm:lowerLimit/@uom"/>
+                      <xsl:when test="not(aixm:annotation)">
+                        <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:value-of select="''"/>
+                        <xsl:variable name="all-notes" select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote"/>
+                        <xsl:for-each select="$all-notes">
+                          <xsl:variable name="global-index" select="position()"/>
+                          <xsl:choose>
+                            <xsl:when test="$global-index = 1">
+                              <xsl:value-of select="concat('[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                            </xsl:when>
+                            <xsl:otherwise>
+                              <xsl:value-of select="concat('&lt;br/&gt;', '[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                            </xsl:otherwise>
+                          </xsl:choose>
+                        </xsl:for-each>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- UUID -->
-                  <xsl:variable name="UUID" select="../../gml:identifier"/>
+                  <!-- EAD-Audit -->
+                  <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:StandardInstrumentDepartureExtension/ead-audit:auditInformation/ead-audit:Audit"/>
                   
-                  <!-- Valid TimeSlice -->
-                  <xsl:variable name="timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
+                  <!-- EAD-AUDIT:CreatedBy -->
+                  <xsl:variable name="created-by">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdBy)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdBy)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
                   
-                  <!-- Originator -->
-                  <xsl:variable name="originator" select="aixm:extension/ead-audit:AirspaceExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+                  <!-- EAD-AUDIT:CreationDate -->
+                  <xsl:variable name="creation-date">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:creationDate)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:format-date($EAD-Audit/ead-audit:creationDate)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
                   
-                  <tr style="white-space:nowrap">
-                    <td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($designator) gt 0) then $designator else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($name) gt 0) then $name else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($loc_indicator_ICAO) gt 0) then $loc_indicator_ICAO else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($upper_limit_ref) gt 0) then $upper_limit_ref else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($upper_limit) gt 0) then $upper_limit else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($upper_limit_uom) gt 0) then $upper_limit_uom else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($lower_limit_ref) gt 0) then $lower_limit_ref else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($lower_limit) gt 0) then $lower_limit else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($lower_limit_uom) gt 0) then $lower_limit_uom else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($UUID) gt 0) then $UUID else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($timeslice) gt 0) then $timeslice else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
+                  <!-- EAD-AUDIT:CreatedByOrganisation -->
+                  <xsl:variable name="created-by-org">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdByOrg)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdByOrg)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- EAD-AUDIT:CreatedOnBehalfOfUser -->
+                  <xsl:variable name="created-on-behalf-of-user">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdOnBehalfOfUser)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdOnBehalfOfUser)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- EAD-AUDIT:CreatedOnBehalfOfOrganisation -->
+                  <xsl:variable name="created-on-behalf-of-org">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdOnBehalfOfOrg)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdOnBehalfOfOrg)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- EAD-AUDIT:ReasonForChange -->
+                  <xsl:variable name="reason-for-change">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:reasonForChange)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:reasonForChange)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <!-- EAD-AUDIT:ResponsibleSubsystem -->
+                  <xsl:variable name="responsible-subsystem">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:responsibleSubsystem)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:responsibleSubsystem)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+                  
+                  <tr style="white-space:nowrap;vertical-align:top">
+                    <td><xsl:value-of select="if (string-length($SID_identifier) gt 0) then $SID_identifier else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_lifetime-begin) gt 0) then $SID_lifetime-begin else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_lifetime-end) gt 0) then $SID_lifetime-end else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_validity-begin) gt 0) then $SID_validity-begin else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_validity-end) gt 0) then $SID_validity-end else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_sequence-number) gt 0) then $SID_sequence-number else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_correction-number) gt 0) then $SID_correction-number else '&#160;'"/></td>
+                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_comm-failure-instruction) gt 0"><xsl:value-of select="$SID_comm-failure-instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_instruction) gt 0"><xsl:value-of select="$SID_instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td><xsl:value-of select="if (string-length($SID_design-criteria) gt 0) then $SID_design-criteria else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_coding-standard) gt 0) then $SID_coding-standard else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_flight-checked) gt 0) then $SID_flight-checked else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_name) gt 0) then $SID_name else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_RNAV) gt 0) then $SID_RNAV else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($AHP_UUID) gt 0) then $AHP_UUID else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($AHP_name) gt 0) then $AHP_name else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($AHP_designator) gt 0) then $AHP_designator else '&#160;'"/></td>
+                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_annotation) gt 0"><xsl:value-of select="$SID_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td><xsl:value-of select="if (string-length($SID_designator) gt 0) then $SID_designator else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($SID_contingency-route) gt 0) then $SID_contingency-route else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($creation-date) gt 0) then $creation-date else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
+                    <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
                   </tr>
                   
                 </xsl:for-each>
@@ -743,8 +936,8 @@
           <p></p>
           <table>
             <tr>
-              <td style="text-align:right"><font size="-1">Sorting: </font></td>
-              <td><font size="-1">first grouped by Type, then sorted by Coded identifier</font></td>
+              <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
+              <td><font size="-1">Identification</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>

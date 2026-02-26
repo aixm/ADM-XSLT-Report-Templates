@@ -21,7 +21,15 @@
   http://www.opensource.org/licenses/bsd-license.php
 -->
 
-<!-- for successful transformation, the XML file must contain the following feature: aixm:OrganisationAuthority -->
+<!-- 
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
+                    featureTypes: aixm:StandardInstrumentArrival
+  includeReferencedFeaturesLevel: 1
+               permanentBaseline: true
+                       dataScope: ReleasedData
+                     AIXMversion: 5.1.1
+-->
 
 <xsl:transform version="3.0" 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -48,6 +56,11 @@
   <xsl:output method="xml" indent="yes"/>
   
   <xsl:strip-space elements="*"/>
+  
+  <xsl:key name="AirportHeliport-by-uuid" match="aixm:AirportHeliport" use="gml:identifier"/>
+  
+  <!-- Global variable to capture document root for use in key() functions -->
+  <xsl:variable name="doc-root" select="/"/>
   
   <!-- Function to get the valid BASELINE timeslice for any feature type -->
   <!-- Accepts pre-filtered BASELINE timeslice elements (e.g. AirspaceTimeSlice, DMETimeSlice, VORTimeSlice, etc.) -->
@@ -146,17 +159,30 @@
       <xsl:attribute name="version" select="'4.1'"/>
       <SdoReportResult>
         
-        <xsl:for-each select="//aixm:OrganisationAuthority/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice">
+        <xsl:for-each select="//aixm:StandardInstrumentArrival/aixm:timeSlice/aixm:StandardInstrumentArrivalTimeSlice[aixm:interpretation = 'BASELINE']">
           
-          <xsl:sort select="aixm:name" order="ascending"/>
+          <xsl:sort select="
+            let $STAR_baseline := .,
+            $STAR_max-seq := max($STAR_baseline/aixm:sequenceNumber),
+            $STAR_max-corr := max($STAR_baseline[aixm:sequenceNumber = $STAR_max-seq]/aixm:correctionNumber),
+            $STAR_valid-ts := $STAR_baseline[aixm:sequenceNumber = $STAR_max-seq and aixm:correctionNumber = $STAR_max-corr][1],
+            $AHP_uuid := replace($STAR_valid-ts/aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
+            $AHP := key('AirportHeliport-by-uuid', $AHP_uuid, $doc-root),
+            $AHP_baseline := $AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
+            $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
+            $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
+            $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+            return $AHP_valid-ts/aixm:designator"
+            data-type="text" order="ascending"/>
+          <xsl:sort select="aixm:designator" order="ascending"/>
           <xsl:sort select="aixm:sequenceNumber" order="descending" data-type="number"/>
           <xsl:sort select="aixm:correctionNumber" order="descending" data-type="number"/>
           
           <!-- FeatureIdentifier -->
-          <xsl:variable name="identifier" select="../../gml:identifier"/>
+          <xsl:variable name="STAR_identifier" select="../../gml:identifier"/>
           
           <!-- FeatureLifetimeBegin -->
-          <xsl:variable name="lifetime-begin">
+          <xsl:variable name="STAR_lifetime-begin">
             <xsl:choose>
               <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)">
                 <xsl:value-of select="''"/>
@@ -168,7 +194,7 @@
           </xsl:variable>
           
           <!-- FeatureLifetimeEnd -->
-          <xsl:variable name="lifetime-end">
+          <xsl:variable name="STAR_lifetime-end">
             <xsl:choose>
               <xsl:when test="aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
                 <xsl:value-of select="'31-DEC-9999'"/>
@@ -183,7 +209,7 @@
           </xsl:variable>
           
           <!-- ValidityFrom -->
-          <xsl:variable name="validity-begin">
+          <xsl:variable name="STAR_validity-begin">
             <xsl:choose>
               <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:beginPosition)">
                 <xsl:value-of select="''"/>
@@ -195,7 +221,7 @@
           </xsl:variable>
           
           <!-- ValidityTo -->
-          <xsl:variable name="validity-end">
+          <xsl:variable name="STAR_validity-end">
             <xsl:choose>
               <xsl:when test="gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
                 <xsl:value-of select="'31-DEC-9999'"/>
@@ -210,7 +236,7 @@
           </xsl:variable>
           
           <!-- SequenceNumber -->
-          <xsl:variable name="sequence-number">
+          <xsl:variable name="STAR_sequence-number">
             <xsl:choose>
               <xsl:when test="not(aixm:sequenceNumber)">
                 <xsl:value-of select="''"/>
@@ -222,7 +248,7 @@
           </xsl:variable>
           
           <!-- CorrectionNumber -->
-          <xsl:variable name="correction-number">
+          <xsl:variable name="STAR_correction-number">
             <xsl:choose>
               <xsl:when test="not(aixm:correctionNumber)">
                 <xsl:value-of select="''"/>
@@ -233,8 +259,74 @@
             </xsl:choose>
           </xsl:variable>
           
+          <!-- Communication Failure Instruction -->
+          <xsl:variable name="STAR_comm-failure-instruction">
+            <xsl:choose>
+              <xsl:when test="not(aixm:communicationFailureInstruction)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:when test="aixm:communicationFailureInstruction/@xsi:nil = 'true'">
+                <xsl:value-of select="fcn:insert-value(aixm:communicationFailureInstruction)"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:get-annotation-text(aixm:communicationFailureInstruction)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Instruction -->
+          <xsl:variable name="STAR_instruction">
+            <xsl:choose>
+              <xsl:when test="not(aixm:instruction)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:when test="aixm:instruction/@xsi:nil = 'true'">
+                <xsl:value-of select="fcn:insert-value(aixm:instruction)"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:get-annotation-text(aixm:instruction)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Design Criteria -->
+          <xsl:variable name="STAR_design-criteria">
+            <xsl:choose>
+              <xsl:when test="not(aixm:designCriteria)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:designCriteria)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Coding Standard -->
+          <xsl:variable name="STAR_coding-standard">
+            <xsl:choose>
+              <xsl:when test="not(aixm:codingStandard)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:codingStandard)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Flight Checked -->
+          <xsl:variable name="STAR_flight-checked">
+            <xsl:choose>
+              <xsl:when test="not(aixm:flightChecked)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:flightChecked)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
           <!-- Name -->
-          <xsl:variable name="name">
+          <xsl:variable name="STAR_name">
             <xsl:choose>
               <xsl:when test="not(aixm:name)">
                 <xsl:value-of select="''"/>
@@ -245,8 +337,53 @@
             </xsl:choose>
           </xsl:variable>
           
+          <!-- RNAV -->
+          <xsl:variable name="STAR_RNAV">
+            <xsl:choose>
+              <xsl:when test="not(aixm:RNAV)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value(aixm:RNAV)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Associated AirportHeliport -->
+          <xsl:variable name="AHP_UUID" select="replace(aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+          <xsl:variable name="AHP" select="key('AirportHeliport-by-uuid', $AHP_UUID, $doc-root)"/>
+          <xsl:variable name="AHP_baseline" select="$AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
+          <xsl:variable name="AHP_max-seq" select="max($AHP_baseline/aixm:sequenceNumber)"/>
+          <xsl:variable name="AHP_max-corr" select="max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber)"/>
+          <xsl:variable name="AHP_valid-ts" select="$AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]"/>
+          <xsl:variable name="AHP_timeslice" select="if ($AHP_valid-ts) then concat('BASELINE ', $AHP_max-seq, '.', $AHP_max-corr) else ''"/>
+          
+          <!-- Associated AirportHeliport - name -->
+          <xsl:variable name="AHP_name">
+            <xsl:choose>
+              <xsl:when test="not($AHP_valid-ts/aixm:name)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value($AHP_valid-ts/aixm:name)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
+          <!-- Associated AirportHeliport - designator -->
+          <xsl:variable name="AHP_designator">
+            <xsl:choose>
+              <xsl:when test="not($AHP_valid-ts/aixm:designator)">
+                <xsl:value-of select="''"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="fcn:insert-value($AHP_valid-ts/aixm:designator)"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          
           <!-- Designator -->
-          <xsl:variable name="designator">
+          <xsl:variable name="STAR_designator">
             <xsl:choose>
               <xsl:when test="not(aixm:designator)">
                 <xsl:value-of select="''"/>
@@ -257,32 +394,8 @@
             </xsl:choose>
           </xsl:variable>
           
-          <!-- Type -->
-          <xsl:variable name="type">
-            <xsl:choose>
-              <xsl:when test="not(aixm:type)">
-                <xsl:value-of select="''"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:value-of select="fcn:insert-value(aixm:type)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-          </xsl:variable>
-          
-          <!-- Military -->
-          <xsl:variable name="military">
-            <xsl:choose>
-              <xsl:when test="not(aixm:military)">
-                <xsl:value-of select="''"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:value-of select="fcn:insert-value(aixm:military)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-          </xsl:variable>
-          
           <!-- Annotation -->
-          <xsl:variable name="annotation">
+          <xsl:variable name="STAR_annotation">
             <xsl:choose>
               <xsl:when test="not(aixm:annotation)">
                 <xsl:value-of select="''"/>
@@ -305,7 +418,7 @@
           </xsl:variable>
           
           <!-- EAD-Audit -->
-          <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:OrganisationAuthorityExtension/ead-audit:auditInformation/ead-audit:Audit"/>
+          <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:StandardInstrumentArrivalExtension/ead-audit:auditInformation/ead-audit:Audit"/>
           
           <!-- EAD-AUDIT:CreatedBy -->
           <xsl:variable name="created-by">
@@ -392,45 +505,82 @@
           </xsl:variable>
           
           <Record>
-            <xsl:if test="string-length($identifier) gt 0">
+            <xsl:if test="string-length($STAR_identifier) gt 0">
               <FEA>
-                <IDENTIFIER><xsl:value-of select="$identifier"/></IDENTIFIER>
+                <IDENTIFIER><xsl:value-of select="$STAR_identifier"/></IDENTIFIER>
                 <LIFE>
-                  <WEF><xsl:value-of select="$lifetime-begin"/></WEF>
-                  <TIL><xsl:value-of select="$lifetime-end"/></TIL>
+                  <WEF><xsl:value-of select="$STAR_lifetime-begin"/></WEF>
+                  <TIL><xsl:value-of select="$STAR_lifetime-end"/></TIL>
                 </LIFE>
               </FEA>
             </xsl:if>
             <TS>
               <VALID>
-                <WEF><xsl:value-of select="$validity-begin"/></WEF>
-                <TIL><xsl:value-of select="$validity-end"/></TIL>
+                <WEF><xsl:value-of select="$STAR_validity-begin"/></WEF>
+                <TIL><xsl:value-of select="$STAR_validity-end"/></TIL>
               </VALID>
-              <xsl:if test="string-length($sequence-number) gt 0 or string-length($correction-number) gt 0">
+              <xsl:if test="string-length($STAR_sequence-number) gt 0 or string-length($STAR_correction-number) gt 0">
                 <NO>
-                  <xsl:if test="string-length($sequence-number) gt 0">
-                    <SEQ><xsl:value-of select="$sequence-number"/></SEQ>
+                  <xsl:if test="string-length($STAR_sequence-number) gt 0">
+                    <SEQ><xsl:value-of select="$STAR_sequence-number"/></SEQ>
                   </xsl:if>
-                  <xsl:if test="string-length($correction-number) gt 0">
-                    <CORR><xsl:value-of select="$correction-number"/></CORR>
+                  <xsl:if test="string-length($STAR_correction-number) gt 0">
+                    <CORR><xsl:value-of select="$STAR_correction-number"/></CORR>
                   </xsl:if>
                 </NO>
               </xsl:if>
             </TS>
-            <xsl:if test="string-length($name) gt 0">
-              <NAME><xsl:value-of select="$name"/></NAME>
+            <xsl:if test="string-length($STAR_comm-failure-instruction) gt 0">
+              <COMM>
+                <FAIL>
+                  <INSR><xsl:value-of select="$STAR_comm-failure-instruction"/></INSR>
+                </FAIL>
+              </COMM>
             </xsl:if>
-            <xsl:if test="string-length($designator) gt 0">
-              <DESG><xsl:value-of select="$designator"/></DESG>
+            <xsl:if test="string-length($STAR_instruction) gt 0">
+              <INSR><xsl:value-of select="$STAR_instruction"/></INSR>
             </xsl:if>
-            <xsl:if test="string-length($type) gt 0">
-              <TYPE><xsl:value-of select="$type"/></TYPE>
+            <xsl:if test="string-length($STAR_design-criteria) gt 0">
+              <DESIGN>
+                <CRITERIA><xsl:value-of select="$STAR_design-criteria"/></CRITERIA>
+              </DESIGN>
             </xsl:if>
-            <xsl:if test="string-length($military) gt 0">
-              <MILITARY><xsl:value-of select="$military"/></MILITARY>
+            <xsl:if test="string-length($STAR_coding-standard) gt 0">
+              <CODING>
+                <STD><xsl:value-of select="$STAR_coding-standard"/></STD>
+              </CODING>
             </xsl:if>
-            <xsl:if test="string-length($annotation) gt 0">
-              <annotation><xsl:value-of select="$annotation"/></annotation>
+            <xsl:if test="string-length($STAR_flight-checked) gt 0">
+              <FLT>
+                <CHECKED><xsl:value-of select="$STAR_flight-checked"/></CHECKED>
+              </FLT>
+            </xsl:if>
+            <xsl:if test="string-length($STAR_name) gt 0">
+              <NAME><xsl:value-of select="$STAR_name"/></NAME>
+            </xsl:if>
+            <xsl:if test="string-length($STAR_RNAV) gt 0">
+              <RNAV><xsl:value-of select="$STAR_RNAV"/></RNAV>
+            </xsl:if>
+            <xsl:if test="string-length($AHP_UUID) gt 0">
+              <ahp>
+                <ahp>
+                  <FEA>
+                    <IDENTIFIER><xsl:value-of select="$AHP_UUID"/></IDENTIFIER>
+                  </FEA>
+                  <xsl:if test="string-length($AHP_name) gt 0">
+                    <NAME><xsl:value-of select="$AHP_name"/></NAME>
+                  </xsl:if>
+                  <xsl:if test="string-length($AHP_designator) gt 0">
+                    <DESG><xsl:value-of select="$AHP_designator"/></DESG>
+                  </xsl:if>
+                </ahp>
+              </ahp>
+            </xsl:if>
+            <xsl:if test="string-length($STAR_annotation) gt 0">
+              <annotation><xsl:value-of select="$STAR_annotation"/></annotation>
+            </xsl:if>
+            <xsl:if test="string-length($STAR_designator) gt 0">
+              <DESG><xsl:value-of select="$STAR_designator"/></DESG>
             </xsl:if>
             <xsl:if test="not(empty($EAD-Audit))">
               <TC>
