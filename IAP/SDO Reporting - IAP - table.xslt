@@ -116,13 +116,24 @@
   </xsl:function>
   
   <xsl:function name="fcn:format-date" as="xs:string">
-    <xsl:param name="input" as="xs:string"/>
-    <xsl:variable name="date-time" select="$input"/>
+    <xsl:param name="text" as="xs:string"/>
+    <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -156,7 +167,9 @@
       <xsl:when test="$coord_type = 'DEC'">
         <!-- Decimal degrees format -->
         <xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="format-number($lat_decimal, $format-string)"/>
+        <xsl:value-of select="concat(
+          format-number(abs($lat_decimal), $format-string),
+          if ($lat_decimal ge 0) then 'N' else 'S')"/>
       </xsl:when>
       <xsl:when test="$coord_type = 'DMS'">
         <!-- Degrees Minutes Seconds format -->
@@ -177,7 +190,7 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:function>
-
+  
   <!-- Format longitude coordinate -->
   <xsl:function name="fcn:format-longitude" as="xs:string">
     <xsl:param name="lon_decimal" as="xs:double"/>
@@ -187,7 +200,9 @@
       <xsl:when test="$coord_type = 'DEC'">
         <!-- Decimal degrees format -->
         <xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="format-number($lon_decimal, $format-string)"/>
+        <xsl:value-of select="concat(
+          format-number(abs($lon_decimal), $format-string),
+          if ($lon_decimal ge 0) then 'E' else 'W')"/>
       </xsl:when>
       <xsl:when test="$coord_type = 'DMS'">
         <!-- Degrees Minutes Seconds format: dddmmss.ssP -->
@@ -225,9 +240,16 @@
     <xsl:param name="coordinates" as="xs:string"/>
     <xsl:param name="coordinates_type" as="xs:string"/>
     <xsl:param name="coordinates_decimal_number" as="xs:integer"/>
+    <xsl:variable name="lat-long-datums" select="
+      ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
+      'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
+      'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
+      'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
+      'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
+      'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
     <xsl:variable name="latitude_decimal">
       <xsl:choose>
-        <xsl:when test="$datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+        <xsl:when test="$datum = $lat-long-datums">
           <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
         </xsl:when>
         <xsl:when test="matches($datum, '^OGC:.*CRS84$')">
@@ -251,9 +273,16 @@
     <xsl:param name="coordinates" as="xs:string"/>
     <xsl:param name="coordinates_type" as="xs:string"/>
     <xsl:param name="coordinates_decimal_number" as="xs:integer"/>
+    <xsl:variable name="lat-long-datums" select="
+      ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
+      'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
+      'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
+      'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
+      'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
+      'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
     <xsl:variable name="longitude_decimal">
       <xsl:choose>
-        <xsl:when test="$datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+        <xsl:when test="$datum = $lat-long-datums">
           <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
         </xsl:when>
         <xsl:when test="matches($datum, '^OGC:.*CRS84$')">
@@ -303,6 +332,7 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
@@ -408,23 +438,17 @@
                 <!-- Sort by AirportHeliport designator (using valid timeslice), then by IAP name -->
                 <xsl:sort select="
                   let $IAP_baseline := aixm:timeSlice/aixm:InstrumentApproachProcedureTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $IAP_max-seq := max($IAP_baseline/aixm:sequenceNumber),
-                  $IAP_max-corr := max($IAP_baseline[aixm:sequenceNumber = $IAP_max-seq]/aixm:correctionNumber),
-                  $IAP_valid-ts := $IAP_baseline[aixm:sequenceNumber = $IAP_max-seq and aixm:correctionNumber = $IAP_max-corr][1],
+                  $IAP_valid-ts := fcn:get-valid-timeslice($IAP_baseline),
                   $AHP_uuid := replace($IAP_valid-ts/aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                   $AHP := key('AirportHeliport-by-uuid', $AHP_uuid, $doc-root),
                   $AHP_baseline := $AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
-                  $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
-                  $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                  $AHP_valid-ts := fcn:get-valid-timeslice($AHP_baseline)
                   return $AHP_valid-ts/aixm:designator"
                   data-type="text" order="ascending"/>
   
                 <xsl:sort select="
                   let $IAP_baseline := aixm:timeSlice/aixm:InstrumentApproachProcedureTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $IAP_max-seq := max($IAP_baseline/aixm:sequenceNumber),
-                  $IAP_max-corr := max($IAP_baseline[aixm:sequenceNumber = $IAP_max-seq]/aixm:correctionNumber),
-                  $IAP_valid-ts := $IAP_baseline[aixm:sequenceNumber = $IAP_max-seq and aixm:correctionNumber = $IAP_max-corr][1]
+                  $IAP_valid-ts := fcn:get-valid-timeslice($IAP_baseline)
                   return $IAP_valid-ts/aixm:name"
                   data-type="text" order="ascending"/>
   
@@ -436,12 +460,8 @@
   
                 <!-- Get all BASELINE time slices for this feature -->
                 <xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:InstrumentApproachProcedureTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <!-- Find the maximum sequenceNumber -->
-                <xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
-                <!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
-                <xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
                 <!-- Select the valid time slice -->
-                <xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+                <xsl:variable name="valid-timeslice" select="fcn:get-valid-timeslice($baseline-timeslices)"/>
                 
                 <xsl:for-each select="$valid-timeslice">
                   
@@ -449,10 +469,8 @@
                   <xsl:variable name="AHP_UUID" select="replace(aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="AHP" select="key('AirportHeliport-by-uuid', $AHP_UUID, $doc-root)"/>
                   <xsl:variable name="AHP_baseline" select="$AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="AHP_max-seq" select="max($AHP_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="AHP_max-corr" select="max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="AHP_valid-ts" select="$AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]"/>
-                  <xsl:variable name="AHP_timeslice" select="if ($AHP_valid-ts) then concat('BASELINE ', $AHP_max-seq, '.', $AHP_max-corr) else ''"/>
+                  <xsl:variable name="AHP_valid-ts" select="fcn:get-valid-timeslice($AHP_baseline)"/>
+                  <xsl:variable name="AHP_timeslice" select="if ($AHP_valid-ts) then fcn:format-timeslice-info($AHP_valid-ts) else ''"/>
                   
                   <!-- Associated AirportHeliport - Identification -->
                   <xsl:variable name="AHP_designator">
@@ -534,28 +552,22 @@
                   <xsl:variable name="RDN_UUID" select="replace(aixm:landing/aixm:LandingTakeoffAreaCollection/aixm:runway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="RDN" select="//aixm:RunwayDirection[gml:identifier = $RDN_UUID]"/>
                   <xsl:variable name="RDN_baseline" select="$RDN/aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="RDN_max-seq" select="max($RDN_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="RDN_max-corr" select="max($RDN_baseline[aixm:sequenceNumber = $RDN_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="RDN_valid-ts" select="$RDN_baseline[aixm:sequenceNumber = $RDN_max-seq and aixm:correctionNumber = $RDN_max-corr][1]"/>
-                  <xsl:variable name="RDN_ts" select="if ($RDN_valid-ts) then concat('BASELINE ', $RDN_max-seq, '.', $RDN_max-corr) else ''"/>
+                  <xsl:variable name="RDN_valid-ts" select="fcn:get-valid-timeslice($RDN_baseline)"/>
+                  <xsl:variable name="RDN_ts" select="if ($RDN_valid-ts) then fcn:format-timeslice-info($RDN_valid-ts) else ''"/>
                   
                   <!-- Served Runway -->
                   <xsl:variable name="RWY_UUID" select="replace($RDN_valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="RWY" select="//aixm:Runway[gml:identifier = $RWY_UUID]"/>
                   <xsl:variable name="RWY_baseline" select="$RWY/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE' and aixm:type = 'RWY']"/>
-                  <xsl:variable name="RWY_max-seq" select="max($RWY_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="RWY_max-corr" select="max($RWY_baseline[aixm:sequenceNumber = $RWY_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="RWY_valid-ts" select="$RWY_baseline[aixm:sequenceNumber = $RWY_max-seq and aixm:correctionNumber = $RWY_max-corr][1]"/>
-                  <xsl:variable name="RWY_ts" select="if ($RWY_valid-ts) then concat('BASELINE ', $RWY_max-seq, '.', $RWY_max-corr) else ''"/>
+                  <xsl:variable name="RWY_valid-ts" select="fcn:get-valid-timeslice($RWY_baseline)"/>
+                  <xsl:variable name="RWY_ts" select="if ($RWY_valid-ts) then fcn:format-timeslice-info($RWY_valid-ts) else ''"/>
                   
                   <!-- Served FATO -->
                   <xsl:variable name="FATO_UUID" select="replace($RDN_valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="FATO" select="//aixm:Runway[gml:identifier = $FATO_UUID]"/>
                   <xsl:variable name="FATO_baseline" select="$FATO/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE' and aixm:type = 'FATO']"/>
-                  <xsl:variable name="FATO_max-seq" select="max($FATO_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="FATO_max-corr" select="max($FATO_baseline[aixm:sequenceNumber = $FATO_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="FATO_valid-ts" select="$FATO_baseline[aixm:sequenceNumber = $FATO_max-seq and aixm:correctionNumber = $FATO_max-corr][1]"/>
-                  <xsl:variable name="FATO_ts" select="if ($FATO_valid-ts) then concat('BASELINE ', $FATO_max-seq, '.', $FATO_max-corr) else ''"/>
+                  <xsl:variable name="FATO_valid-ts" select="fcn:get-valid-timeslice($FATO_baseline)"/>
+                  <xsl:variable name="FATO_ts" select="if ($FATO_valid-ts) then fcn:format-timeslice-info($FATO_valid-ts) else ''"/>
                   
                   <!-- Served FATO direction - TLOF Designator -->
                   <xsl:variable name="FATO_TLOF_designator">
@@ -563,9 +575,7 @@
                       <!-- Find the TLOF that references the FATO -->
                       <xsl:variable name="TLOF_for_FATO" select="//aixm:TouchDownLiftOff[aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:approachTakeOffArea/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $FATO_UUID]]"/>
                       <xsl:variable name="TLOF_for_FATO_baseline" select="$TLOF_for_FATO/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                      <xsl:variable name="TLOF_for_FATO_max-seq" select="max($TLOF_for_FATO_baseline/aixm:sequenceNumber)"/>
-                      <xsl:variable name="TLOF_for_FATO_max-corr" select="max($TLOF_for_FATO_baseline[aixm:sequenceNumber = $TLOF_for_FATO_max-seq]/aixm:correctionNumber)"/>
-                      <xsl:variable name="TLOF_for_FATO_valid-ts" select="$TLOF_for_FATO_baseline[aixm:sequenceNumber = $TLOF_for_FATO_max-seq and aixm:correctionNumber = $TLOF_for_FATO_max-corr][1]"/>
+                      <xsl:variable name="TLOF_for_FATO_valid-ts" select="fcn:get-valid-timeslice($TLOF_for_FATO_baseline)"/>
                       <xsl:if test="not(empty($TLOF_for_FATO_valid-ts))">
                         <xsl:choose>
                           <xsl:when test="not($TLOF_for_FATO_valid-ts/aixm:designator)">
@@ -667,10 +677,8 @@
                   <xsl:variable name="TLOF_UUID" select="replace(aixm:landing/aixm:LandingTakeoffAreaCollection/aixm:TLOF/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="TLOF" select="//aixm:TouchDownLiftOff[gml:identifier = $TLOF_UUID]"/>
                   <xsl:variable name="TLOF_baseline" select="$TLOF/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="TLOF_max-seq" select="max($TLOF_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="TLOF_max-corr" select="max($TLOF_baseline[aixm:sequenceNumber = $TLOF_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="TLOF_valid-ts" select="$TLOF_baseline[aixm:sequenceNumber = $TLOF_max-seq and aixm:correctionNumber = $TLOF_max-corr][1]"/>
-                  <xsl:variable name="TLOF_ts" select="if ($TLOF_valid-ts) then concat('BASELINE ', $TLOF_max-seq, '.', $TLOF_max-corr) else ''"/>
+                  <xsl:variable name="TLOF_valid-ts" select="fcn:get-valid-timeslice($TLOF_baseline)"/>
+                  <xsl:variable name="TLOF_ts" select="if ($TLOF_valid-ts) then fcn:format-timeslice-info($TLOF_valid-ts) else ''"/>
                   
                   <!-- Served TLOF - Designator -->
                   <xsl:variable name="TLOF_designator">
@@ -695,16 +703,14 @@
                   <xsl:variable name="MSA_UUID" select="replace(aixm:safeAltitude/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="MSA" select="//aixm:SafeAltitudeArea[gml:identifier = $MSA_UUID]"/>
                   <xsl:variable name="MSA_baseline" select="$MSA/aixm:timeSlice/aixm:SafeAltitudeAreaTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="MSA_max-seq" select="max($MSA_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="MSA_max-corr" select="max($MSA_baseline[aixm:sequenceNumber = $MSA_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="MSA_valid-ts" select="$MSA_baseline[aixm:sequenceNumber = $MSA_max-seq and aixm:correctionNumber = $MSA_max-corr][1]"/>
-                  <xsl:variable name="MSA_timeslice" select="if ($MSA_valid-ts) then concat('BASELINE ', $MSA_max-seq, '.', $MSA_max-corr) else ''"/>
+                  <xsl:variable name="MSA_valid-ts" select="fcn:get-valid-timeslice($MSA_baseline)"/>
+                  <xsl:variable name="MSA_timeslice" select="if ($MSA_valid-ts) then fcn:format-timeslice-info($MSA_valid-ts) else ''"/>
                   
                   <!-- NDB - not a significant point (providesNavigableLocation='NO') -->
                   <xsl:variable name="NDB_navaid_baseline" select="//aixm:Navaid[gml:identifier = replace($MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href, '^(urn:uuid:|#uuid\.)', '') and aixm:timeSlice[1]/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']/aixm:type = ('NDB','NDB_DME','NDB_MKR')]/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
                   <xsl:variable name="NDB_navaid_max-seq" select="max($NDB_navaid_baseline/aixm:sequenceNumber)"/>
                   <xsl:variable name="NDB_navaid_max-corr" select="max($NDB_navaid_baseline[aixm:sequenceNumber = $NDB_navaid_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="NDB_navaid_valid-ts" select="$NDB_navaid_baseline[aixm:sequenceNumber = $NDB_navaid_max-seq and aixm:correctionNumber = $NDB_navaid_max-corr][1]"/>
+                  <xsl:variable name="NDB_navaid_valid-ts" select="fcn:get-valid-timeslice($NDB_navaid_baseline)"/>
                   <xsl:variable name="NDB_provides_navigable_location">
                     <xsl:if test="not($NDB_navaid_valid-ts/aixm:navaidEquipment/aixm:NavaidComponent[aixm:providesNavigableLocation != 'NO'])">
                       <xsl:value-of select="'NO'"/>
@@ -713,7 +719,7 @@
                   <xsl:variable name="NDB_navaid_timeslice">
                     <xsl:choose>
                       <xsl:when test="string-length($NDB_provides_navigable_location) gt 0 and $NDB_provides_navigable_location = 'NO' and not(empty($NDB_navaid_max-seq)) and not(empty($NDB_navaid_max-corr))">
-                        <xsl:value-of select="concat('BASELINE ', $NDB_navaid_max-seq, '.', $NDB_navaid_max-corr)"/>
+                        <xsl:value-of select="fcn:format-timeslice-info($NDB_navaid_valid-ts)"/>
                       </xsl:when>
                       <xsl:otherwise>
                         <xsl:value-of select="''"/>
@@ -758,7 +764,7 @@
                   <xsl:variable name="VOR_navaid_baseline" select="//aixm:Navaid[gml:identifier = replace($MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href, '^(urn:uuid:|#uuid\.)', '') and aixm:timeSlice[1]/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']/aixm:type = ('VOR','VOR_DME','VORTAC')]/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
                   <xsl:variable name="VOR_navaid_max-seq" select="max($VOR_navaid_baseline/aixm:sequenceNumber)"/>
                   <xsl:variable name="VOR_navaid_max-corr" select="max($VOR_navaid_baseline[aixm:sequenceNumber = $VOR_navaid_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="VOR_navaid_valid-ts" select="$VOR_navaid_baseline[aixm:sequenceNumber = $VOR_navaid_max-seq and aixm:correctionNumber = $VOR_navaid_max-corr][1]"/>
+                  <xsl:variable name="VOR_navaid_valid-ts" select="fcn:get-valid-timeslice($VOR_navaid_baseline)"/>
                   <xsl:variable name="VOR_provides_navigable_location">
                     <xsl:if test="not($VOR_navaid_valid-ts/aixm:navaidEquipment/aixm:NavaidComponent[aixm:providesNavigableLocation != 'NO'])">
                       <xsl:value-of select="'NO'"/>
@@ -766,7 +772,7 @@
                   </xsl:variable>
                   <xsl:variable name="VOR_navaid_timeslice">
                     <xsl:if test="string-length($VOR_provides_navigable_location) gt 0 and $VOR_provides_navigable_location = 'NO' and not(empty($VOR_navaid_max-seq)) and not(empty($VOR_navaid_max-corr))">
-                      <xsl:value-of select="concat('BASELINE ', $VOR_navaid_max-seq, '.', $VOR_navaid_max-corr)"/>
+                      <xsl:value-of select="fcn:format-timeslice-info($VOR_navaid_valid-ts)"/>
                     </xsl:if>
                   </xsl:variable>
                   
@@ -809,10 +815,8 @@
                     if ($MSA_valid-ts/aixm:centrePoint_airportReferencePoint/@xlink:href) then
                       let $AHP_UUID := replace($MSA_valid-ts/aixm:centrePoint_airportReferencePoint/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                         $AHP := //aixm:AirportHeliport[gml:identifier = $AHP_UUID],
-                        $AHP_baseline := $AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
-                        $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
-                        $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber)
-                      return $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                        $AHP_baseline := $AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']
+                      return fcn:get-valid-timeslice($AHP_baseline)
                     else ()
                   "/>
                   
@@ -820,10 +824,8 @@
                     if ($MSA_valid-ts/aixm:centrePoint_aimingPoint/@xlink:href) then
                       let $TLOF_UUID := replace($MSA_valid-ts/aixm:centrePoint_aimingPoint/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                         $TLOF := //aixm:TouchDownLiftOff[gml:identifier = $TLOF_UUID],
-                        $TLOF_baseline := $TLOF/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE'],
-                        $TLOF_max-seq := max($TLOF_baseline/aixm:sequenceNumber),
-                        $TLOF_max-corr := max($TLOF_baseline[aixm:sequenceNumber = $TLOF_max-seq]/aixm:correctionNumber)
-                      return $TLOF_baseline[aixm:sequenceNumber = $TLOF_max-seq and aixm:correctionNumber = $TLOF_max-corr][1]
+                        $TLOF_baseline := $TLOF/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']
+                      return fcn:get-valid-timeslice($TLOF_baseline)
                     else ()
                   "/>
                   
@@ -831,10 +833,8 @@
                     if ($MSA_valid-ts/aixm:centrePoint_runwayPoint/@xlink:href) then
                       let $RCP_UUID := replace($MSA_valid-ts/aixm:centrePoint_runwayPoint/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                         $RCP := //aixm:RunwayCentrelinePoint[gml:identifier = $RCP_UUID],
-                        $RCP_baseline := $RCP/aixm:timeSlice/aixm:RunwayCentrelinePointTimeSlice[aixm:interpretation = 'BASELINE'],
-                        $RCP_max-seq := max($RCP_baseline/aixm:sequenceNumber),
-                        $RCP_max-corr := max($RCP_baseline[aixm:sequenceNumber = $RCP_max-seq]/aixm:correctionNumber)
-                      return $RCP_baseline[aixm:sequenceNumber = $RCP_max-seq and aixm:correctionNumber = $RCP_max-corr][1]
+                        $RCP_baseline := $RCP/aixm:timeSlice/aixm:RunwayCentrelinePointTimeSlice[aixm:interpretation = 'BASELINE']
+                      return fcn:get-valid-timeslice($RCP_baseline)
                     else ()
                   "/>
                   
@@ -842,10 +842,8 @@
                     if ($MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href) then
                       let $Navaid_UUID := replace($MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                         $Navaid := //aixm:Navaid[gml:identifier = $Navaid_UUID],
-                        $Navaid_baseline := $Navaid/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE'],
-                        $Navaid_max-seq := max($Navaid_baseline/aixm:sequenceNumber),
-                        $Navaid_max-corr := max($Navaid_baseline[aixm:sequenceNumber = $Navaid_max-seq]/aixm:correctionNumber)
-                      return $Navaid_baseline[aixm:sequenceNumber = $Navaid_max-seq and aixm:correctionNumber = $Navaid_max-corr][1]
+                        $Navaid_baseline := $Navaid/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']
+                      return fcn:get-valid-timeslice($Navaid_baseline)
                     else ()
                   "/>
                   
@@ -853,10 +851,8 @@
                     if ($MSA_valid-ts/aixm:centrePoint_fixDesignatedPoint/@xlink:href) then
                       let $DPN_UUID := replace($MSA_valid-ts/aixm:centrePoint_fixDesignatedPoint/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                         $DPN := //aixm:DesignatedPoint[gml:identifier = $DPN_UUID],
-                        $DPN_baseline := $DPN/aixm:timeSlice/aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE'],
-                        $DPN_max-seq := max($DPN_baseline/aixm:sequenceNumber),
-                        $DPN_max-corr := max($DPN_baseline[aixm:sequenceNumber = $DPN_max-seq]/aixm:correctionNumber)
-                      return $DPN_baseline[aixm:sequenceNumber = $DPN_max-seq and aixm:correctionNumber = $DPN_max-corr][1]
+                        $DPN_baseline := $DPN/aixm:timeSlice/aixm:DesignatedPointTimeSlice[aixm:interpretation = 'BASELINE']
+                      return fcn:get-valid-timeslice($DPN_baseline)
                     else ()
                   "/>
   
@@ -1033,13 +1029,13 @@
                   <xsl:variable name="MSA_significant_point_timeslice">
                     <xsl:choose>
                       <xsl:when test="$MSA_valid-ts/aixm:centrePoint_airportReferencePoint/@xlink:href">
-                        <xsl:value-of select="if ($AHP_valid-ts) then concat('BASELINE ', max($AHP_valid-ts/aixm:sequenceNumber), '.', max($AHP_valid-ts/aixm:correctionNumber)) else ''"/>
+                        <xsl:value-of select="if ($AHP_valid-ts) then fcn:format-timeslice-info($AHP_valid-ts) else ''"/>
                       </xsl:when>
                       <xsl:when test="$MSA_valid-ts/aixm:centrePoint_aimingPoint/@xlink:href">
-                        <xsl:value-of select="if ($TLOF_valid-ts) then concat('BASELINE ', max($TLOF_valid-ts/aixm:sequenceNumber), '.', max($TLOF_valid-ts/aixm:correctionNumber)) else ''"/>
+                        <xsl:value-of select="if ($TLOF_valid-ts) then fcn:format-timeslice-info($TLOF_valid-ts) else ''"/>
                       </xsl:when>
                       <xsl:when test="$MSA_valid-ts/aixm:centrePoint_runwayPoint/@xlink:href">
-                        <xsl:value-of select="if ($RCP_valid-ts) then concat('BASELINE ', max($RCP_valid-ts/aixm:sequenceNumber), '.', max($RCP_valid-ts/aixm:correctionNumber)) else ''"/>
+                        <xsl:value-of select="if ($RCP_valid-ts) then fcn:format-timeslice-info($RCP_valid-ts) else ''"/>
                       </xsl:when>
                       <xsl:when test="$MSA_valid-ts/aixm:centrePoint_position">
                         <xsl:value-of select="''"/>
@@ -1053,11 +1049,11 @@
                           </xsl:for-each>
                         </xsl:variable>
                         <xsl:if test="$provides_navigable_location = 'YES'">
-                          <xsl:value-of select="if ($Navaid_valid-ts) then concat('BASELINE ', max($Navaid_valid-ts/aixm:sequenceNumber), '.', max($Navaid_valid-ts/aixm:correctionNumber)) else ''"/>
+                          <xsl:value-of select="if ($Navaid_valid-ts) then fcn:format-timeslice-info($Navaid_valid-ts) else ''"/>
                         </xsl:if>
                       </xsl:when>
                       <xsl:when test="$MSA_valid-ts/aixm:centrePoint_fixDesignatedPoint/@xlink:href">
-                        <xsl:value-of select="if ($DPN_valid-ts) then concat('BASELINE ', max($DPN_valid-ts/aixm:sequenceNumber), '.', max($DPN_valid-ts/aixm:correctionNumber)) else ''"/>
+                        <xsl:value-of select="if ($DPN_valid-ts) then fcn:format-timeslice-info($DPN_valid-ts) else ''"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
@@ -1190,7 +1186,7 @@
                   <xsl:variable name="IAP_UUID" select="../../gml:identifier"/>
                   
                   <!-- Valid TimeSlice -->
-                  <xsl:variable name="IAP_timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
+                  <xsl:variable name="IAP_timeslice" select="fcn:format-timeslice-info(.)"/>
                   
                   <!-- Originator -->
                   <xsl:variable name="originator" select="aixm:extension/ead-audit:InstrumentApproachProcedureExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>

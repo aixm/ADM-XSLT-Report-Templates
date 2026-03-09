@@ -121,13 +121,24 @@
   </xsl:function>
   
   <xsl:function name="fcn:format-date" as="xs:string">
-    <xsl:param name="input" as="xs:string"/>
-    <xsl:variable name="date-time" select="$input"/>
+    <xsl:param name="text" as="xs:string"/>
+    <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -161,7 +172,9 @@
       <xsl:when test="$coord_type = 'DEC'">
         <!-- Decimal degrees format -->
         <xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="format-number($lat_decimal, $format-string)"/>
+        <xsl:value-of select="concat(
+          format-number(abs($lat_decimal), $format-string),
+          if ($lat_decimal ge 0) then 'N' else 'S')"/>
       </xsl:when>
       <xsl:when test="$coord_type = 'DMS'">
         <!-- Degrees Minutes Seconds format -->
@@ -192,7 +205,9 @@
       <xsl:when test="$coord_type = 'DEC'">
         <!-- Decimal degrees format -->
         <xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="format-number($lon_decimal, $format-string)"/>
+        <xsl:value-of select="concat(
+          format-number(abs($lon_decimal), $format-string),
+          if ($lon_decimal ge 0) then 'E' else 'W')"/>
       </xsl:when>
       <xsl:when test="$coord_type = 'DMS'">
         <!-- Degrees Minutes Seconds format: dddmmss.ssP -->
@@ -843,6 +858,7 @@
                 'beginPosition': string($latest-ts/gml:validTime/gml:TimePeriod/gml:beginPosition),
                 'endPosition': string($latest-ts/gml:validTime/gml:TimePeriod/gml:endPosition),
                 'endPositionIndeterminate': string($latest-ts/gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition),
+                'valid-ts': fcn:format-timeslice-info($latest-ts),
                 'geometries': $base-coords,
                 'subtr-geometries': $subtr-coords,
                 'inters-geometries': $inters-coords
@@ -957,7 +973,8 @@
               'correctionNumber': string($parent-ts/aixm:correctionNumber),
               'beginPosition': string($parent-ts/gml:validTime/gml:TimePeriod/gml:beginPosition),
               'endPosition': string($parent-ts/gml:validTime/gml:TimePeriod/gml:endPosition),
-              'endPositionIndeterminate': string($parent-ts/gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition)
+              'endPositionIndeterminate': string($parent-ts/gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition),
+              'valid-ts': fcn:format-timeslice-info($parent-ts)
             }"/>
           </xsl:if>
         </xsl:when>
@@ -969,7 +986,8 @@
             'correctionNumber': map:get($fir-data, 'correctionNumber'),
             'beginPosition': map:get($fir-data, 'beginPosition'),
             'endPosition': map:get($fir-data, 'endPosition'),
-            'endPositionIndeterminate': map:get($fir-data, 'endPositionIndeterminate')
+            'endPositionIndeterminate': map:get($fir-data, 'endPositionIndeterminate'),
+            'valid-ts': map:get($fir-data, 'valid-ts')
           }"/>
         </xsl:when>
       </xsl:choose>
@@ -1017,6 +1035,7 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
@@ -1074,21 +1093,21 @@
                 <td><strong>Identification</strong></td>
                 <td><strong>Latitude</strong></td>
                 <td><strong>Longitude</strong></td>
-                <td><strong>TLOF centre<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>Aerodrome / Heliport - Identification</strong></td>
-                <td><strong>TLOF centre<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>Aerodrome / Heliport - ICAO Code</strong></td>
+                <td><strong>TLOF centre Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Identification</strong></td>
+                <td><strong>TLOF centre Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- ICAO Code</strong></td>
                 <td><strong>TLOF centre<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Designator</strong></td>
                 <td><strong>Associated Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Identification</strong></td>
                 <td><strong>Associated Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- ICAO Code</strong></td>
                 <td><strong>ARP Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Latitude</strong></td>
                 <td><strong>ARP Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Longitude</strong></td>
-                <td><strong>RWY centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>Aerodrome / Heliport - Identification</strong></td>
-                <td><strong>RWY centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>Aerodrome / Heliport - ICAO Code</strong></td>
+                <td><strong>RWY centre line Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Identification</strong></td>
+                <td><strong>RWY centre line Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- ICAO Code</strong></td>
                 <td><strong>RWY centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Designator</strong></td>
                 <td><strong>RWY centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Latitude</strong></td>
                 <td><strong>RWY centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Longitude</strong></td>
-                <td><strong>FATO centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>Aerodrome / Heliport - Identification</strong></td>
-                <td><strong>FATO centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>Aerodrome / Heliport - ICAO Code</strong></td>
-                <td><strong>FATO centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>TLOF - Designator</strong></td>
+                <td><strong>FATO centre line Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Identification</strong></td>
+                <td><strong>FATO centre line Aerodrome / Heliport<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- ICAO Code</strong></td>
+                <td><strong>FATO centre line TLOF<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Designator</strong></td>
                 <td><strong>Final approach and take-off area [FATO]<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Designator</strong></td>
                 <td><strong>FATO centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Latitude</strong></td>
                 <td><strong>FATO centre line<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Longitude</strong></td>
@@ -1149,15 +1168,21 @@
                   <xsl:variable name="coordinates_decimal_number" select="2"/>
                   
                   <!-- Datum -->
-                  <xsl:variable name="DPN_datum">
-                    <xsl:value-of select="replace(replace(aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-                  </xsl:variable>
+                  <xsl:variable name="DPN_datum" select="replace(replace(aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  
+                  <xsl:variable name="lat-long-datums" select="
+                    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
+                    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
+                    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
+                    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
+                    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
+                    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
                   
                   <!-- Extract coordinates depending on the coordinate system -->
                   <xsl:variable name="DPN_coordinates" select="aixm:location/aixm:Point/gml:pos"/>
                   <xsl:variable name="DPN_latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$DPN_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-before($DPN_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
@@ -1167,7 +1192,7 @@
                   </xsl:variable>
                   <xsl:variable name="DPN_longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$DPN_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$DPN_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-after($DPN_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
@@ -1260,14 +1285,12 @@
                     </xsl:choose>
                   </xsl:variable>
                   <!-- AHP Datum -->
-                  <xsl:variable name="AHP_datum">
-                    <xsl:value-of select="replace(replace($DPN-AHP-valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-                  </xsl:variable>
+                  <xsl:variable name="AHP_datum" select="replace(replace($DPN-AHP-valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <!-- AHP coordinates -->
                   <xsl:variable name="DPN_AHP_coordinates" select="$DPN-AHP-valid-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="DPN_AHP_latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$AHP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$AHP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-before($DPN_AHP_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($AHP_datum, '^OGC:.*CRS84$')">
@@ -1277,7 +1300,7 @@
                   </xsl:variable>
                   <xsl:variable name="DPN_AHP_longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$AHP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$AHP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-after($DPN_AHP_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($AHP_datum, '^OGC:.*CRS84$')">
@@ -1355,14 +1378,12 @@
                     </xsl:if>
                   </xsl:variable>
                   <!-- RWY RCP Datum -->
-                  <xsl:variable name="RWY_RCP_datum">
-                    <xsl:value-of select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-                  </xsl:variable>
+                  <xsl:variable name="RWY_RCP_datum" select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <!-- RWY RCP coordinates -->
                   <xsl:variable name="RWY_RCP_coordinates" select="$RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="RWY_RCP_latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$RWY_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$RWY_RCP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-before($RWY_RCP_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($RWY_RCP_datum, '^OGC:.*CRS84$')">
@@ -1372,7 +1393,7 @@
                   </xsl:variable>
                   <xsl:variable name="RWY_RCP_longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$RWY_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$RWY_RCP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-after($RWY_RCP_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($RWY_RCP_datum, '^OGC:.*CRS84$')">
@@ -1448,14 +1469,12 @@
                     </xsl:if>
                   </xsl:variable>
                   <!-- FATO RCP Datum -->
-                  <xsl:variable name="FATO_RCP_datum">
-                    <xsl:value-of select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-                  </xsl:variable>
+                  <xsl:variable name="FATO_RCP_datum" select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <!-- FATO RCP coordinates -->
                   <xsl:variable name="FATO_RCP_coordinates" select="$RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="FATO_RCP_latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$FATO_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$FATO_RCP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-before($FATO_RCP_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($FATO_RCP_datum, '^OGC:.*CRS84$')">
@@ -1465,7 +1484,7 @@
                   </xsl:variable>
                   <xsl:variable name="FATO_RCP_longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$FATO_RCP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$FATO_RCP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-after($FATO_RCP_coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($FATO_RCP_datum, '^OGC:.*CRS84$')">
@@ -1497,9 +1516,7 @@
                   </xsl:variable>
                   
                   <!-- Unit of measurement [geographical accuracy] -->
-                  <xsl:variable name="DPN_geo_acc_uom">
-                    <xsl:value-of select="aixm:location/aixm:Point/aixm:horizontalAccuracy/@uom"/>
-                  </xsl:variable>
+                  <xsl:variable name="DPN_geo_acc_uom" select="aixm:location/aixm:Point/aixm:horizontalAccuracy/@uom"/>
                   
                   <!-- Cyclic redundancy check -->
                   <xsl:variable name="DPN_CRC">
@@ -1567,14 +1584,10 @@
                   </xsl:variable>
                   
                   <!-- Internal UID (master) -->
-                  <xsl:variable name="DPN_UUID">
-                    <xsl:value-of select="../../gml:identifier"/>
-                  </xsl:variable>
+                  <xsl:variable name="DPN_UUID" select="../../gml:identifier"/>
                   
                   <!-- DesignatedPoint - Valid TimeSlice -->
-                  <xsl:variable name="DPN_timeslice">
-                    <xsl:value-of select="fcn:format-timeslice-info(.)"/>
-                  </xsl:variable>
+                  <xsl:variable name="DPN_timeslice" select="fcn:format-timeslice-info(.)"/>
                   
                   <!-- FIR - Coded identifier -->
                   <xsl:variable name="FIR_info" as="map(xs:string, xs:string)?">
@@ -1590,12 +1603,10 @@
                   <xsl:variable name="FIR_designator" select="if (exists($FIR_info) and map:contains($FIR_info, 'designator')) then string($FIR_info?designator) else ''" as="xs:string"/>
                   
                   <!-- FIR - Valid TimeSlice -->
-                  <xsl:variable name="FIR_timeslice" select="if (exists($FIR_info) and map:contains($FIR_info, 'sequenceNumber')) then concat('BASELINE ', $FIR_info?sequenceNumber, '.', $FIR_info?correctionNumber) else ''" as="xs:string"/>
+                  <xsl:variable name="FIR_timeslice" select="if (exists($FIR_info) and map:contains($FIR_info, 'valid-ts')) then $FIR_info?valid-ts else ''" as="xs:string"/>
                   
                   <!-- Originator -->
-                  <xsl:variable name="originator">
-                    <xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
-                  </xsl:variable>
+                  <xsl:variable name="originator" select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
                   
                   <tr style="white-space:nowrap;">
                     <td><xsl:value-of select="if (string-length($DPN_designator) gt 0) then $DPN_designator else '&#160;'"/></td>

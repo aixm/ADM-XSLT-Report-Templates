@@ -61,9 +61,20 @@
     <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -1248,12 +1259,8 @@
   
                 <!-- Get all BASELINE timeslices -->
                 <xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <!-- Find the maximum sequenceNumber -->
-                <xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
-                <!-- Get timeslices with the maximum sequenceNumber, then find max correctionNumber -->
-                <xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
                 <!-- Select the valid timeslice -->
-                <xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+                <xsl:variable name="valid-timeslice" select="fcn:get-valid-timeslice($baseline-timeslices)"/>
   
                 <xsl:for-each select="$valid-timeslice">
   
@@ -1313,25 +1320,21 @@
                   <xsl:variable name="airport-uuid" select="../../gml:identifier"/>
                   
                   <!-- Valid TimeSlice -->
-                  <xsl:variable name="airport_timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
-  
+                  <xsl:variable name="airport_timeslice" select="fcn:format-timeslice-info(.)"/>
+                  
                   <!-- Effective date -->
-                  <xsl:variable name="effective-day" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 9, 2)"/>
-                  <xsl:variable name="effective-month" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 6, 2)"/>
-                  <xsl:variable name="effective-month-text" select="if($effective-month = '01') then 'JAN' else if ($effective-month = '02') then 'FEB' else if ($effective-month = '03') then 'MAR' else
-                    if ($effective-month = '04') then 'APR' else if ($effective-month = '05') then 'MAY' else if ($effective-month = '06') then 'JUN' else if ($effective-month = '07') then 'JUL' else
-                    if ($effective-month = '08') then 'AUG' else if ($effective-month = '09') then 'SEP' else if ($effective-month = '10') then 'OCT' else if ($effective-month = '11') then 'NOV' else 'DEC'"/>
-                  <xsl:variable name="effective-year" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 1, 4)"/>
-                  <xsl:variable name="effective-date" select="concat($effective-day, '-', $effective-month-text, '-', $effective-year)"/>
-  
+                  <xsl:variable name="effective-date">
+                    <xsl:if test="gml:validTime/gml:TimePeriod/gml:beginPosition">
+                      <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:beginPosition)"/>
+                    </xsl:if>
+                  </xsl:variable>
+                  
                   <!-- Committed on -->
-                  <xsl:variable name="commit-day" select="substring(aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:creationDate, 9, 2)"/>
-                  <xsl:variable name="commit-month" select="substring(aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:creationDate, 6, 2)"/>
-                  <xsl:variable name="commit-month-text" select="if($commit-month = '01') then 'JAN' else if ($commit-month = '02') then 'FEB' else if ($commit-month = '03') then 'MAR' else
-                    if ($commit-month = '04') then 'APR' else if ($commit-month = '05') then 'MAY' else if ($commit-month = '06') then 'JUN' else if ($commit-month = '07') then 'JUL' else
-                    if ($commit-month = '08') then 'AUG' else if ($commit-month = '09') then 'SEP' else if ($commit-month = '10') then 'OCT' else if ($commit-month = '11') then 'NOV' else if ($commit-month = '12') then 'DEC' else ''"/>
-                  <xsl:variable name="commit-year" select="substring(aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:creationDate, 1, 4)"/>
-                  <xsl:variable name="commit-date" select="concat($commit-day, '-', $commit-month-text, '-', $commit-year)"/>
+                  <xsl:variable name="commit-date">
+                    <xsl:if test="aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:creationDate">
+                      <xsl:value-of select="fcn:format-date(aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:creationDate)"/>
+                    </xsl:if>
+                  </xsl:variable>
   
                   <!-- Originator -->
                   <xsl:variable name="originator" select="if (aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg) then aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg else ''"/>

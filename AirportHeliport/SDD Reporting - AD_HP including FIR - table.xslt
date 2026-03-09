@@ -81,13 +81,24 @@
   </xsl:function>
   
   <xsl:function name="fcn:format-date" as="xs:string">
-    <xsl:param name="input" as="xs:string"/>
-    <xsl:variable name="date-time" select="$input"/>
+    <xsl:param name="text" as="xs:string"/>
+    <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -918,6 +929,7 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
@@ -1046,25 +1058,19 @@
                 <!-- Sort by AirportHeliport designator (ascending), then by AirportHeliport sequenceNumber (descending), then by AirportHeliport correctionNumber (descending) -->
                 <xsl:sort select="
                   let $AHP_baseline := aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
-                  $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
-                  $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                  $AHP_valid-ts := fcn:get-valid-timeslice($AHP_baseline)
                   return $AHP_valid-ts/aixm:designator"
                   data-type="text" order="ascending"/>
   
                 <xsl:sort select="
                   let $AHP_baseline := aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
-                  $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
-                  $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                  $AHP_valid-ts := fcn:get-valid-timeslice($AHP_baseline)
                   return $AHP_valid-ts/aixm:sequenceNumber"
                   data-type="number" order="descending"/>
   
                 <xsl:sort select="
                   let $AHP_baseline := aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
-                  $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
-                  $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                  $AHP_valid-ts := fcn:get-valid-timeslice($AHP_baseline)
                   return $AHP_valid-ts/aixm:correctionNumber"
                   data-type="number" order="descending"/>
   
@@ -1521,6 +1527,13 @@
                   <!-- ===== ARP ===== -->
                   <!-- Datum -->
                   <xsl:variable name="AHP_ARP-datum" select="replace(replace(aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="lat-long-datums" select="
+                    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
+                    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
+                    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
+                    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
+                    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
+                    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
                   <!-- Latitude -->
                   <xsl:variable name="AHP_ARP-lat">
                     <xsl:choose>
@@ -1533,7 +1546,7 @@
                       <xsl:otherwise>
                         <xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                         <xsl:choose>
-                          <xsl:when test="$AHP_ARP-datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                          <xsl:when test="$AHP_ARP-datum = $lat-long-datums">
                             <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
                           </xsl:when>
                           <xsl:when test="matches($AHP_ARP-datum, '^OGC:.*CRS84$')">
@@ -1555,7 +1568,7 @@
                       <xsl:otherwise>
                         <xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                         <xsl:choose>
-                          <xsl:when test="$AHP_ARP-datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                          <xsl:when test="$AHP_ARP-datum = $lat-long-datums">
                             <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
                           </xsl:when>
                           <xsl:when test="matches($AHP_ARP-datum, '^OGC:.*CRS84$')">

@@ -123,7 +123,20 @@ Copyright (c) 2025, EUROCONTROL
     <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else    if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else    if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -137,7 +150,9 @@ Copyright (c) 2025, EUROCONTROL
       <xsl:when test="$coord_type = 'DEC'">
         <!-- Decimal degrees format -->
         <xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="format-number($lat_decimal, $format-string)"/>
+        <xsl:value-of select="concat(
+          format-number(abs($lat_decimal), $format-string),
+          if ($lat_decimal ge 0) then 'N' else 'S')"/>
       </xsl:when>
       <xsl:when test="$coord_type = 'DMS'">
         <!-- Degrees Minutes Seconds format -->
@@ -147,14 +162,18 @@ Copyright (c) 2025, EUROCONTROL
         <xsl:variable name="minutes" select="floor($minutes_decimal)"/>
         <xsl:variable name="seconds" select="($minutes_decimal - $minutes) * 60"/>
         <xsl:variable name="format-string" select="concat('00.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="concat(format-number($degrees, '00'), format-number($minutes, '00'), format-number($seconds, $format-string), if ($lat_decimal ge 0) then 'N' else 'S')"/>
+        <xsl:value-of select="concat(
+          format-number($degrees, '00'),
+          format-number($minutes, '00'),
+          format-number($seconds, $format-string),
+          if ($lat_decimal ge 0) then 'N' else 'S')"/>
       </xsl:when>
       <xsl:otherwise>
         <xsl:value-of select="string($lat_decimal)"/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:function>
-
+  
   <!-- Format longitude coordinate -->
   <xsl:function name="fcn:format-longitude" as="xs:string">
     <xsl:param name="lon_decimal" as="xs:double"/>
@@ -164,7 +183,9 @@ Copyright (c) 2025, EUROCONTROL
       <xsl:when test="$coord_type = 'DEC'">
         <!-- Decimal degrees format -->
         <xsl:variable name="format-string" select="concat('0.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="format-number($lon_decimal, $format-string)"/>
+        <xsl:value-of select="concat(
+          format-number(abs($lon_decimal), $format-string),
+          if ($lon_decimal ge 0) then 'E' else 'W')"/>
       </xsl:when>
       <xsl:when test="$coord_type = 'DMS'">
         <!-- Degrees Minutes Seconds format: dddmmss.ssP -->
@@ -174,7 +195,11 @@ Copyright (c) 2025, EUROCONTROL
         <xsl:variable name="minutes" select="floor($minutes_decimal)"/>
         <xsl:variable name="seconds" select="($minutes_decimal - $minutes) * 60"/>
         <xsl:variable name="format-string" select="concat('00.', string-join(for $i in 1 to $decimal_places return '0', ''))"/>
-        <xsl:value-of select="concat(format-number($degrees, '000'), format-number($minutes, '00'), format-number($seconds, $format-string), if ($lon_decimal ge 0) then 'E' else 'W')"/>
+        <xsl:value-of select="concat(
+          format-number($degrees, '000'),
+          format-number($minutes, '00'),
+          format-number($seconds, $format-string),
+          if ($lon_decimal ge 0) then 'E' else 'W')"/>
       </xsl:when>
       <xsl:otherwise>
         <xsl:value-of select="string($lon_decimal)"/>
@@ -194,9 +219,7 @@ Copyright (c) 2025, EUROCONTROL
       <xsl:if test="$org-feature">
         <!-- Get the valid baseline timeslice -->
         <xsl:variable name="org-baseline-ts" select="$org-feature/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
-        <xsl:variable name="org-max-seq" select="max($org-baseline-ts/aixm:sequenceNumber)"/>
-        <xsl:variable name="org-max-corr" select="max($org-baseline-ts[aixm:sequenceNumber = $org-max-seq]/aixm:correctionNumber)"/>
-        <xsl:variable name="org-valid-ts" select="$org-baseline-ts[aixm:sequenceNumber = $org-max-seq and aixm:correctionNumber = $org-max-corr][1]"/>
+        <xsl:variable name="org-valid-ts" select="fcn:get-valid-timeslice($org-baseline-ts)"/>
         <xsl:choose>
           <!-- If this organization is a STATE, return it -->
           <xsl:when test="$org-valid-ts/aixm:type = 'STATE'">
@@ -323,12 +346,8 @@ Copyright (c) 2025, EUROCONTROL
           <xsl:sort select="(aixm:timeSlice/aixm:VORTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:VORTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:VORTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:VORTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)])[1]/aixm:designator" order="ascending"/>
           <!-- Get all BASELINE time slices for this feature -->
           <xsl:variable name="baseline-timeslices" select="aixm:timeSlice/aixm:VORTimeSlice[aixm:interpretation = 'BASELINE']"/>
-          <!-- Find the maximum sequenceNumber -->
-          <xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
-          <!-- Get time slices with the maximum sequenceNumber, then find max correctionNumber -->
-          <xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
           <!-- Select the valid time slice -->
-          <xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+          <xsl:variable name="valid-timeslice" select="fcn:get-valid-timeslice($baseline-timeslices)"/>
     
           <xsl:for-each select="$valid-timeslice">
     
@@ -336,7 +355,7 @@ Copyright (c) 2025, EUROCONTROL
             <xsl:variable name="VOR_UUID" select="../../gml:identifier"/>
     
             <!-- VOR - Valid TimeSlice -->
-            <xsl:variable name="VOR_timeslice" select="concat('BASELINE ', $max-sequence, '.', $max-correction)"/>
+            <xsl:variable name="VOR_timeslice" select="fcn:format-timeslice-info(.)"/>
     
             <!-- Identification -->
             <xsl:variable name="VOR_designator" select="aixm:designator"/>
@@ -354,11 +373,19 @@ Copyright (c) 2025, EUROCONTROL
               <xsl:value-of select="replace(replace(aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
             </xsl:variable>
             
+            <xsl:variable name="lat-long-datums" select="
+              ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
+              'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
+              'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
+              'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
+              'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
+              'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
+            
             <!-- Extract coordinates depending on the coordinate system -->
             <xsl:variable name="VOR_coordinates" select="aixm:location/aixm:ElevatedPoint/gml:pos"/>
             <xsl:variable name="VOR_latitude_decimal">
               <xsl:choose>
-                <xsl:when test="$VOR_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                <xsl:when test="$VOR_datum = $lat-long-datums">
                   <xsl:value-of  select="number(substring-before($VOR_coordinates, ' '))"/>
                 </xsl:when>
                 <xsl:when test="matches($VOR_datum, '^OGC:.*CRS84$')">
@@ -368,7 +395,7 @@ Copyright (c) 2025, EUROCONTROL
             </xsl:variable>
             <xsl:variable name="VOR_longitude_decimal">
               <xsl:choose>
-                <xsl:when test="$VOR_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                <xsl:when test="$VOR_datum = $lat-long-datums">
                   <xsl:value-of  select="number(substring-after($VOR_coordinates, ' '))"/>
                 </xsl:when>
                 <xsl:when test="matches($VOR_datum, '^OGC:.*CRS84$')">
@@ -474,9 +501,7 @@ Copyright (c) 2025, EUROCONTROL
                   <!-- Find the Navaid that references this VOR -->
                   <xsl:variable name="navaid-with-VOR" select="//aixm:Navaid[.//aixm:navaidEquipment/aixm:NavaidComponent/aixm:theNavaidEquipment/@xlink:href = concat('urn:uuid:', $VOR_UUID)]"/>
                   <xsl:variable name="navaid-baseline-ts" select="$navaid-with-VOR/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="navaid-max-seq" select="max($navaid-baseline-ts/aixm:sequenceNumber)"/>
-                  <xsl:variable name="navaid-max-corr" select="max($navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="navaid-valid-ts" select="$navaid-baseline-ts[aixm:sequenceNumber = $navaid-max-seq and aixm:correctionNumber = $navaid-max-corr][1]"/>
+                  <xsl:variable name="navaid-valid-ts" select="fcn:get-valid-timeslice($navaid-baseline-ts)"/>
                   <xsl:choose>
                     <!-- If Navaid has at least one availability (excluding xsi:nil='true') -->
                     <xsl:when test="$navaid-valid-ts/aixm:availability[not(@xsi:nil='true')]">
@@ -565,11 +590,11 @@ Copyright (c) 2025, EUROCONTROL
             </xsl:variable>
     
             <!-- Effective date -->
-            <xsl:variable name="day" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 9, 2)"/>
-            <xsl:variable name="month" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 6, 2)"/>
-            <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
-            <xsl:variable name="year" select="substring(gml:validTime/gml:TimePeriod/gml:beginPosition, 1, 4)"/>
-            <xsl:variable name="VOR_effective_date" select="concat($day, '-', $month, '-', $year)"/>
+            <xsl:variable name="VOR_effective_date">
+              <xsl:if test="gml:validTime/gml:TimePeriod/gml:beginPosition">
+                <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:beginPosition)"/>
+              </xsl:if>
+            </xsl:variable>
     
             <!-- Committed on -->
             <xsl:variable name="VOR_commit_date">
@@ -596,9 +621,7 @@ Copyright (c) 2025, EUROCONTROL
                 <xsl:variable name="org_role" select="aixm:type"/>
                 <xsl:variable name="OrgAuth_UUID" select="replace(aixm:theOrganisationAuthority/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                 <xsl:variable name="org-baseline-ts" select="//aixm:OrganisationAuthority[gml:identifier = $OrgAuth_UUID]/aixm:timeSlice/aixm:OrganisationAuthorityTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <xsl:variable name="org-max-seq" select="max($org-baseline-ts/aixm:sequenceNumber)"/>
-                <xsl:variable name="org-max-corr" select="max($org-baseline-ts[aixm:sequenceNumber = $org-max-seq]/aixm:correctionNumber)"/>
-                <xsl:variable name="org-valid-ts" select="$org-baseline-ts[aixm:sequenceNumber = $org-max-seq and aixm:correctionNumber = $org-max-corr][1]"/>
+                <xsl:variable name="org-valid-ts" select="fcn:get-valid-timeslice($org-baseline-ts)"/>
                 <xsl:if test="$org-valid-ts">
                   <Org>
                     <txtName><xsl:value-of select="$org-valid-ts/aixm:name"/></txtName>
@@ -608,8 +631,8 @@ Copyright (c) 2025, EUROCONTROL
                         <xsl:value-of select="$org_role"/>
                         <xsl:text>&#10;</xsl:text>
                       </xsl:if>
-                      <xsl:text>Valid TimeSlice: BASELINE </xsl:text>
-                      <xsl:value-of select="concat($org-max-seq, '.', $org-max-corr)"/>
+                      <xsl:text>Valid TimeSlice: </xsl:text>
+                      <xsl:value-of select="fcn:format-timeslice-info($org-valid-ts)"/>
                     </txtRmk>
                   </Org>
                 </xsl:if>
@@ -619,16 +642,12 @@ Copyright (c) 2025, EUROCONTROL
               <xsl:for-each select="$info_services">
                 <!-- Get the valid BASELINE time slice for this InformationService -->
                 <xsl:variable name="info-baseline-ts" select="aixm:timeSlice/aixm:InformationServiceTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <xsl:variable name="info-max-seq" select="max($info-baseline-ts/aixm:sequenceNumber)"/>
-                <xsl:variable name="info-max-corr" select="max($info-baseline-ts[aixm:sequenceNumber = $info-max-seq]/aixm:correctionNumber)"/>
-                <xsl:variable name="info-valid-ts" select="$info-baseline-ts[aixm:sequenceNumber = $info-max-seq and aixm:correctionNumber = $info-max-corr][1]"/>
+                <xsl:variable name="info-valid-ts" select="fcn:get-valid-timeslice($info-baseline-ts)"/>
                 <!-- Get the service provider UUID -->
                 <xsl:variable name="service-provider-uuid" select="replace($info-valid-ts/aixm:serviceProvider/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                 <!-- Get the service provider Unit -->
                 <xsl:variable name="provider-baseline-ts" select="//aixm:Unit[gml:identifier = $service-provider-uuid]/aixm:timeSlice/aixm:UnitTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <xsl:variable name="provider-max-seq" select="max($provider-baseline-ts/aixm:sequenceNumber)"/>
-                <xsl:variable name="provider-max-corr" select="max($provider-baseline-ts[aixm:sequenceNumber = $provider-max-seq]/aixm:correctionNumber)"/>
-                <xsl:variable name="provider-valid-ts" select="$provider-baseline-ts[aixm:sequenceNumber = $provider-max-seq and aixm:correctionNumber = $provider-max-corr][1]"/>
+                <xsl:variable name="provider-valid-ts" select="fcn:get-valid-timeslice($provider-baseline-ts)"/>
                 <xsl:if test="$provider-valid-ts and $info-valid-ts">
                   <Ser>
                     <Uni>
@@ -648,10 +667,10 @@ Copyright (c) 2025, EUROCONTROL
                     </noSeq>
                     <!-- txtRmk with Unit timeslice, Service timeslice, and rank if not PRIMARY/SECONDARY -->
                     <txtRmk>
-                      <xsl:text>Unit - Valid TimeSlice: BASELINE </xsl:text>
-                      <xsl:value-of select="concat($provider-max-seq, '.', $provider-max-corr)"/>
-                      <xsl:text>&#10;Service - Valid TimeSlice: BASELINE </xsl:text>
-                      <xsl:value-of select="concat($info-max-seq, '.', $info-max-corr)"/>
+                      <xsl:text>Unit - Valid TimeSlice: </xsl:text>
+                      <xsl:value-of select="fcn:format-timeslice-info($provider-valid-ts)"/>
+                      <xsl:text>&#10;Service - Valid TimeSlice: </xsl:text>
+                      <xsl:value-of select="fcn:format-timeslice-info($info-valid-ts)"/>
                       <xsl:if test="$info-valid-ts/aixm:rank and $info-valid-ts/aixm:rank != 'PRIMARY' and $info-valid-ts/aixm:rank != 'SECONDARY'">
                         <xsl:text>&#10;noSeq='</xsl:text>
                         <xsl:value-of select="$info-valid-ts/aixm:rank"/>

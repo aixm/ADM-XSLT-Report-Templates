@@ -108,13 +108,24 @@
   </xsl:function>
   
   <xsl:function name="fcn:format-date" as="xs:string">
-    <xsl:param name="input" as="xs:string"/>
-    <xsl:variable name="date-time" select="$input"/>
+    <xsl:param name="text" as="xs:string"/>
+    <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -181,6 +192,7 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
@@ -271,39 +283,29 @@
                 <!-- Sort by AirportHeliport designator (ascending), then by STAR designator (ascending), then by STAR sequenceNumber (descending), then by STAR correctionNumber (descending) -->
                 <xsl:sort select="
                   let $STAR_baseline := aixm:timeSlice/aixm:StandardInstrumentArrivalTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $STAR_max-seq := max($STAR_baseline/aixm:sequenceNumber),
-                  $STAR_max-corr := max($STAR_baseline[aixm:sequenceNumber = $STAR_max-seq]/aixm:correctionNumber),
-                  $STAR_valid-ts := $STAR_baseline[aixm:sequenceNumber = $STAR_max-seq and aixm:correctionNumber = $STAR_max-corr][1],
+                  $STAR_valid-ts := fcn:get-valid-timeslice($STAR_baseline),
                   $AHP_uuid := replace($STAR_valid-ts/aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', ''),
                   $AHP := key('AirportHeliport-by-uuid', $AHP_uuid, $doc-root),
                   $AHP_baseline := $AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $AHP_max-seq := max($AHP_baseline/aixm:sequenceNumber),
-                  $AHP_max-corr := max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber),
-                  $AHP_valid-ts := $AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]
+                  $AHP_valid-ts := fcn:get-valid-timeslice($AHP_baseline)
                   return $AHP_valid-ts/aixm:designator"
                   data-type="text" order="ascending"/>
                 
                 <xsl:sort select="
                   let $STAR_baseline := aixm:timeSlice/aixm:StandardInstrumentArrivalTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $STAR_max-seq := max($STAR_baseline/aixm:sequenceNumber),
-                  $STAR_max-corr := max($STAR_baseline[aixm:sequenceNumber = $STAR_max-seq]/aixm:correctionNumber),
-                  $STAR_valid-ts := $STAR_baseline[aixm:sequenceNumber = $STAR_max-seq and aixm:correctionNumber = $STAR_max-corr][1]
+                  $STAR_valid-ts := fcn:get-valid-timeslice($STAR_baseline)
                   return $STAR_valid-ts/aixm:designator"
                   data-type="text" order="ascending"/>
   
                 <xsl:sort select="
                   let $STAR_baseline := aixm:timeSlice/aixm:StandardInstrumentArrivalTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $STAR_max-seq := max($STAR_baseline/aixm:sequenceNumber),
-                  $STAR_max-corr := max($STAR_baseline[aixm:sequenceNumber = $STAR_max-seq]/aixm:correctionNumber),
-                  $STAR_valid-ts := $STAR_baseline[aixm:sequenceNumber = $STAR_max-seq and aixm:correctionNumber = $STAR_max-corr][1]
+                  $STAR_valid-ts := fcn:get-valid-timeslice($STAR_baseline)
                   return $STAR_valid-ts/aixm:sequenceNumber"
                   data-type="number" order="descending"/>
   
                 <xsl:sort select="
                   let $STAR_baseline := aixm:timeSlice/aixm:StandardInstrumentArrivalTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $STAR_max-seq := max($STAR_baseline/aixm:sequenceNumber),
-                  $STAR_max-corr := max($STAR_baseline[aixm:sequenceNumber = $STAR_max-seq]/aixm:correctionNumber),
-                  $STAR_valid-ts := $STAR_baseline[aixm:sequenceNumber = $STAR_max-seq and aixm:correctionNumber = $STAR_max-corr][1]
+                  $STAR_valid-ts := fcn:get-valid-timeslice($STAR_baseline)
                   return $STAR_valid-ts/aixm:correctionNumber"
                   data-type="number" order="descending"/>
   
@@ -487,10 +489,8 @@
                   <xsl:variable name="AHP_UUID" select="replace(aixm:airportHeliport/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                   <xsl:variable name="AHP" select="key('AirportHeliport-by-uuid', $AHP_UUID, $doc-root)"/>
                   <xsl:variable name="AHP_baseline" select="$AHP/aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="AHP_max-seq" select="max($AHP_baseline/aixm:sequenceNumber)"/>
-                  <xsl:variable name="AHP_max-corr" select="max($AHP_baseline[aixm:sequenceNumber = $AHP_max-seq]/aixm:correctionNumber)"/>
-                  <xsl:variable name="AHP_valid-ts" select="$AHP_baseline[aixm:sequenceNumber = $AHP_max-seq and aixm:correctionNumber = $AHP_max-corr][1]"/>
-                  <xsl:variable name="AHP_timeslice" select="if ($AHP_valid-ts) then concat('BASELINE ', $AHP_max-seq, '.', $AHP_max-corr) else ''"/>
+                  <xsl:variable name="AHP_valid-ts" select="fcn:get-valid-timeslice($AHP_baseline)"/>
+                  <xsl:variable name="AHP_timeslice" select="if ($AHP_valid-ts) then fcn:format-timeslice-info($AHP_valid-ts) else ''"/>
                   
                   <!-- Associated AirportHeliport - name -->
                   <xsl:variable name="AHP_name">

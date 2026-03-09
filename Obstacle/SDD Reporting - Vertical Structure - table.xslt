@@ -104,13 +104,24 @@
   </xsl:function>
   
   <xsl:function name="fcn:format-date" as="xs:string">
-    <xsl:param name="input" as="xs:string"/>
-    <xsl:variable name="date-time" select="$input"/>
+    <xsl:param name="text" as="xs:string"/>
+    <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -176,6 +187,7 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
@@ -486,10 +498,8 @@
                 <xsl:variable name="MarkerBeacon_UUID" select="replace(aixm:marker/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                 <xsl:variable name="MarkerBeacon" select="//aixm:MarkerBeacon[gml:identifier = $MarkerBeacon_UUID]"/>
                 <xsl:variable name="MarkerBeacon_baseline" select="$MarkerBeacon/aixm:timeSlice/aixm:MarkerBeaconTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <xsl:variable name="MarkerBeacon_max-seq" select="max($MarkerBeacon_baseline/aixm:sequenceNumber)"/>
-                <xsl:variable name="MarkerBeacon_max-corr" select="max($MarkerBeacon_baseline[aixm:sequenceNumber = $MarkerBeacon_max-seq]/aixm:correctionNumber)"/>
-                <xsl:variable name="MarkerBeacon_valid-ts" select="$MarkerBeacon_baseline[aixm:sequenceNumber = $MarkerBeacon_max-seq and aixm:correctionNumber = $MarkerBeacon_max-corr][1]"/>
-                <xsl:variable name="MarkerBeacon_ts" select="if ($MarkerBeacon_valid-ts) then concat('BASELINE ', $MarkerBeacon_max-seq, '.', $MarkerBeacon_max-corr) else ''"/>
+                <xsl:variable name="MarkerBeacon_valid-ts" select="fcn:get-valid-timeslice($MarkerBeacon_baseline)"/>
+                <xsl:variable name="MarkerBeacon_ts" select="if (not(empty($MarkerBeacon_valid-ts))) then fcn:format-timeslice-info($MarkerBeacon_valid-ts) else ''"/>
                 
                 <!-- Marker/featureIdentifier -->
                 <xsl:variable name="marker_identifier">

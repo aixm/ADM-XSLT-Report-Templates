@@ -128,9 +128,20 @@
     <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -936,6 +947,7 @@
                 'beginPosition': string($latest-ts/gml:validTime/gml:TimePeriod/gml:beginPosition),
                 'endPosition': string($latest-ts/gml:validTime/gml:TimePeriod/gml:endPosition),
                 'endPositionIndeterminate': string($latest-ts/gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition),
+                'valid-ts': fcn:format-timeslice-info($latest-ts),
                 'geometries': $base-coords,
                 'subtr-geometries': $subtr-coords,
                 'inters-geometries': $inters-coords
@@ -1050,7 +1062,8 @@
               'correctionNumber': string($parent-ts/aixm:correctionNumber),
               'beginPosition': string($parent-ts/gml:validTime/gml:TimePeriod/gml:beginPosition),
               'endPosition': string($parent-ts/gml:validTime/gml:TimePeriod/gml:endPosition),
-              'endPositionIndeterminate': string($parent-ts/gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition)
+              'endPositionIndeterminate': string($parent-ts/gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition),
+              'valid-ts': fcn:format-timeslice-info($parent-ts)
             }"/>
           </xsl:if>
         </xsl:when>
@@ -1062,7 +1075,8 @@
             'correctionNumber': map:get($fir-data, 'correctionNumber'),
             'beginPosition': map:get($fir-data, 'beginPosition'),
             'endPosition': map:get($fir-data, 'endPosition'),
-            'endPositionIndeterminate': map:get($fir-data, 'endPositionIndeterminate')
+            'endPositionIndeterminate': map:get($fir-data, 'endPositionIndeterminate'),
+            'valid-ts': map:get($fir-data, 'valid-ts')
           }"/>
         </xsl:when>
       </xsl:choose>
@@ -1260,6 +1274,7 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
@@ -1426,7 +1441,7 @@
                   <!-- Responsible State or International Organisation - Valid TimeSlice -->
                   <xsl:variable name="ResponsibleStateOrIntlOrg_timeslice">
                     <xsl:if test="$state-intl-org-ts">
-                      <xsl:value-of select="concat('BASELINE ', $state-intl-org-ts/aixm:sequenceNumber, '.', $state-intl-org-ts/aixm:correctionNumber)"/>
+                      <xsl:value-of select="fcn:format-timeslice-info($state-intl-org-ts)"/>
                     </xsl:if>
                   </xsl:variable>
                   
@@ -1626,11 +1641,19 @@
                     <xsl:value-of select="replace(replace(aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   </xsl:variable>
                   
+                  <xsl:variable name="lat-long-datums" select="
+                    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
+                    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
+                    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
+                    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
+                    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
+                    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
+                  
                   <!-- Extract coordinates depending on the coordinate system -->
                   <xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$AHP_ARP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$AHP_ARP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($AHP_ARP_datum, '^OGC:.*CRS84$')">
@@ -1640,7 +1663,7 @@
                   </xsl:variable>
                   <xsl:variable name="longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$AHP_ARP_datum = ('EPSG:4326','EPSG:4269','EPSG:4258')">
+                      <xsl:when test="$AHP_ARP_datum = $lat-long-datums">
                         <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
                       <xsl:when test="matches($AHP_ARP_datum, '^OGC:.*CRS84$')">
@@ -1995,14 +2018,10 @@
                   </xsl:variable>
                   
                   <!-- Internal UID (master) -->
-                  <xsl:variable name="AHP_UUID">
-                    <xsl:value-of select="../../gml:identifier"/>
-                  </xsl:variable>
+                  <xsl:variable name="AHP_UUID" select="../../gml:identifier"/>
     
                   <!-- AirportHeliport - Valid TimeSlice -->
-                  <xsl:variable name="AHP_timeslice">
-                    <xsl:value-of select="fcn:format-timeslice-info(.)"/>
-                  </xsl:variable>
+                  <xsl:variable name="AHP_timeslice" select="fcn:format-timeslice-info(.)"/>
                   
                   <!-- FIR - Coded identifier -->
                   <xsl:variable name="FIR_info" as="map(xs:string, xs:string)?">
@@ -2018,12 +2037,10 @@
                   <xsl:variable name="FIR_designator" select="if (exists($FIR_info) and map:contains($FIR_info, 'designator')) then string($FIR_info?designator) else ''" as="xs:string"/>
                   
                   <!-- FIR - Valid TimeSlice -->
-                  <xsl:variable name="FIR_timeslice" select="if (exists($FIR_info) and map:contains($FIR_info, 'sequenceNumber')) then concat('BASELINE ', $FIR_info?sequenceNumber, '.', $FIR_info?correctionNumber) else ''" as="xs:string"/>
+                  <xsl:variable name="FIR_timeslice" select="if (exists($FIR_info) and map:contains($FIR_info, 'valid-ts')) then $FIR_info?valid-ts else ''" as="xs:string"/>
                   
                   <!-- Originator -->
-                  <xsl:variable name="originator">
-                    <xsl:value-of select="aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
-                  </xsl:variable>
+                  <xsl:variable name="originator" select="aixm:extension/ead-audit:AirportHeliportExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
                   
                   <!-- Effective date -->
                   <xsl:variable name="effective_date">

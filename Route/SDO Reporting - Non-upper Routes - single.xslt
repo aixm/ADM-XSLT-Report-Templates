@@ -61,9 +61,20 @@
     <xsl:variable name="date-time" select="$text"/>
     <xsl:variable name="day" select="substring($date-time, 9, 2)"/>
     <xsl:variable name="month" select="substring($date-time, 6, 2)"/>
-    <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else
-      if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else
-      if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
+    <xsl:variable name="month" select="
+      if($month = '01') then 'JAN'
+      else if ($month = '02') then 'FEB'
+      else if ($month = '03') then 'MAR'
+      else if ($month = '04') then 'APR'
+      else if ($month = '05') then 'MAY'
+      else if ($month = '06') then 'JUN'
+      else if ($month = '07') then 'JUL'
+      else if ($month = '08') then 'AUG'
+      else if ($month = '09') then 'SEP'
+      else if ($month = '10') then 'OCT'
+      else if ($month = '11') then 'NOV'
+      else if ($month = '12') then 'DEC'
+      else ''"/>
     <xsl:variable name="year" select="substring($date-time, 1, 4)"/>
     <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
   </xsl:function>
@@ -257,7 +268,10 @@
                 <td><strong>Effective date</strong></td>
               </tr>
               <tr>
-                <td><strong>Valid TimeSlice</strong></td>
+                <td><strong>Valid TimeSlice - Route</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Valid TimeSlice - RouteSegment</strong></td>
               </tr>
               <tr>
                 <td><strong>Originator</strong></td>
@@ -274,9 +288,7 @@
               <xsl:variable name="valid-segments" as="element()*">
                 <xsl:for-each-group select="//aixm:RouteSegment" group-by="gml:identifier">
                   <xsl:variable name="baseline-timeslices" select="current-group()/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                  <xsl:variable name="max-sequence" select="max($baseline-timeslices/aixm:sequenceNumber)"/>
-                  <xsl:variable name="max-correction" select="max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber)"/>
-                  <xsl:variable name="valid-timeslice" select="$baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1]"/>
+                  <xsl:variable name="valid-timeslice" select="fcn:get-valid-timeslice($baseline-timeslices)"/>
                   <!-- Only include segments with level = 'LOWER' -->
                   <xsl:if test="$valid-timeslice/aixm:level = 'LOWER'">
                     <!-- Create a temporary element with the segment and its valid timeslice -->
@@ -298,9 +310,7 @@
                   select="
                   let $Route := key('route-by-uuid', current-grouping-key(), $doc-root),
                   $baseline-timeslices := $Route/aixm:timeSlice/aixm:RouteTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $max-sequence := max($baseline-timeslices/aixm:sequenceNumber),
-                  $max-correction := max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber),
-                  $RTS := $baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1],
+                  $RTS := fcn:get-valid-timeslice($baseline-timeslices),
                   $prefix := concat($RTS/aixm:designatorPrefix, $RTS/aixm:designatorSecondLetter)
                   return $prefix"
                   data-type="text" order="ascending"/>
@@ -309,9 +319,7 @@
                   select="
                   let $Route := key('route-by-uuid', current-grouping-key(), $doc-root),
                   $baseline-timeslices := $Route/aixm:timeSlice/aixm:RouteTimeSlice[aixm:interpretation = 'BASELINE'],
-                  $max-sequence := max($baseline-timeslices/aixm:sequenceNumber),
-                  $max-correction := max($baseline-timeslices[aixm:sequenceNumber = $max-sequence]/aixm:correctionNumber),
-                  $RTS := $baseline-timeslices[aixm:sequenceNumber = $max-sequence and aixm:correctionNumber = $max-correction][1],
+                  $RTS := fcn:get-valid-timeslice($baseline-timeslices),
                   $number := number($RTS/aixm:designatorNumber)
                   return $number"
                   data-type="number" order="ascending"/>
@@ -320,23 +328,17 @@
                 <xsl:variable name="Route" select="key('route-by-uuid', $Route_uuid, $doc-root)"/>
                 <!-- Get the valid Route timeslice -->
                 <xsl:variable name="route-baseline-timeslices" select="$Route/aixm:timeSlice/aixm:RouteTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <xsl:variable name="route-max-sequence" select="max($route-baseline-timeslices/aixm:sequenceNumber)"/>
-                <xsl:variable name="route-max-correction" select="max($route-baseline-timeslices[aixm:sequenceNumber = $route-max-sequence]/aixm:correctionNumber)"/>
-                <xsl:variable name="RouteTimeSlice" select="$route-baseline-timeslices[aixm:sequenceNumber = $route-max-sequence and aixm:correctionNumber = $route-max-correction][1]"/>
+                <xsl:variable name="route-valid-ts" select="fcn:get-valid-timeslice($route-baseline-timeslices)"/>
                 <xsl:variable name="Master_gUID" select="$Route/gml:identifier"/>
-                <xsl:variable name="RouteDesignator" select="concat($RouteTimeSlice/aixm:designatorPrefix, $RouteTimeSlice/aixm:designatorSecondLetter, $RouteTimeSlice/aixm:designatorNumber)"/>
-                <xsl:variable name="RouteAreaDesignator" select="$RouteTimeSlice/aixm:locationDesignator"/>
-                <xsl:variable name="EffectiveDate">
-                  <xsl:variable name="day" select="substring($RouteTimeSlice/gml:validTime/gml:TimePeriod/gml:beginPosition, 9, 2)"/>
-                  <xsl:variable name="month" select="substring($RouteTimeSlice/gml:validTime/gml:TimePeriod/gml:beginPosition, 6, 2)"/>
-                  <xsl:variable name="month" select="if($month = '01') then 'JAN' else if ($month = '02') then 'FEB' else if ($month = '03') then 'MAR' else 
-                    if ($month = '04') then 'APR' else if ($month = '05') then 'MAY' else if ($month = '06') then 'JUN' else if ($month = '07') then 'JUL' else 
-                    if ($month = '08') then 'AUG' else if ($month = '09') then 'SEP' else if ($month = '10') then 'OCT' else if ($month = '11') then 'NOV' else if ($month = '12') then 'DEC' else ''"/>
-                  <xsl:variable name="year" select="substring($RouteTimeSlice/gml:validTime/gml:TimePeriod/gml:beginPosition, 1, 4)"/>
-                  <xsl:value-of select="concat($day, '-', $month, '-', $year)"/>
+                <xsl:variable name="route-designator" select="concat($route-valid-ts/aixm:designatorPrefix, $route-valid-ts/aixm:designatorSecondLetter, $route-valid-ts/aixm:designatorNumber)"/>
+                <xsl:variable name="route-area-designator" select="$route-valid-ts/aixm:locationDesignator"/>
+                <xsl:variable name="effective-date">
+                  <xsl:if test="$route-valid-ts/gml:validTime/gml:TimePeriod/gml:beginPosition">
+                    <xsl:value-of select="fcn:format-date($route-valid-ts/gml:validTime/gml:TimePeriod/gml:beginPosition)"/>
+                  </xsl:if>
                 </xsl:variable>
-                <xsl:variable name="ValidTimeSlice" select="concat('BASELINE ', $route-max-sequence, '.', $route-max-correction)"/>
-                <xsl:variable name="Originator" select="$RouteTimeSlice/aixm:extension/ead-audit:RouteExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+                <xsl:variable name="route-valid-ts-info" select="fcn:format-timeslice-info($route-valid-ts)"/>
+                <xsl:variable name="originator" select="$route-valid-ts/aixm:extension/ead-audit:RouteExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
                 
                 <!-- Extract all segments in this route -->
                 <xsl:variable name="segments" select="current-group()"/>              
@@ -345,8 +347,8 @@
                 <xsl:variable name="start-segment" as="element()*">
                   <xsl:iterate select="$segments">
                     <xsl:variable name="seg" select="."/>
-                    <xsl:variable name="RouteSegmentTimeSlice" select="aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                    <xsl:variable name="start" select="replace($RouteSegmentTimeSlice/aixm:start/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                    <xsl:variable name="route_segment-ts" select="aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
+                    <xsl:variable name="start" select="replace($route_segment-ts/aixm:start/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
                     <xsl:variable name="end" select="$segments/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']/aixm:end/*/*/@xlink:href"/>
                     <xsl:if test="not($end[contains(., $start)])">
                       <xsl:sequence select="."/>
@@ -360,11 +362,11 @@
                   <xsl:with-param name="segment" select="$start-segment"/>
                   <xsl:with-param name="segments" select="$segments"/>
                   <xsl:with-param name="Master_gUID" select="$Master_gUID"/>
-                  <xsl:with-param name="RouteDesignator" select="$RouteDesignator"/>
-                  <xsl:with-param name="RouteAreaDesignator" select="$RouteAreaDesignator"/>
-                  <xsl:with-param name="EffectiveDate" select="$EffectiveDate"/>
-                  <xsl:with-param name="ValidTimeSlice" select="$ValidTimeSlice"/>
-                  <xsl:with-param name="Originator" select="$Originator"/>
+                  <xsl:with-param name="route-designator" select="$route-designator"/>
+                  <xsl:with-param name="route-area-designator" select="$route-area-designator"/>
+                  <xsl:with-param name="effective-date" select="$effective-date"/>
+                  <xsl:with-param name="route-valid-ts-info" select="$route-valid-ts-info"/>
+                  <xsl:with-param name="originator" select="$originator"/>
                 </xsl:call-template>
                 
               </xsl:for-each-group>
@@ -644,64 +646,64 @@
     <xsl:param name="segment"/>
     <xsl:param name="segments"/>
     <xsl:param name="Master_gUID"/>
-    <xsl:param name="RouteDesignator"/>
-    <xsl:param name="RouteAreaDesignator"/>
-    <xsl:param name="EffectiveDate"/>
-    <xsl:param name="ValidTimeSlice"/>
-    <xsl:param name="Originator"/>
+    <xsl:param name="route-designator"/>
+    <xsl:param name="route-area-designator"/>
+    <xsl:param name="effective-date"/>
+    <xsl:param name="route-valid-ts-info"/>
+    <xsl:param name="originator"/>
     
-    <xsl:variable name="RouteSegmentTimeSlice" select="$segment/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
-    <xsl:variable name="start_uuid" select="replace($RouteSegmentTimeSlice/aixm:start/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-    <xsl:variable name="end_uuid" select="replace($RouteSegmentTimeSlice/aixm:end/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-    <xsl:variable name="UpperLimit">
+    <xsl:variable name="route_segment-ts" select="$segment/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
+    <xsl:variable name="start_uuid" select="replace($route_segment-ts/aixm:start/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+    <xsl:variable name="end_uuid" select="replace($route_segment-ts/aixm:end/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+    <xsl:variable name="route-upper-limit">
       <xsl:choose>
-        <xsl:when test="not($RouteSegmentTimeSlice/aixm:upperLimit)">
+        <xsl:when test="not($route_segment-ts/aixm:upperLimit)">
           <xsl:value-of select="''"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:insert-value($RouteSegmentTimeSlice/aixm:upperLimit)"/>
+          <xsl:value-of select="fcn:insert-value($route_segment-ts/aixm:upperLimit)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-    <xsl:variable name="UpperLimit_uom" select="$RouteSegmentTimeSlice/aixm:upperLimit/@uom"/>
-    <xsl:variable name="UpperLimit_reference">
+    <xsl:variable name="route-upper-limit_uom" select="$route_segment-ts/aixm:upperLimit/@uom"/>
+    <xsl:variable name="route-upper-limit_reference">
       <xsl:choose>
-        <xsl:when test="not($RouteSegmentTimeSlice/aixm:upperLimitReference)">
+        <xsl:when test="not($route_segment-ts/aixm:upperLimitReference)">
           <xsl:value-of select="''"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:insert-value($RouteSegmentTimeSlice/aixm:upperLimitReference)"/>
+          <xsl:value-of select="fcn:insert-value($route_segment-ts/aixm:upperLimitReference)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-    <xsl:variable name="LowerLimit">
+    <xsl:variable name="route-lower-limit">
       <xsl:choose>
-        <xsl:when test="not($RouteSegmentTimeSlice/aixm:lowerLimit)">
+        <xsl:when test="not($route_segment-ts/aixm:lowerLimit)">
           <xsl:value-of select="''"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:insert-value($RouteSegmentTimeSlice/aixm:lowerLimit)"/>
+          <xsl:value-of select="fcn:insert-value($route_segment-ts/aixm:lowerLimit)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-    <xsl:variable name="LowerLimit_uom" select="$RouteSegmentTimeSlice/aixm:lowerLimit/@uom"/>
-    <xsl:variable name="LowerLimit_reference">
+    <xsl:variable name="route-lower-limit_uom" select="$route_segment-ts/aixm:lowerLimit/@uom"/>
+    <xsl:variable name="route-lower-limit_reference">
       <xsl:choose>
-        <xsl:when test="not($RouteSegmentTimeSlice/aixm:lowerLimitReference)">
+        <xsl:when test="not($route_segment-ts/aixm:lowerLimitReference)">
           <xsl:value-of select="''"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:insert-value($RouteSegmentTimeSlice/aixm:lowerLimitReference)"/>
+          <xsl:value-of select="fcn:insert-value($route_segment-ts/aixm:lowerLimitReference)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
     
+    <xsl:variable name="route_segment-valid-ts-info" select="fcn:format-timeslice-info($route_segment-ts)"/>
+
     <!-- Get the valid timeslice for start point -->
     <xsl:variable name="start_point" select="key('point-by-uuid', $start_uuid, $doc-root)"/>
     <xsl:variable name="start_baseline_timeslices" select="$start_point/aixm:timeSlice/*[aixm:interpretation = 'BASELINE']"/>
-    <xsl:variable name="start_max_sequence" select="max($start_baseline_timeslices/aixm:sequenceNumber)"/>
-    <xsl:variable name="start_max_correction" select="max($start_baseline_timeslices[aixm:sequenceNumber = $start_max_sequence]/aixm:correctionNumber)"/>
-    <xsl:variable name="start_valid_timeslice" select="$start_baseline_timeslices[aixm:sequenceNumber = $start_max_sequence and aixm:correctionNumber = $start_max_correction][1]"/>
+    <xsl:variable name="start_valid_timeslice" select="fcn:get-valid-timeslice($start_baseline_timeslices)"/>
 
     <xsl:variable name="start_designator" select="$start_valid_timeslice/aixm:designator"/>
     <xsl:variable name="start_type">
@@ -718,9 +720,7 @@
     <!-- Get the valid timeslice for end point -->
     <xsl:variable name="end_point" select="key('point-by-uuid', $end_uuid, $doc-root)"/>
     <xsl:variable name="end_baseline_timeslices" select="$end_point/aixm:timeSlice/*[aixm:interpretation = 'BASELINE']"/>
-    <xsl:variable name="end_max_sequence" select="max($end_baseline_timeslices/aixm:sequenceNumber)"/>
-    <xsl:variable name="end_max_correction" select="max($end_baseline_timeslices[aixm:sequenceNumber = $end_max_sequence]/aixm:correctionNumber)"/>
-    <xsl:variable name="end_valid_timeslice" select="$end_baseline_timeslices[aixm:sequenceNumber = $end_max_sequence and aixm:correctionNumber = $end_max_correction][1]"/>
+    <xsl:variable name="end_valid_timeslice" select="fcn:get-valid-timeslice($end_baseline_timeslices)"/>
 
     <xsl:variable name="end_designator" select="$end_valid_timeslice/aixm:designator"/>
     <xsl:variable name="end_type">
@@ -738,10 +738,10 @@
       <td><xsl:value-of select="if (string-length($Master_gUID) = 0) then '&#160;' else $Master_gUID"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($RouteDesignator) = 0) then '&#160;' else $RouteDesignator"/></td>
+      <td><xsl:value-of select="if (string-length($route-designator) = 0) then '&#160;' else $route-designator"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($RouteAreaDesignator) = 0) then '&#160;' else $RouteAreaDesignator"/></td>
+      <td><xsl:value-of select="if (string-length($route-area-designator) = 0) then '&#160;' else $route-area-designator"/></td>
     </tr>
     <tr>
       <td><xsl:value-of select="if (string-length($start_designator) = 0) then '&#160;' else $start_designator"/></td>
@@ -756,31 +756,34 @@
       <td><xsl:value-of select="if (string-length($end_type) = 0) then '&#160;' else $end_type"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($UpperLimit) = 0) then '&#160;' else $UpperLimit"/></td>
+      <td><xsl:value-of select="if (string-length($route-upper-limit) = 0) then '&#160;' else $route-upper-limit"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($UpperLimit_uom) = 0) then '&#160;' else $UpperLimit_uom"/></td>
+      <td><xsl:value-of select="if (string-length($route-upper-limit_uom) = 0) then '&#160;' else $route-upper-limit_uom"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($UpperLimit_reference) = 0) then '&#160;' else $UpperLimit_reference"/></td>
+      <td><xsl:value-of select="if (string-length($route-upper-limit_reference) = 0) then '&#160;' else $route-upper-limit_reference"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($LowerLimit) = 0) then '&#160;' else $LowerLimit"/></td>
+      <td><xsl:value-of select="if (string-length($route-lower-limit) = 0) then '&#160;' else $route-lower-limit"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($LowerLimit_uom) = 0) then '&#160;' else $LowerLimit_uom"/></td>
+      <td><xsl:value-of select="if (string-length($route-lower-limit_uom) = 0) then '&#160;' else $route-lower-limit_uom"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($LowerLimit_reference) = 0) then '&#160;' else $LowerLimit_reference"/></td>
+      <td><xsl:value-of select="if (string-length($route-lower-limit_reference) = 0) then '&#160;' else $route-lower-limit_reference"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($EffectiveDate) = 2) then '&#160;' else $EffectiveDate"/></td>
+      <td><xsl:value-of select="if (string-length($effective-date) = 2) then '&#160;' else $effective-date"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($ValidTimeSlice) = 2) then '&#160;' else $ValidTimeSlice"/></td>
+      <td><xsl:value-of select="if (string-length($route-valid-ts-info) = 2) then '&#160;' else $route-valid-ts-info"/></td>
     </tr>
     <tr>
-      <td><xsl:value-of select="if (string-length($Originator) = 0) then '&#160;' else $Originator"/></td>
+      <td><xsl:value-of select="if (string-length($route_segment-valid-ts-info) = 2) then '&#160;' else $route_segment-valid-ts-info"/></td>
+    </tr>
+    <tr>
+      <td><xsl:value-of select="if (string-length($originator) = 0) then '&#160;' else $originator"/></td>
     </tr>
     <tr>
       <td style="background-color: #f5f5f5;">&#160;</td>
@@ -793,12 +796,12 @@
       <xsl:call-template name="output-chain">
         <xsl:with-param name="segment" select="$next"/>
         <xsl:with-param name="segments" select="$segments"/>
-        <xsl:with-param name="RouteDesignator" select="$RouteDesignator"/>
+        <xsl:with-param name="route-designator" select="$route-designator"/>
         <xsl:with-param name="Master_gUID" select="$Master_gUID"/>
-        <xsl:with-param name="RouteAreaDesignator" select="$RouteAreaDesignator"/>
-        <xsl:with-param name="EffectiveDate" select="$EffectiveDate"/>
-        <xsl:with-param name="ValidTimeSlice" select="$ValidTimeSlice"/>
-        <xsl:with-param name="Originator" select="$Originator"/>
+        <xsl:with-param name="route-area-designator" select="$route-area-designator"/>
+        <xsl:with-param name="effective-date" select="$effective-date"/>
+        <xsl:with-param name="route-valid-ts-info" select="$route-valid-ts-info"/>
+        <xsl:with-param name="originator" select="$originator"/>
       </xsl:call-template>
     </xsl:if>
   </xsl:template>
