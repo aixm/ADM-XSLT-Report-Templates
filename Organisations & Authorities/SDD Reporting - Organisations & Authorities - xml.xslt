@@ -21,7 +21,15 @@
   http://www.opensource.org/licenses/bsd-license.php
 -->
 
-<!-- for successful transformation, the XML file must contain the following feature: aixm:OrganisationAuthority -->
+<!-- 
+  Extraction Rule parameters required for the transformation to be successful:
+  ===========================================================================
+                    featureTypes: aixm:OrganisationAuthority
+  includeReferencedFeaturesLevel: no
+               permanentBaseline: true
+                       dataScope: ReleasedData
+                     AIXMversion: 5.1.1
+-->
 
 <xsl:transform version="3.0" 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"

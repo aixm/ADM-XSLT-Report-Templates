@@ -309,9 +309,11 @@
               </xsl:choose>
               
               <!-- Originator -->
-              <OrgCre>
-                <txtName><xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/></txtName>
-              </OrgCre>
+              <xsl:if test="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg">
+                <OrgCre>
+                  <txtName><xsl:value-of select="aixm:extension/ead-audit:DesignatedPointExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/></txtName>
+                </OrgCre>
+              </xsl:if>
               
               <!-- UUID -->
               <xsl:variable name="DPN_uuid" select="../../gml:identifier"/>

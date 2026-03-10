@@ -26,7 +26,12 @@
   ===========================================================================
                     featureTypes: aixm:Navaid aixm:OrganisationAuthority
   includeReferencedFeaturesLevel: 1
-               featureOccurrence: aixm:Navaid.aixm:type EQUALS 'DME' OR aixm:Navaid.aixm:type EQUALS 'ILS_DME' OR aixm:Navaid.aixm:type EQUALS 'MLS_DME' OR aixm:Navaid.aixm:type EQUALS 'VOR_DME' OR aixm:Navaid.aixm:type EQUALS 'NDB_DME' OR aixm:Navaid.aixm:type EQUALS 'LOC_DME'
+               featureOccurrence: aixm:Navaid.aixm:type EQUALS 'DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'ILS_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'MLS_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'VOR_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'NDB_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'LOC_DME'
                permanentBaseline: true
                        dataScope: ReleasedData
                      AIXMversion: 5.1.1
@@ -774,7 +779,10 @@
                   </xsl:variable>
                   
                   <!-- Originator -->
-                  <xsl:variable name="originator" select="aixm:extension/ead-audit:DMEExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+                  <xsl:variable name="originator" select="
+                    if(aixm:extension/ead-audit:DMEExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg)
+                    then aixm:extension/ead-audit:DMEExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg
+                    else ''"/>
                   
                   <tr>
                     <td><xsl:value-of select="if (string-length($DME_UUID) gt 0) then $DME_UUID else '&#160;'"/></td>
@@ -843,243 +851,201 @@
           <xsl:variable name="rule_parameters" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:fileIdentifier/gco:CharacterString"/>
           
           <!-- extractionRulesUUID -->
-          <xsl:variable name="rule_uuid">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'extractionRulesUuid: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="rule_uuid" select="replace(substring-before(substring-after($rule_parameters, 'extractionRulesUuid: '), ','), '&quot;', '')"/>
           
           <!-- interestedInDataAt -->
-          <xsl:variable name="interest_date">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'interestedInDataAt: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="interest_date" select="replace(substring-before(substring-after($rule_parameters, 'interestedInDataAt: '), ','), '&quot;', '')"/>
           
           <!-- featureTypes -->
-          <xsl:variable name="feat_types">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'featureTypes: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="feat_types" select="replace(replace(substring-before(substring-after($rule_parameters, 'featureTypes: '), ','), ' ', '&lt;br/&gt;'), '&quot;', '')"/>
           
           <!-- excludedProperties -->
-          <xsl:variable name="exc_properties">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'excludedProperties: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="exc_properties" select="replace(substring-before(substring-after($rule_parameters, 'excludedProperties: '), ','), '&quot;', '')"/>
           
           <!-- includeReferencedFeaturesLevel -->
-          <xsl:variable name="referenced_feat_level">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'includeReferencedFeaturesLevel: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="referenced_feat_level" select="replace(substring-before(substring-after($rule_parameters, 'includeReferencedFeaturesLevel: '), ','), '&quot;', '')"/>
           
           <!-- featureOccurrence -->
-          <xsl:variable name="feat_occurrence">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'featureOccurrence: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="feat_occurrence" select="replace(substring-before(substring-after($rule_parameters, 'featureOccurrence: '), ','), '&quot;', '')"/>
           
           <!-- effectiveDateStart -->
-          <xsl:variable name="eff_date_start">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'effectiveDateStart: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="eff_date_start" select="replace(substring-before(substring-after($rule_parameters, 'effectiveDateStart: '), ','), '&quot;', '')"/>
           
           <!-- effectiveDateEnd -->
-          <xsl:variable name="eff_date_end">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'effectiveDateEnd: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="eff_date_end" select="replace(substring-before(substring-after($rule_parameters, 'effectiveDateEnd: '), ','), '&quot;', '')"/>
           
           <!-- referencedDataFeature -->
-          <xsl:variable name="referenced_data_feat">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'referencedDataFeature: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="referenced_data_feat" select="replace(substring-before(substring-after($rule_parameters, 'referencedDataFeature: '), ','), '&quot;', '')"/>
           
           <!-- permanentBaseline -->
-          <xsl:variable name="perm_BL">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'permanentBaseline: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="perm_BL" select="replace(substring-before(substring-after($rule_parameters, 'permanentBaseline: '), ','), '&quot;', '')"/>
           
           <!-- permanentPermdelta -->
-          <xsl:variable name="perm_PD">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'permanentPermdelta: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="perm_PD" select="replace(substring-before(substring-after($rule_parameters, 'permanentPermdelta: '), ','), '&quot;', '')"/>
           
           <!-- temporaryData -->
-          <xsl:variable name="temp_data">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'temporaryData: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="temp_data" select="replace(substring-before(substring-after($rule_parameters, 'temporaryData: '), ','), '&quot;', '')"/>
           
           <!-- permanentBaselineForTemporaryData -->
-          <xsl:variable name="perm_BS_for_temp_data">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'permanentBaselineForTemporaryData: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="perm_BS_for_temp_data" select="replace(substring-before(substring-after($rule_parameters, 'permanentBaselineForTemporaryData: '), ','), '&quot;', '')"/>
           
           <!-- spatialFilteringBy -->
-          <xsl:variable name="spatial_filtering">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialFilteringBy: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="spatial_filtering" select="replace(substring-before(substring-after($rule_parameters, 'spatialFilteringBy: '), ','), '&quot;', '')"/>
+          
+          <!-- spatialAreaDefinition -->
+          <xsl:variable name="spatial_area_definition" select="replace(substring-before(substring-after($rule_parameters, 'spatialAreaDefinition: '), ','), '&quot;', '')"/>
           
           <!-- spatialAreaUUID -->
-          <xsl:variable name="spatial_area_uuid">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialAreaUUID: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="spatial_area_uuid" select="replace(replace(substring-before(substring-after($rule_parameters, 'spatialAreaUUID: '), ','), ' ', '&lt;br/&gt;'), '&quot;', '')"/>
           
           <!-- spatialAreaBuffer -->
-          <xsl:variable name="spatial_area_buffer">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialAreaBuffer: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="spatial_area_buffer" select="replace(substring-before(substring-after($rule_parameters, 'spatialAreaBuffer: '), ','), '&quot;', '')"/>
           
           <!-- spatialOperator -->
-          <xsl:variable name="spatial_operator">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialOperator: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="spatial_operator" select="replace(substring-before(substring-after($rule_parameters, 'spatialOperator: '), ','), '&quot;', '')"/>
           
           <!-- spatialValueOperator -->
-          <xsl:variable name="spatial_value_operator">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'spatialValueOperator: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="spatial_value_operator" select="replace(substring-before(substring-after($rule_parameters, 'spatialValueOperator: '), ','), '&quot;', '')"/>
           
           <!-- dataBranch -->
-          <xsl:variable name="data_branch">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataBranch: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="data_branch" select="replace(substring-before(substring-after($rule_parameters, 'dataBranch: '), ','), '&quot;', '')"/>
           
           <!-- dataScope -->
-          <xsl:variable name="data_scope">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataScope: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="data_scope" select="replace(substring-before(substring-after($rule_parameters, 'dataScope: '), ','), '&quot;', '')"/>
           
           <!-- dataProviderOrganization -->
-          <xsl:variable name="data_provider_org">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'dataProviderOrganization: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="data_provider_org" select="replace(substring-before(substring-after($rule_parameters, 'dataProviderOrganization: '), ','), '&quot;', '')"/>
           
           <!-- systemExtension -->
-          <xsl:variable name="system_extension">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'systemExtension: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="system_extension" select="replace(substring-before(substring-after($rule_parameters, 'systemExtension: '), ','), '&quot;', '')"/>
           
           <!-- AIXMversion -->
-          <xsl:variable name="AIXM_ver">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'AIXMversion: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="AIXM_ver" select="replace(substring-before(substring-after($rule_parameters, 'AIXMversion: '), ','), '&quot;', '')"/>
           
           <!-- indirectReferences -->
-          <xsl:variable name="indirect_references">
-            <xsl:value-of select="substring-before(substring-after($rule_parameters, 'indirectReferences: '), ',')"/>
-          </xsl:variable>
+          <xsl:variable name="indirect_references" select="replace(substring-before(substring-after($rule_parameters, 'indirectReferences: '), ','), '&quot;', '')"/>
           
           <!-- dataType -->
           <xsl:variable name="data_type">
             <xsl:variable name="after_key" select="substring-after($rule_parameters, 'dataType: ')"/>
-            <xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
+            <xsl:value-of select="if (contains($after_key, ',')) then replace(substring-before($after_key, ','), '&quot;', '') else $after_key"/>
           </xsl:variable>
           
           <!-- CustomizationAirspaceCircleArcToPolygon -->
           <xsl:variable name="arc_to_polygon">
             <xsl:variable name="after_key" select="substring-after($rule_parameters, 'CustomizationAirspaceCircleArcToPolygon: ')"/>
-            <xsl:value-of select="if (contains($after_key, ',')) then substring-before($after_key, ',') else $after_key"/>
+            <xsl:value-of select="if (contains($after_key, ',')) then replace(substring-before($after_key, ','), '&quot;', '') else $after_key"/>
           </xsl:variable>
           
-          <p><font size="-1">Extraction rule parameters used for this report:</font></p>
+          <p><b><font size="-1">Extraction rule parameters used for this report:</font></b></p>
           
           <table>
             <tr>
-              <td><font size="-1">extractionRulesUUID: </font></td>
-              <td><font size="-1"><xsl:value-of select="if (string-length($rule_uuid) gt 0) then $rule_uuid else '&#160;'"/></font>
-              </td>
+              <td style="text-align:right"><font size="-1">extractionRulesUUID: </font></td>
+              <td><font size="-1"><xsl:value-of select="if (string-length($rule_uuid) gt 0) then $rule_uuid else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">interestedInDataAt: </font></td>
+              <td style="text-align:right"><font size="-1">interestedInDataAt: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($interest_date) gt 0) then $interest_date else '&#160;'"/></font></td>
             </tr>
             <tr style="vertical-align:top">
-              <td><font size="-1">featureTypes: </font></td>
-              <td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'"/></font></td>
+              <td style="text-align:right"><font size="-1">featureTypes: </font></td>
+              <td><font size="-1"><xsl:value-of select="if (string-length($feat_types) gt 0) then $feat_types else '&#160;'" disable-output-escaping="true"/></font></td>
             </tr>
             <tr style="vertical-align:top">
-              <td><font size="-1">excludedProperties: </font></td>
+              <td style="text-align:right"><font size="-1">excludedProperties: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($exc_properties) gt 0) then $exc_properties else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">includeReferencedFeaturesLevel: </font></td>
+              <td style="text-align:right"><font size="-1">includeReferencedFeaturesLevel: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($referenced_feat_level) gt 0) then $referenced_feat_level else '&#160;'"/></font></td>
             </tr>
             <tr style="vertical-align:top">
-              <td><font size="-1">featureOccurrence: </font></td>
+              <td style="text-align:right"><font size="-1">featureOccurrence: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($feat_occurrence) gt 0) then $feat_occurrence else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">effectiveDateStart: </font></td>
+              <td style="text-align:right"><font size="-1">effectiveDateStart: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($eff_date_start) gt 0) then $eff_date_start else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">effectiveDateEnd: </font></td>
+              <td style="text-align:right"><font size="-1">effectiveDateEnd: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($eff_date_end) gt 0) then $eff_date_end else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">referencedDataFeature: </font></td>
+              <td style="text-align:right"><font size="-1">referencedDataFeature: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($referenced_data_feat) gt 0) then $referenced_data_feat else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">permanentBaseline: </font></td>
+              <td style="text-align:right"><font size="-1">permanentBaseline: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($perm_BL) gt 0) then $perm_BL else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">permanentPermdelta: </font></td>
+              <td style="text-align:right"><font size="-1">permanentPermdelta: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($perm_PD) gt 0) then $perm_PD else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">temporaryData: </font></td>
+              <td style="text-align:right"><font size="-1">temporaryData: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($temp_data) gt 0) then $temp_data else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">permanentBaselineForTemporaryData: </font></td>
+              <td style="text-align:right"><font size="-1">permanentBaselineForTemporaryData: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($perm_BS_for_temp_data) gt 0) then $perm_BS_for_temp_data else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">spatialFilteringBy: </font></td>
+              <td style="text-align:right"><font size="-1">spatialFilteringBy: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($spatial_filtering) gt 0) then $spatial_filtering else '&#160;'"/></font></td>
             </tr>
+            <tr>
+              <td style="text-align:right"><font size="-1">spatialAreaDefinition: </font></td>
+              <td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_definition) gt 0) then $spatial_area_definition else '&#160;'"/></font></td>
+            </tr>
             <tr style="vertical-align:top">
-              <td><font size="-1">spatialAreaUUID: </font></td>
-              <td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'"/></font></td>
+              <td style="text-align:right"><font size="-1">spatialAreaUUID: </font></td>
+              <td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_uuid) gt 0) then $spatial_area_uuid else '&#160;'" disable-output-escaping="true"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">spatialAreaBuffer: </font></td>
+              <td style="text-align:right"><font size="-1">spatialAreaBuffer: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($spatial_area_buffer) gt 0) then $spatial_area_buffer else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">spatialOperator: </font></td>
+              <td style="text-align:right"><font size="-1">spatialOperator: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($spatial_operator) gt 0) then $spatial_operator else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">spatialValueOperator: </font></td>
+              <td style="text-align:right"><font size="-1">spatialValueOperator: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($spatial_value_operator) gt 0) then $spatial_value_operator else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">dataBranch: </font></td>
+              <td style="text-align:right"><font size="-1">dataBranch: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($data_branch) gt 0) then $data_branch else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">dataScope: </font></td>
+              <td style="text-align:right"><font size="-1">dataScope: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($data_scope) gt 0) then $data_scope else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">dataProviderOrganization: </font></td>
+              <td style="text-align:right"><font size="-1">dataProviderOrganization: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($data_provider_org) gt 0) then $data_provider_org else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">systemExtension: </font></td>
+              <td style="text-align:right"><font size="-1">systemExtension: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($system_extension) gt 0) then $system_extension else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">AIXMversion: </font></td>
+              <td style="text-align:right"><font size="-1">AIXMversion: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($AIXM_ver) gt 0) then $AIXM_ver else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">indirectReferences: </font></td>
+              <td style="text-align:right"><font size="-1">indirectReferences: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($indirect_references) gt 0) then $indirect_references else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">dataType: </font></td>
+              <td style="text-align:right"><font size="-1">dataType: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($data_type) gt 0) then $data_type else '&#160;'"/></font></td>
             </tr>
             <tr>
-              <td><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
+              <td style="text-align:right"><font size="-1">CustomizationAirspaceCircleArcToPolygon: </font></td>
               <td><font size="-1"><xsl:value-of select="if (string-length($arc_to_polygon) gt 0) then $arc_to_polygon else '&#160;'"/></font></td>
             </tr>
           </table>

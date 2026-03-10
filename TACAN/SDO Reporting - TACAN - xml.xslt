@@ -5,8 +5,8 @@
 <!-- Created by: Paul-Adrian LAPUSAN (for EUROCONTROL) -->
 <!-- ==================================================================== -->
 <!-- 
-Copyright (c) 2025, EUROCONTROL
-=====================================
+  Copyright (c) 2025, EUROCONTROL
+  =====================================
   All rights reserved.
   Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
   * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -578,7 +578,10 @@ Copyright (c) 2025, EUROCONTROL
             </xsl:variable>
             
             <!-- Originator -->
-            <xsl:variable name="originator" select="aixm:extension/ead-audit:TACANExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+            <xsl:variable name="originator" select="
+              if(aixm:extension/ead-audit:TACANExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg)
+              then aixm:extension/ead-audit:TACANExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg
+              else ''"/>
             
             <Record>
               <xsl:if test="string-length($TACAN_UUID) gt 0">

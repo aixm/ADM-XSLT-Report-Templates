@@ -26,7 +26,12 @@
   ===========================================================================
                     featureTypes: aixm:Navaid aixm:OrganisationAuthority
   includeReferencedFeaturesLevel: 1
-               featureOccurrence: aixm:Navaid.aixm:type EQUALS 'DME' OR aixm:Navaid.aixm:type EQUALS 'ILS_DME' OR aixm:Navaid.aixm:type EQUALS 'MLS_DME' OR aixm:Navaid.aixm:type EQUALS 'VOR_DME' OR aixm:Navaid.aixm:type EQUALS 'NDB_DME' OR aixm:Navaid.aixm:type EQUALS 'LOC_DME'
+               featureOccurrence: aixm:Navaid.aixm:type EQUALS 'DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'ILS_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'MLS_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'VOR_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'NDB_DME'
+                                  OR aixm:Navaid.aixm:type EQUALS 'LOC_DME'
                permanentBaseline: true
                        dataScope: ReleasedData
                      AIXMversion: 5.1.1
@@ -561,7 +566,10 @@
             </xsl:variable>
             
             <!-- Originator -->
-            <xsl:variable name="originator" select="aixm:extension/ead-audit:DMEExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+            <xsl:variable name="originator" select="
+              if(aixm:extension/ead-audit:DMEExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg)
+              then aixm:extension/ead-audit:DMEExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg
+              else ''"/>
           
             <Record>
               <xsl:if test="string-length($DME_UUID) gt 0">

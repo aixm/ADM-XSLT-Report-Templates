@@ -1061,7 +1061,10 @@
             <xsl:variable name="IAP_timeslice" select="fcn:format-timeslice-info(.)"/>
             
             <!-- Originator -->
-            <xsl:variable name="originator" select="aixm:extension/ead-audit:InstrumentApproachProcedureExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg"/>
+            <xsl:variable name="originator" select="
+              if(aixm:extension/ead-audit:InstrumentApproachProcedureExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg)
+              then aixm:extension/ead-audit:InstrumentApproachProcedureExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg
+              else ''"/>
             
             <Record>
               <xsl:if test="string-length($AHP_designator) gt 0">
