@@ -2046,7 +2046,7 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
-              <td><font size="-1">Identification</font></td>
+              <td><font size="-1">Designator</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
