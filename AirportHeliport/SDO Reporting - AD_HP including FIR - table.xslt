@@ -2016,7 +2016,7 @@
                   <xsl:variable name="AHP_working_hours_remarks">
                     <xsl:variable name="avail_count" select="count(aixm:availability/aixm:AirportHeliportAvailability)"/>
                     <xsl:for-each select="aixm:availability/aixm:AirportHeliportAvailability">
-                      <xsl:variable name="avail_notes" select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote"/>
+                      <xsl:variable name="avail_notes" select="aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote"/>
                       <xsl:if test="count($avail_notes) gt 0">
                         <!-- separate from the previous availability's remarks -->
                         <xsl:if test="../preceding-sibling::aixm:availability/aixm:AirportHeliportAvailability[.//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote]">
