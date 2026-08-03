@@ -274,24 +274,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -935,17 +930,17 @@
                     <td><xsl:value-of select="if (string-length($RDN_TDZ_accuracy_uom) gt 0) then $RDN_TDZ_accuracy_uom else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_taxitime_est) gt 0) then $RDN_taxitime_est else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_VASIS_type) gt 0) then $RDN_VASIS_type else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_VASIS_position_desc) gt 0"><xsl:value-of select="$RDN_VASIS_position_desc" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_VASIS_position_desc) gt 0"><xsl:value-of select="$RDN_VASIS_position_desc" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($RDN_app_slope_ang) gt 0) then $RDN_app_slope_ang else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_MEH) gt 0) then $RDN_MEH else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_MEH_uom) gt 0) then $RDN_MEH_uom else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_VASIS_timeslice) gt 0) then $RDN_VASIS_timeslice else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_ArrestingGear) gt 0"><xsl:value-of select="$RDN_ArrestingGear" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_ArrestingGear) gt 0"><xsl:value-of select="$RDN_ArrestingGear" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($RDN_ArrestingGear_timeslice) gt 0) then $RDN_ArrestingGear_timeslice else '&#160;'"/></td>
                     <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_RVR_equipment) gt 0"><xsl:value-of select="$RDN_RVR_equipment" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($RDN_RVR_timeslice) gt 0) then $RDN_RVR_timeslice else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_VFR_pattern_direction) gt 0) then $RDN_VFR_pattern_direction else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_remarks) gt 0"><xsl:value-of select="$RDN_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RDN_remarks) gt 0"><xsl:value-of select="$RDN_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($effective_date) gt 0) then $effective_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($commit_date) gt 0) then $commit_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RDN_UUID) gt 0) then $RDN_UUID else '&#160;'"/></td>

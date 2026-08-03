@@ -332,24 +332,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -1227,10 +1222,10 @@
                     <td><xsl:value-of select="if (string-length($MSA_significant_point_timeslice) gt 0) then $MSA_significant_point_timeslice else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($MSA_timeslice) gt 0) then $MSA_timeslice else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($IAP_RNP) gt 0) then $IAP_RNP else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($IAP_comm_failure) gt 0"><xsl:value-of select="$IAP_comm_failure" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($IAP_comm_failure) gt 0"><xsl:value-of select="$IAP_comm_failure" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($IAP_type) gt 0) then $IAP_type else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($IAP_missed_procedure) gt 0"><xsl:value-of select="$IAP_missed_procedure" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($IAP_remarks) gt 0"><xsl:value-of select="$IAP_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($IAP_missed_procedure) gt 0"><xsl:value-of select="$IAP_missed_procedure" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($IAP_remarks) gt 0"><xsl:value-of select="$IAP_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($effective_date) gt 0) then $effective_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($commit_date) gt 0) then $commit_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($IAP_UUID) gt 0) then $IAP_UUID else '&#160;'"/></td>

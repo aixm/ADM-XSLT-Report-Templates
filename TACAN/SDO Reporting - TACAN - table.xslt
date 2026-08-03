@@ -432,24 +432,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -776,7 +771,7 @@
                     <td><xsl:value-of select="if (string-length($collocated_VOR_lat) gt 0) then $collocated_VOR_lat else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($collocated_VOR_long) gt 0) then $collocated_VOR_long else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($collocated_VOR_timeslice) gt 0) then $collocated_VOR_timeslice else '&#160;'"/></td>
-                    <td xml:space="preserve"><xsl:value-of select="if (string-length($TACAN_working_hours) gt 0) then $TACAN_working_hours else '&#160;'" disable-output-escaping="yes"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:value-of select="if (string-length($TACAN_working_hours) gt 0) then $TACAN_working_hours else '&#160;'" disable-output-escaping="yes"/></td>
                     <td><xsl:value-of select="if (string-length($TACAN_effective_date) gt 3) then $TACAN_effective_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
                   </tr>

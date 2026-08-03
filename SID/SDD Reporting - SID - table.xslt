@@ -192,24 +192,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -659,8 +654,8 @@
                     <td><xsl:value-of select="if (string-length($SID_validity-end) gt 0) then $SID_validity-end else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($SID_sequence-number) gt 0) then $SID_sequence-number else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($SID_correction-number) gt 0) then $SID_correction-number else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_comm-failure-instruction) gt 0"><xsl:value-of select="$SID_comm-failure-instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_instruction) gt 0"><xsl:value-of select="$SID_instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_comm-failure-instruction) gt 0"><xsl:value-of select="$SID_comm-failure-instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_instruction) gt 0"><xsl:value-of select="$SID_instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($SID_design-criteria) gt 0) then $SID_design-criteria else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($SID_coding-standard) gt 0) then $SID_coding-standard else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($SID_flight-checked) gt 0) then $SID_flight-checked else '&#160;'"/></td>
@@ -669,7 +664,7 @@
                     <td><xsl:value-of select="if (string-length($AHP_UUID) gt 0) then $AHP_UUID else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_name) gt 0) then $AHP_name else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_designator) gt 0) then $AHP_designator else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_annotation) gt 0"><xsl:value-of select="$SID_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($SID_annotation) gt 0"><xsl:value-of select="$SID_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($SID_designator) gt 0) then $SID_designator else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($SID_contingency-route) gt 0) then $SID_contingency-route else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
@@ -677,7 +672,7 @@
                     <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
                   </tr>
                   

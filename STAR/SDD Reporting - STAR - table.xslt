@@ -192,24 +192,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {

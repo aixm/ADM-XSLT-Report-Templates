@@ -201,24 +201,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -818,7 +813,7 @@
                     <td><xsl:value-of select="if (string-length($RWY_PCN_max_tyre_press_code) gt 0) then $RWY_PCN_max_tyre_press_code else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_PCN_max_tyre_press_val) gt 0) then $RWY_PCN_max_tyre_press_val else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_PCN_eval_method) gt 0) then $RWY_PCN_eval_method else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_PCN_notes) gt 0"><xsl:value-of select="$RWY_PCN_notes" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_PCN_notes) gt 0"><xsl:value-of select="$RWY_PCN_notes" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($RWY_LCN_val) gt 0) then $RWY_LCN_val else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_SIWL_weight) gt 0) then $RWY_SIWL_weight else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_SIWL_weight_uom) gt 0) then $RWY_SIWL_weight_uom else '&#160;'"/></td>
@@ -832,9 +827,9 @@
                     <td><xsl:value-of select="if (string-length($RWY_strip_lat_offset) gt 0) then $RWY_strip_lat_offset else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_strip_uom) gt 0) then $RWY_strip_uom else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_op_status) gt 0) then $RWY_op_status else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_profile_description) gt 0"><xsl:value-of select="$RWY_profile_description" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_marking) gt 0"><xsl:value-of select="$RWY_marking" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_remarks) gt 0"><xsl:value-of select="$RWY_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_profile_description) gt 0"><xsl:value-of select="$RWY_profile_description" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_marking) gt 0"><xsl:value-of select="$RWY_marking" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($RWY_remarks) gt 0"><xsl:value-of select="$RWY_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($effective_date) gt 0) then $effective_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($commit_date) gt 0) then $commit_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($RWY_UUID) gt 0) then $RWY_UUID else '&#160;'"/></td>

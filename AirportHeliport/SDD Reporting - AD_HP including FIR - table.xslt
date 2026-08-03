@@ -133,6 +133,48 @@
     <xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
   </xsl:function>
   
+  <!-- Pretty-print one XML node as escaped HTML: &#160;-based indentation, one line per element; namespace declarations and gml:id attributes are dropped -->
+  <xsl:function name="fcn:format-gml-node" as="xs:string">
+    <xsl:param name="node" as="node()"/>
+    <xsl:param name="depth" as="xs:integer"/>
+    <xsl:variable name="indent" select="string-join(for $i in 1 to $depth return '&amp;#160;&amp;#160;&amp;#160;', '')"/>
+    <xsl:choose>
+      <xsl:when test="$node instance of element()">
+        <xsl:variable name="attrs" select="string-join(for $a in $node/@*[name(.) != 'gml:id'] return concat(' ', name($a), '=&quot;', string($a), '&quot;'), '')"/>
+        <xsl:variable name="children" select="$node/node()[not(self::text()[normalize-space(.) = ''])]"/>
+        <xsl:choose>
+          <!-- empty element: self-closing tag -->
+          <xsl:when test="empty($children)">
+            <xsl:sequence select="concat($indent, '&amp;lt;', name($node), $attrs, '/&amp;gt;')"/>
+          </xsl:when>
+          <!-- text-only content stays on one line -->
+          <xsl:when test="empty($children[not(self::text())])">
+            <xsl:sequence select="concat($indent, '&amp;lt;', name($node), $attrs, '&amp;gt;', normalize-space(string($node)), '&amp;lt;/', name($node), '&amp;gt;')"/>
+          </xsl:when>
+          <!-- child elements each on their own indented line -->
+          <xsl:otherwise>
+            <xsl:sequence select="string-join((
+              concat($indent, '&amp;lt;', name($node), $attrs, '&amp;gt;'),
+              for $child in $children return fcn:format-gml-node($child, $depth + 1),
+              concat($indent, '&amp;lt;/', name($node), '&amp;gt;')), '&lt;br/&gt;')"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:when>
+      <xsl:when test="$node instance of comment()">
+        <xsl:sequence select="concat($indent, '&amp;lt;!-- ', normalize-space($node), ' --&amp;gt;')"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:sequence select="concat($indent, normalize-space($node))"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:function>
+
+  <!-- Format (beautify) embedded GML/XML content as indented escaped HTML (render with disable-output-escaping) -->
+  <xsl:function name="fcn:format-gml-xml" as="xs:string">
+    <xsl:param name="nodes" as="node()*"/>
+    <xsl:sequence select="string-join(for $n in $nodes[not(self::text()[normalize-space(.) = ''])] return fcn:format-gml-node($n, 0), '&lt;br/&gt;')"/>
+  </xsl:function>
+
   <!-- Geodesic interpolation helper functions -->
   <!-- Haversine formula to calculate great circle distance between two points (in degrees) -->
   <xsl:function name="fcn:haversine-distance" as="xs:double">
@@ -929,24 +971,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -1588,11 +1625,7 @@
                         <xsl:value-of select="fcn:insert-value(aixm:ARP)"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:for-each select="aixm:ARP/node()">
-                          <xsl:variable name="serialized" select="serialize(., map{'omit-xml-declaration': true(), 'indent': false()})"/>
-                          <xsl:variable name="no-xmlns" select="replace($serialized, ' xmlns:[^=]+=&quot;[^&quot;]+&quot;', '')"/>
-                          <xsl:value-of select="replace($no-xmlns, ' gml:id=&quot;[^&quot;]+&quot;', '')"/>
-                        </xsl:for-each>
+                        <xsl:value-of select="fcn:format-gml-xml(aixm:ARP/node())"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
@@ -1623,11 +1656,7 @@
                         <xsl:value-of select="fcn:insert-value(aixm:aviationBoundary)"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:for-each select="aixm:aviationBoundary/node()">
-                          <xsl:variable name="serialized" select="serialize(., map{'omit-xml-declaration': true(), 'indent': false()})"/>
-                          <xsl:variable name="no-xmlns" select="replace($serialized, ' xmlns:[^=]+=&quot;[^&quot;]+&quot;', '')"/>
-                          <xsl:value-of select="replace($no-xmlns, ' gml:id=&quot;[^&quot;]+&quot;', '')"/>
-                        </xsl:for-each>
+                        <xsl:value-of select="fcn:format-gml-xml(aixm:aviationBoundary/node())"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:variable>
@@ -1790,15 +1819,15 @@
                     <td><xsl:value-of select="if (string-length($AHP_ARP-lat) gt 0) then $AHP_ARP-lat else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_ARP-long) gt 0) then $AHP_ARP-long else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_ARP-datum) gt 0) then $AHP_ARP-datum else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($AHP_ARP-gml-xml) gt 0) then $AHP_ARP-gml-xml else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($AHP_aviation-boundary-gml-xml) gt 0) then $AHP_aviation-boundary-gml-xml else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($AHP_annotation) gt 0"><xsl:value-of select="$AHP_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($AHP_ARP-gml-xml) gt 0"><xsl:value-of select="$AHP_ARP-gml-xml" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($AHP_aviation-boundary-gml-xml) gt 0"><xsl:value-of select="$AHP_aviation-boundary-gml-xml" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($AHP_annotation) gt 0"><xsl:value-of select="$AHP_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($creation-date) gt 0) then $creation-date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
                   </tr>
                   

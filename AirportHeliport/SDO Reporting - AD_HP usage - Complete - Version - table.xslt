@@ -939,7 +939,7 @@
       <td><xsl:value-of select="if (string-length(map:get($airport-vars, 'icao')) != 0) then map:get($airport-vars, 'icao') else '&#160;'"/></td>
       <td><xsl:value-of select="if (string-length($limitation-code) != 0) then $limitation-code else '&#160;'"/></td>
       <td><xsl:value-of select="if (string-length($working-hours-code) != 0) then $working-hours-code else '&#160;'" disable-output-escaping="yes"/></td>
-      <td style="min-width:700px;white-space:normal" xml:space="preserve"><xsl:value-of select="if (string-length($timesheet-remarks) != 0) then $timesheet-remarks else '&#160;'" disable-output-escaping="yes"/></td>
+      <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:value-of select="if (string-length($timesheet-remarks) != 0) then $timesheet-remarks else '&#160;'" disable-output-escaping="yes"/></td>
       <td><xsl:value-of select="if (string-length($condition-level) != 0) then $condition-level else '&#160;'"/></td>
       <td><xsl:value-of select="if (string-length($prior-permission) != 0) then $prior-permission else '&#160;'"/></td>
       <td><xsl:value-of select="if (string-length($operation) != 0) then $operation else '&#160;'"/></td>
@@ -1009,24 +1009,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {

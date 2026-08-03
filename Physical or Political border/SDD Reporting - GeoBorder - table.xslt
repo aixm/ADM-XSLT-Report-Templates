@@ -186,23 +186,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -479,13 +475,13 @@
                   <td><xsl:value-of select="if (string-length($correction-number) gt 0) then $correction-number else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($name) gt 0) then $name else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
-                  <td style="min-width:2000px;white-space:normal"><xsl:value-of select="if (string-length($border) gt 0) then $border else '&#160;'"/></td>
+                  <td style="max-width:2000px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($border) gt 0) then $border else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($creation-date) gt 0) then $creation-date else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
-                  <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
+                  <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
                   <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
                 </tr>
                 

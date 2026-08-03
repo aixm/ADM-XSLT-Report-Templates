@@ -1145,24 +1145,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -2418,8 +2413,8 @@
                     <td><xsl:value-of select="if (string-length($Navaid_CRC) gt 0) then $Navaid_CRC else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($Navaid_vertical_datum) gt 0) then $Navaid_vertical_datum else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($Navaid_working_hours) gt 0) then $Navaid_working_hours else '&#160;'" disable-output-escaping="yes"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($Navaid_working_hours_remarks) gt 0"><xsl:value-of select="$Navaid_working_hours_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($Navaid_remarks) gt 0"><xsl:value-of select="$Navaid_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($Navaid_working_hours_remarks) gt 0"><xsl:value-of select="$Navaid_working_hours_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($Navaid_remarks) gt 0"><xsl:value-of select="$Navaid_remarks" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($Navaid_DME_designator) gt 0) then $Navaid_DME_designator else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($Navaid_DME_latitude) gt 0) then $Navaid_DME_latitude else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($Navaid_DME_longitude) gt 0) then $Navaid_DME_longitude else '&#160;'"/></td>

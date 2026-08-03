@@ -408,24 +408,19 @@
           .data-table {
             border-collapse: collapse;
             font-family: Times New Roman;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
           }
           .data-table td {
             padding: 4px 8px;
-            border-left: 1px solid #dbdbdb;
-            border-right: 1px solid #dbdbdb;
           }
           /* Sticky header row */
           .data-table thead td {
             position: sticky;
             top: 0;
             z-index: 1;
-            background-color: #ddd;
+            background-color: #ffffff;
             white-space: nowrap;
-          }
-          /* Odd data rows */
-          .data-table tbody tr:nth-child(odd) {
-            background-color: #f5f5f5;
           }
           /* Highlight row on hover */
           .data-table tbody tr:hover {
@@ -1004,9 +999,9 @@
                     <td><xsl:value-of select="if (string-length($VOR_vertical_distance_uom) gt 0) then $VOR_vertical_distance_uom else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($VOR_CRC) gt 0) then $VOR_CRC else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($VOR_vertical_datum) gt 0) then $VOR_vertical_datum else '&#160;'"/></td>
-                    <td xml:space="preserve"><xsl:value-of select="if (string-length($VOR_working_hours) gt 0) then $VOR_working_hours else '&#160;'" disable-output-escaping="yes"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:value-of select="if (string-length($VOR_working_hours_remarks) gt 0) then $VOR_working_hours_remarks else '&#160;'" disable-output-escaping="yes"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:value-of select="if (string-length($VOR_remarks) gt 0) then $VOR_remarks else '&#160;'" disable-output-escaping="yes"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:value-of select="if (string-length($VOR_working_hours) gt 0) then $VOR_working_hours else '&#160;'" disable-output-escaping="yes"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:value-of select="if (string-length($VOR_working_hours_remarks) gt 0) then $VOR_working_hours_remarks else '&#160;'" disable-output-escaping="yes"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:value-of select="if (string-length($VOR_remarks) gt 0) then $VOR_remarks else '&#160;'" disable-output-escaping="yes"/></td>
                     <td><xsl:value-of select="if (string-length($VOR_effective_date) gt 3) then $VOR_effective_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($VOR_commit_date) gt 3) then $VOR_commit_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($VOR_UUID) gt 3) then $VOR_UUID else '&#160;'"/></td>
