@@ -30,7 +30,6 @@
                permanentBaseline: true
                        dataScope: ReleasedData
                      AIXMversion: 5.1.1
-              indirectReferences: aixm:Runway references (aixm:RunwayDirection)
 -->
 
 <xsl:transform version="3.0" 
@@ -702,27 +701,7 @@
                   <xsl:variable name="RWY_strip_uom" select="aixm:lengthStrip/@uom"/>
                   
                   <!-- Operational status -->
-                  <xsl:variable name="RWY_op_status">
-                    <xsl:variable name="RDN-baseline-timeslices" select="//aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RWY_UUID]"/>
-                    <xsl:variable name="RDN-valid-timeslices" select="fcn:get-valid-timeslice($RDN-baseline-timeslices)"/>
-                    <xsl:choose>
-                      <xsl:when test="count($RDN-valid-timeslices) = count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='NORMAL']) and count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='NORMAL']) gt 0">
-                        <xsl:value-of select="'Normal'"/>
-                      </xsl:when>
-                      <xsl:when test="count($RDN-valid-timeslices) = count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) and count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) gt 0">
-                        <xsl:value-of select="'Closed'"/>
-                      </xsl:when>
-                      <xsl:when test="count($RDN-valid-timeslices) gt count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) and count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='CLOSED']) gt 0">
-                        <xsl:value-of select="'Limited'"/>
-                      </xsl:when>
-                      <xsl:when test="count($RDN-valid-timeslices/aixm:availability/aixm:ManoeuvringAreaAvailability[aixm:operationalStatus='LIMITED']) gt 0">
-                        <xsl:value-of select="'Limited'"/>
-                      </xsl:when>
-                      <xsl:when test="count($RDN-valid-timeslices/aixm:availability) = 0">
-                        <xsl:value-of select="'No availability data'"/>
-                      </xsl:when>
-                    </xsl:choose>
-                  </xsl:variable>
+                  <xsl:variable name="RWY_op_status" select="'N/A'"/>
                   
                   <!-- Profile description -->
                   <xsl:variable name="RWY_profile_description">
@@ -1052,7 +1031,7 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
-              <td><font size="-1">Aerodrome / Heliport - Identification</font></td>
+              <td><font size="-1">Aerodrome / Heliport - Identification (first), Designator (second)</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
