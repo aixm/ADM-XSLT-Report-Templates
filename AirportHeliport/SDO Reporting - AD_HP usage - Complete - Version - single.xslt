@@ -155,166 +155,61 @@
     <xsl:value-of select="string-join($non_empty_lines, ' ')"/>
   </xsl:function>
 
-  <!-- Function to transform AIXM property values to display text -->
-  <xsl:function name="fcn:transform-value" as="xs:string">
-    <xsl:param name="value" as="xs:string"/>
-    <xsl:param name="property-name" as="xs:string"/>
+  <!-- Function to determine the working hours code for a single Timesheet -->
+  <!-- When no Timesheet is present, the code is derived from the timeInterval annotations / nil reason of the given level element (AirportHeliportAvailability or ConditionCombination) -->
+  <xsl:function name="fcn:format-working-hours" as="xs:string">
+    <xsl:param name="timesheet" as="element()?"/>
+    <xsl:param name="level-element" as="element()?"/>
     <xsl:choose>
-      <!-- Handle empty values -->
-      <xsl:when test="string-length($value) = 0">
-        <xsl:value-of select="''"/>
-      </xsl:when>
-      <!-- Handle OTHER values -->
-      <xsl:when test="starts-with($value, 'OTHER:')">
-        <xsl:value-of select="substring-after($value, 'OTHER:')"/>
-      </xsl:when>
-      <xsl:when test="$value = 'OTHER'">
-        <xsl:value-of select="'OTHER'"/>
-      </xsl:when>
-      <!-- Transform specific property values for FLIGHT -->
-      <xsl:when test="$property-name = 'rule'">
+      <xsl:when test="$timesheet">
         <xsl:choose>
-          <xsl:when test="$value = 'ALL'">IV</xsl:when>
-          <xsl:when test="$value = 'IFR'">I</xsl:when>
-          <xsl:when test="$value = 'VFR'">V</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
+          <!-- insert 'H24' for a continuous service 24/7 Timesheet -->
+          <xsl:when test="$timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and (not(aixm:dayTil) or aixm:dayTil/@xsi:nil='true' or aixm:dayTil='ANY') and aixm:startTime='00:00' and aixm:endTime=('00:00','23:59','24:00') and (aixm:daylightSavingAdjust=('NO','YES') or aixm:daylightSavingAdjust/@xsi:nil='true' or not(aixm:daylightSavingAdjust)) and ((aixm:startDate='01-01' and aixm:endDate='31-12') or ((not(aixm:startDate) or aixm:startDate/@xsi:nil='true') and (not(aixm:endDate) or aixm:endDate/@xsi:nil='true'))) and aixm:excluded='NO']">
+            <xsl:value-of select="'H24'"/>
+          </xsl:when>
+          <!-- insert 'HJ' for a sunrise to sunset Timesheet -->
+          <xsl:when test="$timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SR' and aixm:endEvent='SS' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO']">
+            <xsl:value-of select="'HJ'"/>
+          </xsl:when>
+          <!-- insert 'HN' for a sunset to sunrise Timesheet -->
+          <xsl:when test="$timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SS' and aixm:endEvent='SR' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO']">
+            <xsl:value-of select="'HN'"/>
+          </xsl:when>
+          <!-- any other Timesheet: refer the reader to the timesheet columns -->
+          <xsl:otherwise>
+            <xsl:value-of select="'TIMSH'"/>
+          </xsl:otherwise>
         </xsl:choose>
       </xsl:when>
-      <xsl:when test="$property-name = 'flight-type'">
-        <xsl:choose>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <xsl:when test="$property-name = 'status'">
-        <xsl:choose>
-          <xsl:when test="$value = 'EMERGENCY'">EMERG</xsl:when>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <xsl:when test="$property-name = 'military'">
-        <xsl:choose>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <xsl:when test="$property-name = 'origin'">
-        <xsl:choose>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <xsl:when test="$property-name = 'purpose'">
-        <xsl:choose>
-          <xsl:when test="$value = 'SCHEDULED'">S</xsl:when>
-          <xsl:when test="$value = 'NON_SCHEDULED'">NS</xsl:when>
-          <xsl:when test="$value = 'PRIVATE'">P</xsl:when>
-          <xsl:when test="$value = 'AIR_TRAINING'">TRG</xsl:when>
-          <xsl:when test="$value = 'AIR_WORK'">WORK</xsl:when>
-          <xsl:when test="$value = 'PARTICIPANT'">PARTICIPANT</xsl:when>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <!-- Transform specific property values for AIRCRAFT -->
-      <xsl:when test="$property-name = 'engine'">
-        <xsl:choose>
-          <xsl:when test="$value = 'JET'">J</xsl:when>
-          <xsl:when test="$value = 'PISTON'">P</xsl:when>
-          <xsl:when test="$value = 'TURBOPROP'">T</xsl:when>
-          <xsl:when test="$value = 'ELECTRIC'">E</xsl:when>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <xsl:when test="$property-name = 'aircraft-type'">
-        <xsl:choose>
-          <xsl:when test="$value = 'LANDPLANE'">L</xsl:when>
-          <xsl:when test="$value = 'SEAPLANE'">S</xsl:when>
-          <xsl:when test="$value = 'AMPHIBIAN'">A</xsl:when>
-          <xsl:when test="$value = 'HELICOPTER'">H</xsl:when>
-          <xsl:when test="$value = 'GYROCOPTER'">G</xsl:when>
-          <xsl:when test="$value = 'TILT_WING'">T</xsl:when>
-          <xsl:when test="$value = 'STOL'">R</xsl:when>
-          <xsl:when test="$value = 'GLIDER'">E</xsl:when>
-          <xsl:when test="$value = 'HANGGLIDER'">N</xsl:when>
-          <xsl:when test="$value = 'PARAGLIDER'">P</xsl:when>
-          <xsl:when test="$value = 'ULTRA_LIGHT'">U</xsl:when>
-          <xsl:when test="$value = 'BALLOON'">B</xsl:when>
-          <xsl:when test="$value = 'UAV'">D</xsl:when>
-          <xsl:when test="$value = 'ALL'">ANY</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$value"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <!-- Transform specific property values for EventInterpretation -->
-      <xsl:when test="$property-name = 'event-interpretation'">
-        <xsl:choose>
-          <xsl:when test="$value = 'EARLIEST'">E</xsl:when>
-          <xsl:when test="$value = 'LATEST'">L</xsl:when>
-        </xsl:choose>
-      </xsl:when>
-      <!-- Default: return value as-is -->
       <xsl:otherwise>
-        <xsl:value-of select="$value"/>
+        <xsl:variable name="ti-notes" select="$level-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]"/>
+        <xsl:choose>
+          <!-- insert 'HX' if coded in a timeInterval annotation at this level -->
+          <xsl:when test="$ti-notes[contains(., 'HX')]">
+            <xsl:value-of select="'HX'"/>
+          </xsl:when>
+          <!-- insert 'HO' if coded in a timeInterval annotation at this level -->
+          <xsl:when test="$ti-notes[contains(., 'HO')]">
+            <xsl:value-of select="'HO'"/>
+          </xsl:when>
+          <!-- insert 'NOTAM' if coded in a timeInterval annotation at this level -->
+          <xsl:when test="$ti-notes[contains(lower-case(.), 'notam') and not(contains(lower-case(.), 'outside'))]">
+            <xsl:value-of select="'NOTAM'"/>
+          </xsl:when>
+          <!-- insert nil reason if provided -->
+          <xsl:when test="$level-element/aixm:timeInterval/@xsi:nil='true' and $level-element/aixm:timeInterval/@nilReason and not($level-element/aixm:timeInterval/@nilReason='inapplicable')">
+            <xsl:value-of select="concat('NIL:', $level-element/aixm:timeInterval/@nilReason)"/>
+          </xsl:when>
+          <!-- insert 'H24' for absence of timeInterval, unless an annotation suggests specific hours -->
+          <xsl:when test="not($ti-notes[contains(., 'HOL') or contains(., 'SS') or contains(., 'SR') or contains(., 'MON') or contains(., 'TUE') or contains(., 'WED') or contains(., 'THU') or contains(., 'FRI') or contains(., 'SAT') or contains(., 'SUN')])">
+            <xsl:value-of select="'H24'"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:value-of select="''"/>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:otherwise>
     </xsl:choose>
-  </xsl:function>
-
-  <!-- Function to format working hours from AirportHeliportAvailability elements -->
-  <xsl:function name="fcn:format-working-hours" as="xs:string">
-    <xsl:param name="availability-elements" as="element()*"/>
-    <xsl:variable name="result">
-      <xsl:choose>
-        <!-- if there is at least one availability element -->
-        <xsl:when test="count($availability-elements) ge 1">
-          <xsl:for-each select="$availability-elements">
-            <xsl:choose>
-              <!-- insert 'H24' if there is an availability with operationalStatus='NORMAL' and no Timesheet -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'NORMAL'">
-                <xsl:value-of select="'H24'"/>
-              </xsl:when>
-              <!-- insert 'H24' if there is an availability with operationalStatus='NORMAL' and a continuous service 24/7 Timesheet -->
-              <xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and (not(aixm:dayTil) or aixm:dayTil/@xsi:nil='true' or aixm:dayTil='ANY') and aixm:startTime='00:00' and aixm:endTime=('00:00','23:59','24:00') and (aixm:daylightSavingAdjust=('NO','YES') or aixm:daylightSavingAdjust/@xsi:nil='true' or not(aixm:daylightSavingAdjust)) and ((aixm:startDate='01-01' and aixm:endDate='31-12') or ((not(aixm:startDate) or aixm:startDate/@xsi:nil='true') and (not(aixm:endDate) or aixm:endDate/@xsi:nil='true'))) and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
-                <xsl:value-of select="'H24'"/>
-              </xsl:when>
-              <!-- insert 'HJ' if there is an availability with operationalStatus='NORMAL' and a sunrise to sunset Timesheet -->
-              <xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SR' and aixm:endEvent='SS' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
-                <xsl:value-of select="'HJ'"/>
-              </xsl:when>
-              <!-- insert 'HN' if there is an availability with operationalStatus='NORMAL' and a sunset to sunrise Timesheet -->
-              <xsl:when test="aixm:timeInterval/aixm:Timesheet[aixm:timeReference='UTC' and aixm:day='ANY' and aixm:startEvent='SS' and aixm:endEvent='SR' and not(aixm:startTime) and not(aixm:endTime) and (aixm:daylightSavingAdjust='NO' or aixm:daylightSavingAdjust/@xsi:nil='true') and aixm:excluded='NO'] and aixm:operationalStatus = 'NORMAL'">
-                <xsl:value-of select="'HN'"/>
-              </xsl:when>
-              <!-- insert 'HX' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HX')] and aixm:operationalStatus = 'NORMAL'">
-                <xsl:value-of select="'HX'"/>
-              </xsl:when>
-              <!-- insert 'HO' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')] and aixm:operationalStatus = 'NORMAL'">
-                <xsl:value-of select="'HO'"/>
-              </xsl:when>
-              <!-- insert 'NOTAM' if there is an availability with operationalStatus='NORMAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'notam') and not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'outside'))]">
-                <xsl:value-of select="'NOTAM'"/>
-              </xsl:when>
-              <!-- insert 'CLSD' if there is an availability with operationalStatus='CLOSED' and no Timesheet -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:operationalStatus = 'CLOSED'">
-                <xsl:value-of select="'CLSD'"/>
-              </xsl:when>
-              <!-- insert nil reason if provided -->
-              <xsl:when test="aixm:timeInterval/@xsi:nil='true' and aixm:timeInterval/@nilReason and not(aixm:timeInterval/@nilReason='inapplicable')">
-                <xsl:value-of select="concat('NIL:', aixm:timeInterval/@nilReason)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:value-of select="'TIMSH'"/>
-              </xsl:otherwise>
-            </xsl:choose>
-          </xsl:for-each>
-        </xsl:when>
-      </xsl:choose>
-    </xsl:variable>
-    <xsl:sequence select="string($result)"/>
   </xsl:function>
 
   <!-- Recursive template to process ConditionCombination and generate rows for timeIntervals -->
@@ -328,81 +223,36 @@
     <xsl:variable name="aircraft-data" select="$condition/aixm:aircraft/aixm:AircraftCharacteristic"/>
     <xsl:variable name="flight-data" select="$condition/aixm:flight/aixm:FlightCharacteristic"/>
 
-    <!-- Count aircraft and flights -->
-    <xsl:variable name="aircraft-count" select="count($aircraft-data)"/>
-    <xsl:variable name="flight-count" select="count($flight-data)"/>
+    <xsl:variable name="timesheets" select="$condition/aixm:timeInterval/aixm:Timesheet"/>
 
-    <!-- Generate rows for timeIntervals at this level -->
-    <xsl:for-each select="$condition/aixm:timeInterval/aixm:Timesheet">
-      <xsl:variable name="current-timesheet" select="."/>
-
-      <xsl:choose>
-        <!-- Case 1: Exactly one aircraft and one flight - place on same row -->
-        <xsl:when test="$aircraft-count = 1 and $flight-count = 1">
-          <xsl:call-template name="generate-row">
-            <xsl:with-param name="timesheet" select="$current-timesheet"/>
+    <xsl:choose>
+      <!-- Generate rows for timeIntervals at this level -->
+      <xsl:when test="count($timesheets) ge 1">
+        <xsl:for-each select="$timesheets">
+          <xsl:call-template name="generate-rows-for-timesheet">
+            <xsl:with-param name="timesheet" select="."/>
             <xsl:with-param name="usage-element" select="$usage-element"/>
             <xsl:with-param name="condition-element" select="$condition"/>
             <xsl:with-param name="condition-level" select="$condition-level"/>
             <xsl:with-param name="airport-vars" select="$airport-vars"/>
-            <xsl:with-param name="aircraft-index" select="1"/>
-            <xsl:with-param name="flight-index" select="1"/>
             <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
             <xsl:with-param name="flight-data" select="$flight-data"/>
           </xsl:call-template>
-        </xsl:when>
-
-        <!-- Case 2: Multiple aircraft and/or multiple flights - place each on separate rows -->
-        <xsl:otherwise>
-          <!-- Generate rows for all aircraft -->
-          <xsl:for-each select="1 to $aircraft-count">
-            <xsl:variable name="aircraft-index" select="."/>
-            <xsl:call-template name="generate-row">
-              <xsl:with-param name="timesheet" select="$current-timesheet"/>
-              <xsl:with-param name="usage-element" select="$usage-element"/>
-              <xsl:with-param name="condition-element" select="$condition"/>
-              <xsl:with-param name="condition-level" select="$condition-level"/>
-              <xsl:with-param name="airport-vars" select="$airport-vars"/>
-              <xsl:with-param name="aircraft-index" select="$aircraft-index"/>
-              <xsl:with-param name="flight-index" select="0"/>
-              <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
-              <xsl:with-param name="flight-data" select="$flight-data"/>
-            </xsl:call-template>
-          </xsl:for-each>
-
-          <!-- Generate rows for all flights -->
-          <xsl:for-each select="1 to $flight-count">
-            <xsl:variable name="flight-index" select="."/>
-            <xsl:call-template name="generate-row">
-              <xsl:with-param name="timesheet" select="$current-timesheet"/>
-              <xsl:with-param name="usage-element" select="$usage-element"/>
-              <xsl:with-param name="condition-element" select="$condition"/>
-              <xsl:with-param name="condition-level" select="$condition-level"/>
-              <xsl:with-param name="airport-vars" select="$airport-vars"/>
-              <xsl:with-param name="aircraft-index" select="0"/>
-              <xsl:with-param name="flight-index" select="$flight-index"/>
-              <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
-              <xsl:with-param name="flight-data" select="$flight-data"/>
-            </xsl:call-template>
-          </xsl:for-each>
-
-          <!-- If no aircraft and no flights, generate one empty row -->
-          <xsl:if test="$aircraft-count = 0 and $flight-count = 0">
-            <xsl:call-template name="generate-row">
-              <xsl:with-param name="timesheet" select="$current-timesheet"/>
-              <xsl:with-param name="usage-element" select="$usage-element"/>
-              <xsl:with-param name="condition-element" select="$condition"/>
-              <xsl:with-param name="condition-level" select="$condition-level"/>
-              <xsl:with-param name="airport-vars" select="$airport-vars"/>
-              <xsl:with-param name="aircraft-index" select="0"/>
-              <xsl:with-param name="flight-index" select="0"/>
-              <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
-              <xsl:with-param name="flight-data" select="$flight-data"/>
-            </xsl:call-template>
-          </xsl:if>
-        </xsl:otherwise>
-      </xsl:choose>
-    </xsl:for-each>
+        </xsl:for-each>
+      </xsl:when>
+      <!-- No Timesheet at this level: still generate the rows if the level carries usage type, operation, aircraft, flight or annotation-coded working hours -->
+      <xsl:when test="$usage-element/aixm:type or $usage-element/aixm:operation or $condition/aixm:aircraft or $condition/aixm:flight or $condition/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval'] or $condition/aixm:timeInterval/@xsi:nil='true'">
+        <xsl:call-template name="generate-rows-for-timesheet">
+          <xsl:with-param name="timesheet" select="()"/>
+          <xsl:with-param name="usage-element" select="$usage-element"/>
+          <xsl:with-param name="condition-element" select="$condition"/>
+          <xsl:with-param name="condition-level" select="$condition-level"/>
+          <xsl:with-param name="airport-vars" select="$airport-vars"/>
+          <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
+          <xsl:with-param name="flight-data" select="$flight-data"/>
+        </xsl:call-template>
+      </xsl:when>
+    </xsl:choose>
 
     <!-- Process subConditions recursively -->
     <xsl:for-each select="$condition/aixm:subCondition/aixm:ConditionCombination">
@@ -416,9 +266,91 @@
     </xsl:for-each>
   </xsl:template>
 
+  <!-- Template to generate the row(s) for a single Timesheet (or for a level without Timesheet) -->
+  <xsl:template name="generate-rows-for-timesheet">
+    <xsl:param name="timesheet" as="element()?"/>
+    <xsl:param name="usage-element" as="element()"/>
+    <xsl:param name="condition-element" as="element()"/>
+    <xsl:param name="condition-level" as="xs:string"/>
+    <xsl:param name="airport-vars" as="map(xs:string, xs:string)"/>
+    <xsl:param name="aircraft-data" as="element()*"/>
+    <xsl:param name="flight-data" as="element()*"/>
+
+    <!-- Count aircraft and flights -->
+    <xsl:variable name="aircraft-count" select="count($aircraft-data)"/>
+    <xsl:variable name="flight-count" select="count($flight-data)"/>
+
+    <xsl:choose>
+      <!-- Case 1: Exactly one aircraft and one flight - place on same row -->
+      <xsl:when test="$aircraft-count = 1 and $flight-count = 1">
+        <xsl:call-template name="generate-row">
+          <xsl:with-param name="timesheet" select="$timesheet"/>
+          <xsl:with-param name="usage-element" select="$usage-element"/>
+          <xsl:with-param name="condition-element" select="$condition-element"/>
+          <xsl:with-param name="condition-level" select="$condition-level"/>
+          <xsl:with-param name="airport-vars" select="$airport-vars"/>
+          <xsl:with-param name="aircraft-index" select="1"/>
+          <xsl:with-param name="flight-index" select="1"/>
+          <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
+          <xsl:with-param name="flight-data" select="$flight-data"/>
+        </xsl:call-template>
+      </xsl:when>
+
+      <!-- Case 2: Multiple aircraft and/or multiple flights - place each on separate rows -->
+      <xsl:otherwise>
+        <!-- Generate rows for all aircraft -->
+        <xsl:for-each select="1 to $aircraft-count">
+          <xsl:variable name="aircraft-index" select="."/>
+          <xsl:call-template name="generate-row">
+            <xsl:with-param name="timesheet" select="$timesheet"/>
+            <xsl:with-param name="usage-element" select="$usage-element"/>
+            <xsl:with-param name="condition-element" select="$condition-element"/>
+            <xsl:with-param name="condition-level" select="$condition-level"/>
+            <xsl:with-param name="airport-vars" select="$airport-vars"/>
+            <xsl:with-param name="aircraft-index" select="$aircraft-index"/>
+            <xsl:with-param name="flight-index" select="0"/>
+            <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
+            <xsl:with-param name="flight-data" select="$flight-data"/>
+          </xsl:call-template>
+        </xsl:for-each>
+
+        <!-- Generate rows for all flights -->
+        <xsl:for-each select="1 to $flight-count">
+          <xsl:variable name="flight-index" select="."/>
+          <xsl:call-template name="generate-row">
+            <xsl:with-param name="timesheet" select="$timesheet"/>
+            <xsl:with-param name="usage-element" select="$usage-element"/>
+            <xsl:with-param name="condition-element" select="$condition-element"/>
+            <xsl:with-param name="condition-level" select="$condition-level"/>
+            <xsl:with-param name="airport-vars" select="$airport-vars"/>
+            <xsl:with-param name="aircraft-index" select="0"/>
+            <xsl:with-param name="flight-index" select="$flight-index"/>
+            <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
+            <xsl:with-param name="flight-data" select="$flight-data"/>
+          </xsl:call-template>
+        </xsl:for-each>
+
+        <!-- If no aircraft and no flights, generate one empty row -->
+        <xsl:if test="$aircraft-count = 0 and $flight-count = 0">
+          <xsl:call-template name="generate-row">
+            <xsl:with-param name="timesheet" select="$timesheet"/>
+            <xsl:with-param name="usage-element" select="$usage-element"/>
+            <xsl:with-param name="condition-element" select="$condition-element"/>
+            <xsl:with-param name="condition-level" select="$condition-level"/>
+            <xsl:with-param name="airport-vars" select="$airport-vars"/>
+            <xsl:with-param name="aircraft-index" select="0"/>
+            <xsl:with-param name="flight-index" select="0"/>
+            <xsl:with-param name="aircraft-data" select="$aircraft-data"/>
+            <xsl:with-param name="flight-data" select="$flight-data"/>
+          </xsl:call-template>
+        </xsl:if>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
   <!-- Template to generate a single table row -->
   <xsl:template name="generate-row">
-    <xsl:param name="timesheet" as="element()"/>
+    <xsl:param name="timesheet" as="element()?"/>
     <xsl:param name="usage-element" as="element()"/>
     <xsl:param name="condition-element" as="element()"/>
     <xsl:param name="condition-level" as="xs:string"/>
@@ -428,19 +360,8 @@
     <xsl:param name="aircraft-data" as="element()*"/>
     <xsl:param name="flight-data" as="element()*"/>
 
-    <!-- Detect working hours code for this timesheet -->
-    <xsl:variable name="working-hours-code">
-      <xsl:variable name="temp-availability">
-        <aixm:AirportHeliportAvailability xmlns:aixm="http://www.aixm.aero/schema/5.1.1">
-          <aixm:operationalStatus>NORMAL</aixm:operationalStatus>
-          <aixm:timeInterval>
-            <xsl:copy-of select="$timesheet"/>
-          </aixm:timeInterval>
-          <xsl:copy-of select="$condition-element/aixm:annotation"/>
-        </aixm:AirportHeliportAvailability>
-      </xsl:variable>
-      <xsl:value-of select="fcn:format-working-hours($temp-availability/aixm:AirportHeliportAvailability)"/>
-    </xsl:variable>
+    <!-- Detect working hours code for this timesheet / condition level -->
+    <xsl:variable name="working-hours-code" select="fcn:format-working-hours($timesheet, $condition-element)"/>
 
     <!-- Extract same-level annotations for this timesheet -->
     <xsl:variable name="timesheet-remarks">
@@ -562,11 +483,8 @@
         <xsl:when test="not($timesheet/aixm:startEventInterpretation)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$timesheet/aixm:startEventInterpretation/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($timesheet/aixm:startEventInterpretation)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($timesheet/aixm:startEventInterpretation), 'event-interpretation')"/>
+          <xsl:value-of select="fcn:insert-value($timesheet/aixm:startEventInterpretation)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -615,11 +533,8 @@
         <xsl:when test="not($timesheet/aixm:endEventInterpretation)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$timesheet/aixm:endEventInterpretation/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($timesheet/aixm:endEventInterpretation)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($timesheet/aixm:endEventInterpretation), 'event-interpretation')"/>
+          <xsl:value-of select="fcn:insert-value($timesheet/aixm:endEventInterpretation)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -641,109 +556,36 @@
     <xsl:variable name="current-flight" select="if ($flight-index le count($flight-data)) then $flight-data[$flight-index] else ()"/>
 
     <!-- Extract aircraft info for current aixm:aircraft -->
+    <!-- Each property is inserted only if present in the AIXM encoding (nil values shown as NIL/NIL:reason), prefixed with its label -->
     <xsl:variable name="aircraft-equipment">
       <xsl:if test="$current-aircraft">
-        <!-- Check if at least one property exists -->
-        <xsl:if test="$current-aircraft/aixm:navigationEquipment or
-          $current-aircraft/aixm:navigationSpecification or
-          $current-aircraft/aixm:verticalSeparationCapability or
-          $current-aircraft/aixm:antiCollisionAndSeparationEquipment or
-          $current-aircraft/aixm:communicationEquipment or
-          $current-aircraft/aixm:surveillanceEquipment or
-          $current-aircraft/aixm:aircraftLandingCategory or
-          $current-aircraft/aixm:wakeTurbulence">
-          <xsl:variable name="equip-list" as="xs:string*">
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:navigationEquipment)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:navigationEquipment/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:navigationEquipment)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:navigationEquipment)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:navigationSpecification)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:navigationSpecification/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:navigationSpecification)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:navigationSpecification)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:verticalSeparationCapability)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:verticalSeparationCapability/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:verticalSeparationCapability)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:antiCollisionAndSeparationEquipment)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:antiCollisionAndSeparationEquipment/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:antiCollisionAndSeparationEquipment)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:antiCollisionAndSeparationEquipment)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:communicationEquipment)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:communicationEquipment/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:communicationEquipment)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:communicationEquipment)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:surveillanceEquipment)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:surveillanceEquipment/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:surveillanceEquipment)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:surveillanceEquipment)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:aircraftLandingCategory)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:aircraftLandingCategory/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:aircraftLandingCategory)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:aircraftLandingCategory)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:choose>
-              <xsl:when test="not($current-aircraft/aixm:wakeTurbulence)">
-                <xsl:sequence select="string('nil')"/>
-              </xsl:when>
-              <xsl:when test="$current-aircraft/aixm:wakeTurbulence/@xsi:nil='true'">
-                <xsl:sequence select="fcn:insert-value($current-aircraft/aixm:wakeTurbulence)"/>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:sequence select="string($current-aircraft/aixm:wakeTurbulence)"/>
-              </xsl:otherwise>
-            </xsl:choose>
-          </xsl:variable>
-          <xsl:value-of select="string-join($equip-list, ' | ')"/>
-        </xsl:if>
+        <xsl:variable name="equip-list" as="xs:string*">
+          <xsl:if test="$current-aircraft/aixm:navigationEquipment">
+            <xsl:sequence select="concat('NAV: ', fcn:insert-value($current-aircraft/aixm:navigationEquipment))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:navigationSpecification">
+            <xsl:sequence select="concat('NS: ', fcn:insert-value($current-aircraft/aixm:navigationSpecification))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:verticalSeparationCapability">
+            <xsl:sequence select="concat('VS capability: ', fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:antiCollisionAndSeparationEquipment">
+            <xsl:sequence select="concat('Anti-Collision: ', fcn:insert-value($current-aircraft/aixm:antiCollisionAndSeparationEquipment))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:communicationEquipment">
+            <xsl:sequence select="concat('COM: ', fcn:insert-value($current-aircraft/aixm:communicationEquipment))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:surveillanceEquipment">
+            <xsl:sequence select="concat('SUR: ', fcn:insert-value($current-aircraft/aixm:surveillanceEquipment))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:aircraftLandingCategory">
+            <xsl:sequence select="concat('CAT: ', fcn:insert-value($current-aircraft/aixm:aircraftLandingCategory))"/>
+          </xsl:if>
+          <xsl:if test="$current-aircraft/aixm:wakeTurbulence">
+            <xsl:sequence select="concat('WTC: ', fcn:insert-value($current-aircraft/aixm:wakeTurbulence))"/>
+          </xsl:if>
+        </xsl:variable>
+        <xsl:value-of select="string-join($equip-list, ' | ')"/>
       </xsl:if>
     </xsl:variable>
 
@@ -752,11 +594,8 @@
         <xsl:when test="not($current-aircraft/aixm:type)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-aircraft/aixm:type/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:type)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-aircraft/aixm:type), 'aircraft-type')"/>
+          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:type)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -766,11 +605,8 @@
         <xsl:when test="not($current-aircraft/aixm:engine)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-aircraft/aixm:engine/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:engine)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-aircraft/aixm:engine), 'engine')"/>
+          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:engine)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -780,11 +616,8 @@
         <xsl:when test="not($current-aircraft/aixm:numberEngine)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-aircraft/aixm:numberEngine/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:numberEngine)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-aircraft/aixm:numberEngine), '')"/>
+          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:numberEngine)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -794,11 +627,8 @@
         <xsl:when test="not($current-aircraft/aixm:typeAircraftICAO)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-aircraft/aixm:typeAircraftICAO/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:typeAircraftICAO)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-aircraft/aixm:typeAircraftICAO), '')"/>
+          <xsl:value-of select="fcn:insert-value($current-aircraft/aixm:typeAircraftICAO)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -809,11 +639,8 @@
         <xsl:when test="not($current-flight/aixm:type)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-flight/aixm:type/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-flight/aixm:type)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-flight/aixm:type), 'flight-type')"/>
+          <xsl:value-of select="fcn:insert-value($current-flight/aixm:type)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -823,11 +650,8 @@
         <xsl:when test="not($current-flight/aixm:rule)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-flight/aixm:rule/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-flight/aixm:rule)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-flight/aixm:rule), 'rule')"/>
+          <xsl:value-of select="fcn:insert-value($current-flight/aixm:rule)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -837,11 +661,8 @@
         <xsl:when test="not($current-flight/aixm:status)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-flight/aixm:status/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-flight/aixm:status)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-flight/aixm:status), 'status')"/>
+          <xsl:value-of select="fcn:insert-value($current-flight/aixm:status)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -851,11 +672,8 @@
         <xsl:when test="not($current-flight/aixm:military)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-flight/aixm:military/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-flight/aixm:military)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-flight/aixm:military), 'military')"/>
+          <xsl:value-of select="fcn:insert-value($current-flight/aixm:military)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -865,11 +683,8 @@
         <xsl:when test="not($current-flight/aixm:origin)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-flight/aixm:origin/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-flight/aixm:origin)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-flight/aixm:origin), 'origin')"/>
+          <xsl:value-of select="fcn:insert-value($current-flight/aixm:origin)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -879,11 +694,8 @@
         <xsl:when test="not($current-flight/aixm:purpose)">
           <xsl:value-of select="''"/>
         </xsl:when>
-        <xsl:when test="$current-flight/aixm:purpose/@xsi:nil='true'">
-          <xsl:value-of select="fcn:insert-value($current-flight/aixm:purpose)"/>
-        </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="fcn:transform-value(string($current-flight/aixm:purpose), 'purpose')"/>
+          <xsl:value-of select="fcn:insert-value($current-flight/aixm:purpose)"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
@@ -1290,32 +1102,6 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Working hours -->
-                  <xsl:variable name="working-hours">
-                    <xsl:choose>
-                      <xsl:when test="not(aixm:availability/aixm:AirportHeliportAvailability)">
-                        <xsl:value-of select="''"/>
-                      </xsl:when>
-                      <xsl:otherwise>
-                        <xsl:value-of select="fcn:format-working-hours(aixm:availability/aixm:AirportHeliportAvailability)"/>
-                      </xsl:otherwise>
-                    </xsl:choose>
-                  </xsl:variable>
-                  
-                  <!-- Remark to working hours -->
-                  <xsl:variable name="working-hours-remarks">
-                    <xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
-                      <xsl:choose>
-                        <xsl:when test="position() = 1">
-                          <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:when>
-                        <xsl:otherwise>
-                          <xsl:value-of select="concat(' | ', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:otherwise>
-                      </xsl:choose>
-                    </xsl:for-each>
-                  </xsl:variable>
-                  
                   <!-- Internal UID (master) -->
                   <xsl:variable name="airport-uuid" select="../../gml:identifier"/>
                   
@@ -1344,7 +1130,10 @@
   
                   <!-- Process each availability -->
                   <xsl:for-each select="aixm:availability/aixm:AirportHeliportAvailability">
-  
+
+                    <!-- Roman numeral identifying the availability in the Condition Combination column, when there are two or more availability objects -->
+                    <xsl:variable name="availability-prefix" select="if (last() ge 2) then format-integer(position(), 'I') else ''"/>
+
                     <!-- Create a map of airport-level variables -->
                     <xsl:variable name="airport-vars" select="map{
                       'designator': string($airport-designator),
@@ -1353,25 +1142,42 @@
                       'valid_timeslice': string($airport_timeslice),
                       'effective-date': string($effective-date),
                       'commit-date': string($commit-date),
-                      'originator': string($originator),
-                      'working-hours': string($working-hours),
-                      'working-hours-remarks': string($working-hours-remarks)
+                      'originator': string($originator)
                     }"/>
   
                     <!-- Process top-level timesheets (outside ConditionCombination) -->
-                    <xsl:for-each select="aixm:timeInterval/aixm:Timesheet">
-                      <xsl:call-template name="generate-row">
-                        <xsl:with-param name="timesheet" select="."/>
-                        <xsl:with-param name="usage-element" select="../.."/>
-                        <xsl:with-param name="condition-element" select="../.."/>
-                        <xsl:with-param name="condition-level" select="''"/>
-                        <xsl:with-param name="airport-vars" select="$airport-vars"/>
-                        <xsl:with-param name="aircraft-index" select="0"/>
-                        <xsl:with-param name="flight-index" select="0"/>
-                        <xsl:with-param name="aircraft-data" select="()"/>
-                        <xsl:with-param name="flight-data" select="()"/>
-                      </xsl:call-template>
-                    </xsl:for-each>
+                    <xsl:variable name="availability-timesheets" select="aixm:timeInterval/aixm:Timesheet"/>
+                    <xsl:choose>
+                      <xsl:when test="count($availability-timesheets) ge 1">
+                        <xsl:for-each select="$availability-timesheets">
+                          <xsl:call-template name="generate-row">
+                            <xsl:with-param name="timesheet" select="."/>
+                            <xsl:with-param name="usage-element" select="../.."/>
+                            <xsl:with-param name="condition-element" select="../.."/>
+                            <xsl:with-param name="condition-level" select="$availability-prefix"/>
+                            <xsl:with-param name="airport-vars" select="$airport-vars"/>
+                            <xsl:with-param name="aircraft-index" select="0"/>
+                            <xsl:with-param name="flight-index" select="0"/>
+                            <xsl:with-param name="aircraft-data" select="()"/>
+                            <xsl:with-param name="flight-data" select="()"/>
+                          </xsl:call-template>
+                        </xsl:for-each>
+                      </xsl:when>
+                      <!-- No Timesheet: generate one row so that H24 (by absence), HX, HO, NOTAM or NIL working hours still appear -->
+                      <xsl:otherwise>
+                        <xsl:call-template name="generate-row">
+                          <xsl:with-param name="timesheet" select="()"/>
+                          <xsl:with-param name="usage-element" select="."/>
+                          <xsl:with-param name="condition-element" select="."/>
+                          <xsl:with-param name="condition-level" select="$availability-prefix"/>
+                          <xsl:with-param name="airport-vars" select="$airport-vars"/>
+                          <xsl:with-param name="aircraft-index" select="0"/>
+                          <xsl:with-param name="flight-index" select="0"/>
+                          <xsl:with-param name="aircraft-data" select="()"/>
+                          <xsl:with-param name="flight-data" select="()"/>
+                        </xsl:call-template>
+                      </xsl:otherwise>
+                    </xsl:choose>
   
                     <!-- Process each usage -->
                     <xsl:for-each select="aixm:usage/aixm:AirportHeliportUsage">
@@ -1382,7 +1188,7 @@
                         <xsl:call-template name="process-condition">
                           <xsl:with-param name="condition" select="."/>
                           <xsl:with-param name="usage-element" select="parent::aixm:selection/parent::aixm:AirportHeliportUsage"/>
-                          <xsl:with-param name="condition-level" select="string($usage-index)"/>
+                          <xsl:with-param name="condition-level" select="if ($availability-prefix != '') then concat($availability-prefix, '.', $usage-index) else string($usage-index)"/>
                           <xsl:with-param name="airport-vars" select="$airport-vars"/>
                         </xsl:call-template>
                       </xsl:for-each>

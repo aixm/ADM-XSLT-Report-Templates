@@ -24,11 +24,13 @@
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:AirportHeliport
-  includeReferencedFeaturesLevel: 1
-               permanentBaseline: true
-                       dataScope: ReleasedData
-                     AIXMversion: 5.1.1
+                             featureTypes: aixm:AirportHeliport aixm:Airspace
+           includeReferencedFeaturesLevel: 1
+                        featureOccurrence: aixm:Airspace.aixm:type EQUALS 'FIR' OR aixm:Airspace.aixm:type EQUALS 'FIR_P'
+                        permanentBaseline: true
+                                dataScope: ReleasedData
+                              AIXMversion: 5.1.1
+  CustomizationAirspaceCircleArcToPolygon: true
 -->
 
 <xsl:transform version="3.0" 
@@ -2046,11 +2048,11 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
-              <td><font size="-1">Designator</font></td>
+              <td><font size="-1">Designator, SequenceNumber, CorrectionNumber</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
-              <td><font size="-1">ascending</font></td>
+              <td><font size="-1">Designator (ascending), then SequenceNumber (descending), then CorrectionNumber (descending)</font></td>
             </tr>
           </table>
           
