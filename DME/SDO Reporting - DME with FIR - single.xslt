@@ -24,19 +24,20 @@
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:Navaid aixm:Airspace
-  includeReferencedFeaturesLevel: 2
-               featureOccurrence: (aixm:Navaid.aixm:type EQUALS 'DME'
-                                   OR aixm:Navaid.aixm:type EQUALS 'ILS_DME'
-                                   OR aixm:Navaid.aixm:type EQUALS 'MLS_DME'
-                                   OR aixm:Navaid.aixm:type EQUALS 'VOR_DME'
-                                   OR aixm:Navaid.aixm:type EQUALS 'NDB_DME'
-                                   OR aixm:Navaid.aixm:type EQUALS 'LOC_DME')
-                                  (aixm:Airspace.aixm:type EQUALS 'FIR'
-                                   OR aixm:Airspace.aixm:type EQUALS 'FIR_P')
-               permanentBaseline: true
-                       dataScope: ReleasedData
-                     AIXMversion: 5.1.1
+                             featureTypes: aixm:Navaid aixm:Airspace
+           includeReferencedFeaturesLevel: 2
+                        featureOccurrence: (aixm:Navaid.aixm:type EQUALS 'DME'
+                                           OR aixm:Navaid.aixm:type EQUALS 'ILS_DME'
+                                           OR aixm:Navaid.aixm:type EQUALS 'MLS_DME'
+                                           OR aixm:Navaid.aixm:type EQUALS 'VOR_DME'
+                                           OR aixm:Navaid.aixm:type EQUALS 'NDB_DME'
+                                           OR aixm:Navaid.aixm:type EQUALS 'LOC_DME')
+                                          (aixm:Airspace.aixm:type EQUALS 'FIR'
+                                           OR aixm:Airspace.aixm:type EQUALS 'FIR_P')
+                        permanentBaseline: true
+                                dataScope: ReleasedData
+                              AIXMversion: 5.1.1
+  CustomizationAirspaceCircleArcToPolygon: true
 -->
 
 <!--
