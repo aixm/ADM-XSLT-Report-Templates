@@ -1006,7 +1006,7 @@
       
       <head>
         <meta http-equiv="Expires" content="120" />
-        <title>SDO Reporting - Designated Point with FIR</title>
+        <title>SDO Reporting - Designated Points with FIR</title>
         <style>
           html, body {
             margin: 0;
@@ -1064,7 +1064,7 @@
             </tbody>
           </table>
           <hr/>
-          <center><b>Designated Point with FIR</b></center>
+          <center><b>Designated Points with FIR</b></center>
           <hr/>
         </div>
         

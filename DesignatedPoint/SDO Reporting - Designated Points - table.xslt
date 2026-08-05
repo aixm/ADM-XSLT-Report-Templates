@@ -225,7 +225,7 @@
       <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <meta http-equiv="Expires" content="120"/>
-        <title>SDO Reporting - Designated Point</title>
+        <title>SDO Reporting - Designated Points</title>
         <style>
           html, body {
             margin: 0;
@@ -290,7 +290,7 @@
             </tbody>
           </table>
           <hr/>
-          <center><b>Designated Point</b></center>
+          <center><b>Designated Points</b></center>
           <hr/>
         </div>
         
