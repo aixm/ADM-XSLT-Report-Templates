@@ -24,11 +24,13 @@
 <!--
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:DesignatedPoint
-  includeReferencedFeaturesLevel: 3
-               permanentBaseline: true
-                       dataScope: ReleasedData
-                     AIXMversion: 5.1.1
+                             featureTypes: aixm:DesignatedPoint aixm:Airspace
+           includeReferencedFeaturesLevel: 3
+                        featureOccurrence: aixm:Airspace.aixm:type EQUALS 'FIR'
+                        permanentBaseline: true
+                                dataScope: ReleasedData
+                              AIXMversion: 5.1.1
+  CustomizationAirspaceCircleArcToPolygon: true
 -->
 
 <!--

@@ -24,13 +24,16 @@
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-                    featureTypes: aixm:DesignatedPoint aixm:Navaid
-                                  aixm:AngleIndication aixm:DistanceIndication aixm:HoldingPattern aixm:HoldingAssessment aixm:AerialRefuelling aixm:ChangeOverPoint aixm:SignificantPointInAirspace aixm:TerminalArrivalArea aixm:SafeAltitudeArea aixm:NavigationArea aixm:RouteSegment
-                                  aixm:Airspace
-  includeReferencedFeaturesLevel: 1
-               permanentBaseline: true
-                       dataScope: ReleasedData
-                     AIXMversion: 5.1.1
+                             featureTypes: aixm:AerialRefuelling aixm:Airspace aixm:AngleIndication
+                                           aixm:ChangeOverPoint aixm:DesignatedPoint aixm:DistanceIndication 
+                                           aixm:HoldingPattern aixm:HoldingAssessment aixm:Navaid
+                                           aixm:RouteSegment aixm:SafeAltitudeArea aixm:SignificantPointInAirspace
+                                           aixm:TerminalArrivalArea aixm:NavigationArea
+           includeReferencedFeaturesLevel: 1
+                        permanentBaseline: true
+                                dataScope: ReleasedData
+                              AIXMversion: 5.1.1
+  CustomizationAirspaceCircleArcToPolygon: true
 -->
 
 <!--
