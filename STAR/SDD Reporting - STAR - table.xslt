@@ -308,7 +308,11 @@
                 <xsl:variable name="baseline-timeslice" select="aixm:timeSlice/aixm:StandardInstrumentArrivalTimeSlice[aixm:interpretation = 'BASELINE']"/>
                 
                 <xsl:for-each select="$baseline-timeslice">
-                  
+
+                  <!-- Sort the timeslices of this feature by sequenceNumber (descending), then by correctionNumber (descending) -->
+                  <xsl:sort select="aixm:sequenceNumber" data-type="number" order="descending"/>
+                  <xsl:sort select="aixm:correctionNumber" data-type="number" order="descending"/>
+
                   <!-- FeatureIdentifier -->
                   <xsl:variable name="STAR_identifier" select="../../gml:identifier"/>
                   
@@ -530,17 +534,18 @@
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:variable name="all-notes" select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote"/>
-                        <xsl:for-each select="$all-notes">
-                          <xsl:variable name="global-index" select="position()"/>
-                          <xsl:choose>
-                            <xsl:when test="$global-index = 1">
-                              <xsl:value-of select="concat('[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
-                            </xsl:when>
-                            <xsl:otherwise>
-                              <xsl:value-of select="concat('&lt;br/&gt;', '[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
-                            </xsl:otherwise>
-                          </xsl:choose>
+                        <xsl:for-each select="aixm:annotation">
+                          <xsl:variable name="annotation-index" select="position()"/>
+                          <xsl:for-each select="aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
+                            <xsl:choose>
+                              <xsl:when test="$annotation-index = 1 and position() = 1">
+                                <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                              </xsl:when>
+                              <xsl:otherwise>
+                                <xsl:value-of select="concat('&lt;br/&gt;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                              </xsl:otherwise>
+                            </xsl:choose>
+                          </xsl:for-each>
                         </xsl:for-each>
                       </xsl:otherwise>
                     </xsl:choose>
@@ -641,8 +646,8 @@
                     <td><xsl:value-of select="if (string-length($STAR_validity-end) gt 0) then $STAR_validity-end else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($STAR_sequence-number) gt 0) then $STAR_sequence-number else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($STAR_correction-number) gt 0) then $STAR_correction-number else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($STAR_comm-failure-instruction) gt 0"><xsl:value-of select="$STAR_comm-failure-instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($STAR_instruction) gt 0"><xsl:value-of select="$STAR_instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($STAR_comm-failure-instruction) gt 0"><xsl:value-of select="$STAR_comm-failure-instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($STAR_instruction) gt 0"><xsl:value-of select="$STAR_instruction" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($STAR_design-criteria) gt 0) then $STAR_design-criteria else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($STAR_coding-standard) gt 0) then $STAR_coding-standard else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($STAR_flight-checked) gt 0) then $STAR_flight-checked else '&#160;'"/></td>
@@ -651,14 +656,14 @@
                     <td><xsl:value-of select="if (string-length($AHP_UUID) gt 0) then $AHP_UUID else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_name) gt 0) then $AHP_name else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_designator) gt 0) then $AHP_designator else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal" xml:space="preserve"><xsl:choose><xsl:when test="string-length($STAR_annotation) gt 0"><xsl:value-of select="$STAR_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:choose><xsl:when test="string-length($STAR_annotation) gt 0"><xsl:value-of select="$STAR_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td><xsl:value-of select="if (string-length($STAR_designator) gt 0) then $STAR_designator else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($creation-date) gt 0) then $creation-date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
-                    <td style="min-width:600px;white-space:normal"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word" xml:space="preserve"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
                   </tr>
                   
@@ -877,11 +882,11 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
-              <td><font size="-1">Identification</font></td>
+              <td><font size="-1">AirportHeliport/Designator (first), Designator (second), SequenceNumber (third), CorrectionNumber (fourth)</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
-              <td><font size="-1">ascending</font></td>
+              <td><font size="-1">AirportHeliport/Designator (ascending), Designator (ascending), SequenceNumber (descending), CorrectionNumber (descending)</font></td>
             </tr>
           </table>
           

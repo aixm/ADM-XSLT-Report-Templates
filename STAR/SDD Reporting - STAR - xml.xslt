@@ -406,17 +406,18 @@
                 <xsl:value-of select="''"/>
               </xsl:when>
               <xsl:otherwise>
-                <xsl:variable name="all-notes" select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote"/>
-                <xsl:for-each select="$all-notes">
-                  <xsl:variable name="global-index" select="position()"/>
-                  <xsl:choose>
-                    <xsl:when test="$global-index = 1">
-                      <xsl:value-of select="concat('[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="concat('&#10;', '[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
+                <xsl:for-each select="aixm:annotation">
+                  <xsl:variable name="annotation-index" select="position()"/>
+                  <xsl:for-each select="aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
+                    <xsl:choose>
+                      <xsl:when test="$annotation-index = 1 and position() = 1">
+                        <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="concat('&#10;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:for-each>
                 </xsl:for-each>
               </xsl:otherwise>
             </xsl:choose>
