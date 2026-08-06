@@ -1125,7 +1125,7 @@
                   <codeId><xsl:value-of select="$MSA_NDB_navaid_designator"/></codeId>
                   <geoLat><xsl:value-of select="$MSA_NDB_navaid_latitude"/></geoLat>
                   <geoLong><xsl:value-of select="$MSA_NDB_navaid_longitude"/></geoLong>
-                  <txtRmk><xsl:value-of select="concat('Valid TimeSlice: ', $NDB_navaid_timeslice)"/></txtRmk>
+                  <txtRmk><xsl:value-of select="concat('Valid TimeSlice (NDB Navaid): ', $NDB_navaid_timeslice, '&#10;', 'Valid TimeSlice (SafeAltitudeArea): ', $MSA_timeslice)"/></txtRmk>
                 </Ndb>
               </xsl:if>
               <xsl:if test="string-length($MSA_VOR_navaid_designator) gt 0">
@@ -1133,7 +1133,7 @@
                   <codeId><xsl:value-of select="$MSA_VOR_navaid_designator"/></codeId>
                   <geoLat><xsl:value-of select="$MSA_VOR_navaid_latitude"/></geoLat>
                   <geoLong><xsl:value-of select="$MSA_VOR_navaid_longitude"/></geoLong>
-                  <txtRmk><xsl:value-of select="concat('Valid TimeSlice: ', $VOR_navaid_timeslice)"/></txtRmk>
+                  <txtRmk><xsl:value-of select="concat('Valid TimeSlice: ', $VOR_navaid_timeslice, '&#10;', 'Valid TimeSlice (SafeAltitudeArea): ', $MSA_timeslice)"/></txtRmk>
                 </Vor>
               </xsl:if>
               <xsl:if test="string-length($MSA_significant_point_type) gt 0">

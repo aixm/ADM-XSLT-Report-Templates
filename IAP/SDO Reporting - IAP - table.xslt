@@ -1448,11 +1448,11 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
-              <td><font size="-1">Identification</font></td>
+              <td><font size="-1">Associated Aerodrome / Heliport - Identification (first), Designator (second)</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
-              <td><font size="-1">ascending</font></td>
+              <td><font size="-1">Associated Aerodrome / Heliport - Identification (ascending), Designator (ascending)</font></td>
             </tr>
           </table>
           
