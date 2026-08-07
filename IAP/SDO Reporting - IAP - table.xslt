@@ -1108,40 +1108,41 @@
                   
                   <!-- Missed approach procedure description -->
                   <xsl:variable name="IAP_missed_procedure">
-                    <xsl:choose>
-                      <xsl:when test="not(aixm:missedInstruction)">
-                        <xsl:value-of select="''"/>
-                      </xsl:when>
-                      <xsl:when test="aixm:missedInstruction/@xsi:nil = 'true'">
-                        <xsl:value-of select="fcn:insert-value(aixm:missedInstruction)"/>
-                      </xsl:when>
-                      <xsl:otherwise>
-                        <xsl:variable name="instruction">
-                          <xsl:if test="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:instruction">
-                            <xsl:value-of select="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:instruction"/>
-                          </xsl:if>
-                        </xsl:variable>
-                        <xsl:variable name="alternateClimbInstruction">
-                          <xsl:if test="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:alternateClimbInstruction">
-                            <xsl:value-of select="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:alternateClimbInstruction"/>
-                          </xsl:if>
-                        </xsl:variable>
-                        <xsl:variable name="alternateClimbAltitude">
-                          <xsl:if test="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:alternateClimbAltitude">
-                            <xsl:value-of select="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:alternateClimbAltitude"/>
-                          </xsl:if>
-                        </xsl:variable>
-                        <xsl:variable name="alternateClimbAltitudeUom">
-                          <xsl:if test="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:alternateClimbAltitude/@uom">
-                            <xsl:value-of select="aixm:missedInstruction/aixm:MissedApproachGroup/aixm:alternateClimbAltitude/@uom"/>
-                          </xsl:if>
-                        </xsl:variable>
-                        <xsl:variable name="formattedInstruction" select="if (string-length($instruction) gt 0) then concat('Instruction: ', $instruction) else ''"/>
-                        <xsl:variable name="formattedAlternateClimbInstruction" select="if (string-length($alternateClimbInstruction) gt 0) then concat('Alternate climb instruction: ', $alternateClimbInstruction) else ''"/>
-                        <xsl:variable name="formattedAlternateClimbAltitude" select="if (string-length($alternateClimbAltitude) gt 0) then concat('Alternate altitude: ', $alternateClimbAltitude, if (string-length($alternateClimbAltitudeUom) gt 0) then concat(' ', $alternateClimbAltitudeUom) else '') else ''"/>
-                        <xsl:value-of select="string-join(($formattedInstruction[string-length(.) gt 0], $formattedAlternateClimbInstruction[string-length(.) gt 0], $formattedAlternateClimbAltitude[string-length(.) gt 0]), '&#10;')"/>
-                      </xsl:otherwise>
-                    </xsl:choose>
+                    <xsl:for-each select="aixm:missedInstruction">
+                      <xsl:if test="position() gt 1">
+                        <xsl:text>&lt;br/&gt;&lt;br/&gt;</xsl:text>
+                      </xsl:if>
+                      <xsl:choose>
+                        <xsl:when test="@xsi:nil = 'true'">
+                          <xsl:value-of select="fcn:insert-value(.)"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:variable name="instruction">
+                            <xsl:if test="aixm:MissedApproachGroup/aixm:instruction">
+                              <xsl:value-of select="aixm:MissedApproachGroup/aixm:instruction"/>
+                            </xsl:if>
+                          </xsl:variable>
+                          <xsl:variable name="alternateClimbInstruction">
+                            <xsl:if test="aixm:MissedApproachGroup/aixm:alternateClimbInstruction">
+                              <xsl:value-of select="aixm:MissedApproachGroup/aixm:alternateClimbInstruction"/>
+                            </xsl:if>
+                          </xsl:variable>
+                          <xsl:variable name="alternateClimbAltitude">
+                            <xsl:if test="aixm:MissedApproachGroup/aixm:alternateClimbAltitude">
+                              <xsl:value-of select="aixm:MissedApproachGroup/aixm:alternateClimbAltitude"/>
+                            </xsl:if>
+                          </xsl:variable>
+                          <xsl:variable name="alternateClimbAltitudeUom">
+                            <xsl:if test="aixm:MissedApproachGroup/aixm:alternateClimbAltitude/@uom">
+                              <xsl:value-of select="aixm:MissedApproachGroup/aixm:alternateClimbAltitude/@uom"/>
+                            </xsl:if>
+                          </xsl:variable>
+                          <xsl:variable name="formattedAlternateClimbInstruction" select="if (string-length($alternateClimbInstruction) gt 0) then concat('Alternate climb instruction: ', $alternateClimbInstruction) else ''"/>
+                          <xsl:variable name="formattedAlternateClimbAltitude" select="if (string-length($alternateClimbAltitude) gt 0) then concat('Alternate altitude: ', if ($alternateClimbAltitudeUom = ('FL', 'SM')) then concat($alternateClimbAltitudeUom, $alternateClimbAltitude) else concat($alternateClimbAltitude, $alternateClimbAltitudeUom)) else ''"/>
+                          <xsl:value-of select="string-join(($instruction[string-length(.) gt 0], $formattedAlternateClimbInstruction[string-length(.) gt 0], $formattedAlternateClimbAltitude[string-length(.) gt 0]), '&lt;br/&gt;')"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:for-each>
                   </xsl:variable>
                   
                   <!-- Remarks -->
