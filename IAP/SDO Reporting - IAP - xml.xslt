@@ -114,7 +114,14 @@
       <xsl:otherwise><xsl:value-of select="''"/></xsl:otherwise>
     </xsl:choose>
   </xsl:function>
-  
+
+  <!-- Join per-reference values with a separator; empty if all values are blank -->
+  <xsl:function name="fcn:join-values" as="xs:string">
+    <xsl:param name="values" as="xs:string*"/>
+    <xsl:param name="separator" as="xs:string"/>
+    <xsl:sequence select="if (string-join($values, '') = '') then '' else string-join($values, $separator)"/>
+  </xsl:function>
+
   <xsl:function name="fcn:format-date" as="xs:string">
     <xsl:param name="text" as="xs:string"/>
     <xsl:variable name="date-time" select="$text"/>
@@ -414,7 +421,14 @@
                 <xsl:otherwise>
                   <xsl:choose>
                     <xsl:when test="count(aixm:flightTransition) = 1">
-                      <xsl:value-of select="fcn:insert-value(aixm:flightTransition/aixm:ProcedureTransition/aixm:transitionId)"/>
+                      <xsl:choose>
+                        <xsl:when test="aixm:flightTransition/@xsi:nil = 'true'">
+                          <xsl:value-of select="fcn:insert-value(aixm:flightTransition)"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:value-of select="fcn:insert-value(aixm:flightTransition/aixm:ProcedureTransition/aixm:transitionId)"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
                     </xsl:when>
                     <xsl:otherwise>
                       <xsl:value-of select="string-join(aixm:flightTransition/aixm:ProcedureTransition/aixm:transitionId, '&#10;')"/>
@@ -424,156 +438,183 @@
               </xsl:choose>
             </xsl:variable>
             
-            <!-- Served RunwayDirection -->
-            <xsl:variable name="RDN_UUID" select="replace(aixm:landing/aixm:LandingTakeoffAreaCollection/aixm:runway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-            <xsl:variable name="RDN" select="//aixm:RunwayDirection[gml:identifier = $RDN_UUID]"/>
-            <xsl:variable name="RDN_baseline" select="$RDN/aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE']"/>
-            <xsl:variable name="RDN_valid-ts" select="fcn:get-valid-timeslice($RDN_baseline)"/>
-            <xsl:variable name="RDN_ts" select="if ($RDN_valid-ts) then fcn:format-timeslice-info($RDN_valid-ts) else ''"/>
-            
-            <!-- Served Runway -->
-            <xsl:variable name="RWY_UUID" select="replace($RDN_valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-            <xsl:variable name="RWY" select="//aixm:Runway[gml:identifier = $RWY_UUID]"/>
-            <xsl:variable name="RWY_baseline" select="$RWY/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE' and aixm:type = 'RWY']"/>
-            <xsl:variable name="RWY_valid-ts" select="fcn:get-valid-timeslice($RWY_baseline)"/>
-            <xsl:variable name="RWY_ts" select="if ($RWY_valid-ts) then fcn:format-timeslice-info($RWY_valid-ts) else ''"/>
-            
-            <!-- Served FATO -->
-            <xsl:variable name="FATO_UUID" select="replace($RDN_valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-            <xsl:variable name="FATO" select="//aixm:Runway[gml:identifier = $FATO_UUID]"/>
-            <xsl:variable name="FATO_baseline" select="$FATO/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE' and aixm:type = 'FATO']"/>
-            <xsl:variable name="FATO_valid-ts" select="fcn:get-valid-timeslice($FATO_baseline)"/>
-            <xsl:variable name="FATO_ts" select="if ($FATO_valid-ts) then fcn:format-timeslice-info($FATO_valid-ts) else ''"/>
-            
-            <!-- Served FATO direction - TLOF Designator -->
-            <xsl:variable name="FATO_TLOF_designator">
-              <xsl:if test="not(empty($FATO_valid-ts))">
-                <!-- Find the TLOF that references the FATO -->
-                <xsl:variable name="TLOF_for_FATO" select="//aixm:TouchDownLiftOff[aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:approachTakeOffArea/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $FATO_UUID]]"/>
-                <xsl:variable name="TLOF_for_FATO_baseline" select="$TLOF_for_FATO/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
-                <xsl:variable name="TLOF_for_FATO_valid-ts" select="fcn:get-valid-timeslice($TLOF_for_FATO_baseline)"/>
-                <xsl:if test="not(empty($TLOF_for_FATO_valid-ts))">
-                  <xsl:choose>
-                    <xsl:when test="not($TLOF_for_FATO_valid-ts/aixm:designator)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($TLOF_for_FATO_valid-ts/aixm:designator)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:if>
-              </xsl:if>
+            <!-- Served RunwayDirection(s): one entry per aixm:runway reference, keeping all fields aligned -->
+            <xsl:variable name="RDN_entries">
+              <xsl:for-each select="aixm:landing/aixm:LandingTakeoffAreaCollection/aixm:runway">
+                <!-- Served RunwayDirection -->
+                <xsl:variable name="RDN_UUID" select="replace(@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                <xsl:variable name="RDN" select="//aixm:RunwayDirection[gml:identifier = $RDN_UUID]"/>
+                <xsl:variable name="RDN_baseline" select="$RDN/aixm:timeSlice/aixm:RunwayDirectionTimeSlice[aixm:interpretation = 'BASELINE']"/>
+                <xsl:variable name="RDN_valid-ts" select="fcn:get-valid-timeslice($RDN_baseline)"/>
+                <xsl:variable name="RDN_ts" select="if ($RDN_valid-ts) then fcn:format-timeslice-info($RDN_valid-ts) else ''"/>
+
+                <!-- Served Runway -->
+                <xsl:variable name="RWY_UUID" select="replace($RDN_valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                <xsl:variable name="RWY" select="//aixm:Runway[gml:identifier = $RWY_UUID]"/>
+                <xsl:variable name="RWY_baseline" select="$RWY/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE' and aixm:type = 'RWY']"/>
+                <xsl:variable name="RWY_valid-ts" select="fcn:get-valid-timeslice($RWY_baseline)"/>
+                <xsl:variable name="RWY_ts" select="if ($RWY_valid-ts) then fcn:format-timeslice-info($RWY_valid-ts) else ''"/>
+
+                <!-- Served FATO -->
+                <xsl:variable name="FATO_UUID" select="replace($RDN_valid-ts/aixm:usedRunway/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                <xsl:variable name="FATO" select="//aixm:Runway[gml:identifier = $FATO_UUID]"/>
+                <xsl:variable name="FATO_baseline" select="$FATO/aixm:timeSlice/aixm:RunwayTimeSlice[aixm:interpretation = 'BASELINE' and aixm:type = 'FATO']"/>
+                <xsl:variable name="FATO_valid-ts" select="fcn:get-valid-timeslice($FATO_baseline)"/>
+                <xsl:variable name="FATO_ts" select="if ($FATO_valid-ts) then fcn:format-timeslice-info($FATO_valid-ts) else ''"/>
+
+                <entry xmlns="">
+                  <!-- Served FATO direction - TLOF Designator -->
+                  <FATO_TLOF_designator>
+                    <xsl:if test="not(empty($FATO_valid-ts))">
+                      <!-- Find the TLOF that references the FATO -->
+                      <xsl:variable name="TLOF_for_FATO" select="//aixm:TouchDownLiftOff[aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:approachTakeOffArea/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $FATO_UUID]]"/>
+                      <xsl:variable name="TLOF_for_FATO_baseline" select="$TLOF_for_FATO/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
+                      <xsl:variable name="TLOF_for_FATO_valid-ts" select="fcn:get-valid-timeslice($TLOF_for_FATO_baseline)"/>
+                      <xsl:if test="not(empty($TLOF_for_FATO_valid-ts))">
+                        <xsl:choose>
+                          <xsl:when test="not($TLOF_for_FATO_valid-ts/aixm:designator)">
+                            <xsl:value-of select="''"/>
+                          </xsl:when>
+                          <xsl:otherwise>
+                            <xsl:value-of select="fcn:insert-value($TLOF_for_FATO_valid-ts/aixm:designator)"/>
+                          </xsl:otherwise>
+                        </xsl:choose>
+                      </xsl:if>
+                    </xsl:if>
+                  </FATO_TLOF_designator>
+
+                  <!-- Final approach and take-off area [FATO] - Designator -->
+                  <FATO_designator>
+                    <xsl:if test="not(empty($FATO_valid-ts))">
+                      <xsl:choose>
+                        <xsl:when test="not($FATO_valid-ts/aixm:designator)">
+                          <xsl:value-of select="''"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:value-of select="fcn:insert-value($FATO_valid-ts/aixm:designator)"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:if>
+                  </FATO_designator>
+
+                  <!-- Final approach and take-off area [FATO] - Valid TimeSlice -->
+                  <FATO_timeslice>
+                    <xsl:if test="not(empty($FATO_valid-ts))">
+                      <xsl:value-of select="$FATO_ts"/>
+                    </xsl:if>
+                  </FATO_timeslice>
+
+                  <!-- Served FATO direction - Designator -->
+                  <FATO_direction>
+                    <xsl:if test="not(empty($FATO_valid-ts))">
+                      <xsl:choose>
+                        <xsl:when test="not($RDN_valid-ts/aixm:designator)">
+                          <xsl:value-of select="''"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:value-of select="fcn:insert-value($RDN_valid-ts/aixm:designator)"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:if>
+                  </FATO_direction>
+
+                  <!-- Served FATO direction - Valid TimeSlice -->
+                  <FATO_direction_timeslice>
+                    <xsl:if test="not(empty($FATO_valid-ts))">
+                      <xsl:value-of select="$RDN_ts"/>
+                    </xsl:if>
+                  </FATO_direction_timeslice>
+
+                  <!-- Served RWY - Designator -->
+                  <RWY_designator>
+                    <xsl:if test="not(empty($RWY_valid-ts))">
+                      <xsl:choose>
+                        <xsl:when test="not($RWY_valid-ts/aixm:designator)">
+                          <xsl:value-of select="''"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:value-of select="fcn:insert-value($RWY_valid-ts/aixm:designator)"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:if>
+                  </RWY_designator>
+
+                  <!-- Served RWY - Valid TimeSlice -->
+                  <RWY_timeslice>
+                    <xsl:if test="not(empty($RWY_valid-ts))">
+                      <xsl:value-of select="$RWY_ts"/>
+                    </xsl:if>
+                  </RWY_timeslice>
+
+                  <!-- Served RWY direction - Designator -->
+                  <RDN_designator>
+                    <xsl:if test="not(empty($RWY_valid-ts))">
+                      <xsl:choose>
+                        <xsl:when test="not($RDN_valid-ts/aixm:designator)">
+                          <xsl:value-of select="''"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:value-of select="fcn:insert-value($RDN_valid-ts/aixm:designator)"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:if>
+                  </RDN_designator>
+
+                  <!-- Served RWY direction - Valid TimeSlice -->
+                  <RDN_timeslice>
+                    <xsl:if test="not(empty($RWY_valid-ts))">
+                      <xsl:value-of select="$RDN_ts"/>
+                    </xsl:if>
+                  </RDN_timeslice>
+                </entry>
+              </xsl:for-each>
             </xsl:variable>
-            
-            <!-- Final approach and take-off area [FATO] - Designator -->
-            <xsl:variable name="FATO_designator">
-              <xsl:if test="not(empty($FATO_valid-ts))">
-                <xsl:choose>
-                  <xsl:when test="not($FATO_valid-ts/aixm:designator)">
-                    <xsl:value-of select="''"/>
-                  </xsl:when>
-                  <xsl:otherwise>
-                    <xsl:value-of select="fcn:insert-value($FATO_valid-ts/aixm:designator)"/>
-                  </xsl:otherwise>
-                </xsl:choose>
-              </xsl:if>
+
+            <xsl:variable name="FATO_TLOF_designator" select="fcn:join-values($RDN_entries/entry/FATO_TLOF_designator, '&#10;')"/>
+            <xsl:variable name="FATO_designator" select="fcn:join-values($RDN_entries/entry/FATO_designator, '&#10;')"/>
+            <xsl:variable name="FATO_timeslice" select="fcn:join-values($RDN_entries/entry/FATO_timeslice, '&#10;')"/>
+            <xsl:variable name="FATO_direction" select="fcn:join-values($RDN_entries/entry/FATO_direction, '&#10;')"/>
+            <xsl:variable name="FATO_direction_timeslice" select="fcn:join-values($RDN_entries/entry/FATO_direction_timeslice, '&#10;')"/>
+            <xsl:variable name="RWY_designator" select="fcn:join-values($RDN_entries/entry/RWY_designator, '&#10;')"/>
+            <xsl:variable name="RWY_timeslice" select="fcn:join-values($RDN_entries/entry/RWY_timeslice, '&#10;')"/>
+            <xsl:variable name="RDN_designator" select="fcn:join-values($RDN_entries/entry/RDN_designator, '&#10;')"/>
+            <xsl:variable name="RDN_timeslice" select="fcn:join-values($RDN_entries/entry/RDN_timeslice, '&#10;')"/>
+
+            <!-- Served TLOF(s): one entry per aixm:TLOF reference -->
+            <xsl:variable name="TLOF_entries">
+              <xsl:for-each select="aixm:landing/aixm:LandingTakeoffAreaCollection/aixm:TLOF">
+                <!-- Served TLOF -->
+                <xsl:variable name="TLOF_UUID" select="replace(@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                <xsl:variable name="TLOF" select="//aixm:TouchDownLiftOff[gml:identifier = $TLOF_UUID]"/>
+                <xsl:variable name="TLOF_baseline" select="$TLOF/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
+                <xsl:variable name="TLOF_valid-ts" select="fcn:get-valid-timeslice($TLOF_baseline)"/>
+                <xsl:variable name="TLOF_ts" select="if ($TLOF_valid-ts) then fcn:format-timeslice-info($TLOF_valid-ts) else ''"/>
+
+                <entry xmlns="">
+                  <!-- Served TLOF - Designator -->
+                  <TLOF_designator>
+                    <xsl:choose>
+                      <xsl:when test="not($TLOF_valid-ts/aixm:designator)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($TLOF_valid-ts/aixm:designator)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </TLOF_designator>
+
+                  <!-- Served TLOF - Valid TimeSlice -->
+                  <TLOF_timeslice>
+                    <xsl:if test="not(empty($TLOF_valid-ts))">
+                      <xsl:value-of select="$TLOF_ts"/>
+                    </xsl:if>
+                  </TLOF_timeslice>
+                </entry>
+              </xsl:for-each>
             </xsl:variable>
-            
-            <!-- Final approach and take-off area [FATO] - Valid TimeSlice -->
-            <xsl:variable name="FATO_timeslice">
-              <xsl:if test="not(empty($FATO_valid-ts))">
-                <xsl:value-of select="$FATO_ts"/>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served FATO direction - Designator -->
-            <xsl:variable name="FATO_direction">
-              <xsl:if test="not(empty($FATO_valid-ts))">
-                <xsl:choose>
-                  <xsl:when test="not($RDN_valid-ts/aixm:designator)">
-                    <xsl:value-of select="''"/>
-                  </xsl:when>
-                  <xsl:otherwise>
-                    <xsl:value-of select="fcn:insert-value($RDN_valid-ts/aixm:designator)"/>
-                  </xsl:otherwise>
-                </xsl:choose>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served FATO direction - Valid TimeSlice -->
-            <xsl:variable name="FATO_direction_timeslice">
-              <xsl:if test="not(empty($FATO_valid-ts))">
-                <xsl:value-of select="$RDN_ts"/>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served RWY - Designator -->
-            <xsl:variable name="RWY_designator">
-              <xsl:if test="not(empty($RWY_valid-ts))">
-                <xsl:choose>
-                  <xsl:when test="not($RWY_valid-ts/aixm:designator)">
-                    <xsl:value-of select="''"/>
-                  </xsl:when>
-                  <xsl:otherwise>
-                    <xsl:value-of select="fcn:insert-value($RWY_valid-ts/aixm:designator)"/>
-                  </xsl:otherwise>
-                </xsl:choose>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served RWY - Valid TimeSlice -->
-            <xsl:variable name="RWY_timeslice">
-              <xsl:if test="not(empty($RWY_valid-ts))">
-                <xsl:value-of select="$RWY_ts"/>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served RWY direction - Designator -->
-            <xsl:variable name="RDN_designator">
-              <xsl:if test="not(empty($RWY_valid-ts))">
-                <xsl:choose>
-                  <xsl:when test="not($RDN_valid-ts/aixm:designator)">
-                    <xsl:value-of select="''"/>
-                  </xsl:when>
-                  <xsl:otherwise>
-                    <xsl:value-of select="fcn:insert-value($RDN_valid-ts/aixm:designator)"/>
-                  </xsl:otherwise>
-                </xsl:choose>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served RWY direction - Valid TimeSlice -->
-            <xsl:variable name="RDN_timeslice">
-              <xsl:if test="not(empty($RWY_valid-ts))">
-                <xsl:value-of select="$RDN_ts"/>
-              </xsl:if>
-            </xsl:variable>
-            
-            <!-- Served TLOF -->
-            <xsl:variable name="TLOF_UUID" select="replace(aixm:landing/aixm:LandingTakeoffAreaCollection/aixm:TLOF/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
-            <xsl:variable name="TLOF" select="//aixm:TouchDownLiftOff[gml:identifier = $TLOF_UUID]"/>
-            <xsl:variable name="TLOF_baseline" select="$TLOF/aixm:timeSlice/aixm:TouchDownLiftOffTimeSlice[aixm:interpretation = 'BASELINE']"/>
-            <xsl:variable name="TLOF_valid-ts" select="fcn:get-valid-timeslice($TLOF_baseline)"/>
-            <xsl:variable name="TLOF_ts" select="if ($TLOF_valid-ts) then fcn:format-timeslice-info($TLOF_valid-ts) else ''"/>
-            
-            <!-- Served TLOF - Designator -->
-            <xsl:variable name="TLOF_designator">
-              <xsl:choose>
-                <xsl:when test="not($TLOF_valid-ts/aixm:designator)">
-                  <xsl:value-of select="''"/>
-                </xsl:when>
-                <xsl:otherwise>
-                  <xsl:value-of select="fcn:insert-value($TLOF_valid-ts/aixm:designator)"/>
-                </xsl:otherwise>
-              </xsl:choose>
-            </xsl:variable>
-            
-            <!-- Served TLOF - Valid TimeSlice -->
-            <xsl:variable name="TLOF_timeslice">
-              <xsl:if test="not(empty($TLOF_valid-ts))">
-                <xsl:value-of select="$TLOF_ts"/>
-              </xsl:if>
-            </xsl:variable>
+
+            <xsl:variable name="TLOF_designator" select="fcn:join-values($TLOF_entries/entry/TLOF_designator, '&#10;')"/>
+            <xsl:variable name="TLOF_timeslice" select="fcn:join-values($TLOF_entries/entry/TLOF_timeslice, '&#10;')"/>
             
             <!-- MSA -->
             <xsl:variable name="MSA_UUID" select="replace(aixm:safeAltitude/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
