@@ -1059,10 +1059,9 @@
                         <xsl:value-of select="aixm:MissedApproachGroup/aixm:alternateClimbAltitude/@uom"/>
                       </xsl:if>
                     </xsl:variable>
-                    <xsl:variable name="formattedInstruction" select="if (string-length($instruction) gt 0) then concat('Instruction: ', $instruction) else ''"/>
                     <xsl:variable name="formattedAlternateClimbInstruction" select="if (string-length($alternateClimbInstruction) gt 0) then concat('Alternate climb instruction: ', $alternateClimbInstruction) else ''"/>
                     <xsl:variable name="formattedAlternateClimbAltitude" select="if (string-length($alternateClimbAltitude) gt 0) then concat('Alternate altitude: ', if ($alternateClimbAltitudeUom = ('FL', 'SM')) then concat($alternateClimbAltitudeUom, $alternateClimbAltitude) else concat($alternateClimbAltitude, $alternateClimbAltitudeUom)) else ''"/>
-                    <xsl:value-of select="string-join(($formattedInstruction[string-length(.) gt 0], $formattedAlternateClimbInstruction[string-length(.) gt 0], $formattedAlternateClimbAltitude[string-length(.) gt 0]), '&#10;')"/>
+                    <xsl:value-of select="string-join(($instruction[string-length(.) gt 0], $formattedAlternateClimbInstruction[string-length(.) gt 0], $formattedAlternateClimbAltitude[string-length(.) gt 0]), '&#10;')"/>
                   </xsl:otherwise>
                 </xsl:choose>
               </xsl:for-each>
