@@ -147,7 +147,7 @@
   
   <!-- Keys -->
   <xsl:key name="route-by-uuid" match="aixm:Route" use="gml:identifier"/>
-  <xsl:key name="point-by-uuid" match="aixm:DesignatedPoint | aixm:Navaid" use="gml:identifier"/>
+  <xsl:key name="point-by-uuid" match="aixm:DesignatedPoint | aixm:Navaid | aixm:AirportHeliport | aixm:TouchDownLiftOff | aixm:RunwayCentrelinePoint" use="gml:identifier"/>
 
   <!-- Global variable to capture document root for use in key() functions -->
   <xsl:variable name="doc-root" select="/"/>
@@ -302,7 +302,7 @@
                 <xsl:variable name="route-baseline-timeslices" select="$Route/aixm:timeSlice/aixm:RouteTimeSlice[aixm:interpretation = 'BASELINE']"/>
                 <xsl:variable name="route-valid-ts" select="fcn:get-valid-timeslice($route-baseline-timeslices)"/>
                 <xsl:variable name="Master_gUID" select="$Route/gml:identifier"/>
-                <xsl:variable name="route-designator" select="concat($route-valid-ts/aixm:designatorPrefix, $route-valid-ts/aixm:designatorSecondLetter, $route-valid-ts/aixm:designatorNumber)"/>
+                <xsl:variable name="route-designator" select="concat($route-valid-ts/aixm:designatorPrefix, $route-valid-ts/aixm:designatorSecondLetter, $route-valid-ts/aixm:designatorNumber, $route-valid-ts/aixm:multipleIdentifier)"/>
                 <xsl:variable name="route-area-designator" select="$route-valid-ts/aixm:locationDesignator"/>
                 <xsl:variable name="effective-date">
                   <xsl:if test="$route-valid-ts/gml:validTime/gml:TimePeriod/gml:beginPosition">
@@ -321,8 +321,13 @@
                     <xsl:variable name="seg" select="."/>
                     <xsl:variable name="route_segment-ts" select="aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']"/>
                     <xsl:variable name="start" select="replace($route_segment-ts/aixm:start/*/*/@xlink:href, '^(urn:uuid:|#uuid\.)', '')"/>
+                    <xsl:variable name="start_position" select="normalize-space($route_segment-ts/aixm:start/aixm:EnRouteSegmentPoint/aixm:pointChoice_position/aixm:Point/gml:pos)"/>
                     <xsl:variable name="end" select="$segments/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']/aixm:end/*/*/@xlink:href"/>
-                    <xsl:if test="not($end[contains(., $start)])">
+                    <xsl:variable name="end_positions" select="$segments/aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']/aixm:end/aixm:EnRouteSegmentPoint/aixm:pointChoice_position/aixm:Point/gml:pos"/>
+                    <!-- First segment: its start (point UUID, or ad-hoc position coordinates) is not an end elsewhere on this route -->
+                    <xsl:if test="if (string-length($start) gt 0)
+                                  then not($end[contains(., $start)])
+                                  else not($end_positions[normalize-space(.) = $start_position])">
                       <xsl:sequence select="."/>
                       <xsl:break/>
                     </xsl:if>
@@ -636,14 +641,40 @@
     <xsl:variable name="start_baseline_timeslices" select="$start_point/aixm:timeSlice/*[aixm:interpretation = 'BASELINE']"/>
     <xsl:variable name="start_valid_timeslice" select="fcn:get-valid-timeslice($start_baseline_timeslices)"/>
 
-    <xsl:variable name="start_designator" select="$start_valid_timeslice/aixm:designator"/>
+    <!-- Ad-hoc defined position (no referenced point feature) -->
+    <xsl:variable name="start_position" select="$route_segment-ts/aixm:start/aixm:EnRouteSegmentPoint/aixm:pointChoice_position"/>
+
+    <xsl:variable name="start_designator">
+      <xsl:choose>
+        <xsl:when test="$start_position">
+          <xsl:variable name="start_pos_notes" select="$start_position/aixm:Point/aixm:annotation[1]/aixm:Note[aixm:propertyName = 'pos']/aixm:translatedNote/aixm:LinguisticNote/aixm:note"/>
+          <xsl:variable name="start_pos_note" select="if (count($start_pos_notes) gt 1) then $start_pos_notes[@lang = ('ENG', 'eng')][1] else $start_pos_notes[1]"/>
+          <xsl:value-of select="if ($start_pos_note) then $start_pos_note else normalize-space($start_position/aixm:Point/gml:pos)"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$start_valid_timeslice/aixm:designator"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
     <xsl:variable name="start_type">
       <xsl:choose>
+        <xsl:when test="$start_position">
+          <xsl:value-of select="'Point'"/>
+        </xsl:when>
         <xsl:when test="$start_valid_timeslice/self::aixm:DesignatedPointTimeSlice/aixm:type">
           <xsl:value-of select="concat('WPT', ' (', $start_valid_timeslice/aixm:type, ')')"/>
         </xsl:when>
         <xsl:when test="$start_valid_timeslice/self::aixm:NavaidTimeSlice/aixm:type">
           <xsl:value-of select="$start_valid_timeslice/aixm:type"/>
+        </xsl:when>
+        <xsl:when test="$start_valid_timeslice/self::aixm:AirportHeliportTimeSlice">
+          <xsl:value-of select="'AHP'"/>
+        </xsl:when>
+        <xsl:when test="$start_valid_timeslice/self::aixm:TouchDownLiftOffTimeSlice">
+          <xsl:value-of select="'TLOF'"/>
+        </xsl:when>
+        <xsl:when test="$start_valid_timeslice/self::aixm:RunwayCentrelinePointTimeSlice">
+          <xsl:value-of select="'RCP'"/>
         </xsl:when>
       </xsl:choose>
     </xsl:variable>
@@ -653,14 +684,40 @@
     <xsl:variable name="end_baseline_timeslices" select="$end_point/aixm:timeSlice/*[aixm:interpretation = 'BASELINE']"/>
     <xsl:variable name="end_valid_timeslice" select="fcn:get-valid-timeslice($end_baseline_timeslices)"/>
 
-    <xsl:variable name="end_designator" select="$end_valid_timeslice/aixm:designator"/>
+    <!-- Ad-hoc defined position (no referenced point feature) -->
+    <xsl:variable name="end_position" select="$route_segment-ts/aixm:end/aixm:EnRouteSegmentPoint/aixm:pointChoice_position"/>
+
+    <xsl:variable name="end_designator">
+      <xsl:choose>
+        <xsl:when test="$end_position">
+          <xsl:variable name="end_pos_notes" select="$end_position/aixm:Point/aixm:annotation[1]/aixm:Note[aixm:propertyName = 'pos']/aixm:translatedNote/aixm:LinguisticNote/aixm:note"/>
+          <xsl:variable name="end_pos_note" select="if (count($end_pos_notes) gt 1) then $end_pos_notes[@lang = ('ENG', 'eng')][1] else $end_pos_notes[1]"/>
+          <xsl:value-of select="if ($end_pos_note) then $end_pos_note else normalize-space($end_position/aixm:Point/gml:pos)"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$end_valid_timeslice/aixm:designator"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
     <xsl:variable name="end_type">
       <xsl:choose>
+        <xsl:when test="$end_position">
+          <xsl:value-of select="'Point'"/>
+        </xsl:when>
         <xsl:when test="$end_valid_timeslice/self::aixm:DesignatedPointTimeSlice/aixm:type">
           <xsl:value-of select="concat('WPT', ' (', $end_valid_timeslice/aixm:type, ')')"/>
         </xsl:when>
         <xsl:when test="$end_valid_timeslice/self::aixm:NavaidTimeSlice/aixm:type">
           <xsl:value-of select="$end_valid_timeslice/aixm:type"/>
+        </xsl:when>
+        <xsl:when test="$end_valid_timeslice/self::aixm:AirportHeliportTimeSlice">
+          <xsl:value-of select="'AHP'"/>
+        </xsl:when>
+        <xsl:when test="$end_valid_timeslice/self::aixm:TouchDownLiftOffTimeSlice">
+          <xsl:value-of select="'TLOF'"/>
+        </xsl:when>
+        <xsl:when test="$end_valid_timeslice/self::aixm:RunwayCentrelinePointTimeSlice">
+          <xsl:value-of select="'RCP'"/>
         </xsl:when>
       </xsl:choose>
     </xsl:variable>
@@ -685,8 +742,12 @@
       <td><xsl:value-of select="if (string-length($originator) = 0) then '&#160;' else $originator"/></td>
     </tr>
     
-    <!-- Find next segment whose start = this end -->
-    <xsl:variable name="next" select="$segments[aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']/aixm:start/*/*/@xlink:href = concat('urn:uuid:', $end_uuid)][1]"/>
+    <!-- Find next segment whose start = this end (by point UUID, or by ad-hoc position coordinates) -->
+    <xsl:variable name="end_pos_string" select="normalize-space($end_position/aixm:Point/gml:pos)"/>
+    <xsl:variable name="next" select="$segments[aixm:timeSlice/aixm:RouteSegmentTimeSlice[aixm:interpretation = 'BASELINE']
+      [(string-length($end_uuid) gt 0 and aixm:start/*/*/@xlink:href = concat('urn:uuid:', $end_uuid))
+       or (string-length($end_uuid) = 0 and string-length($end_pos_string) gt 0
+           and normalize-space(aixm:start/aixm:EnRouteSegmentPoint/aixm:pointChoice_position/aixm:Point/gml:pos) = $end_pos_string)]][1]"/>
     
     <xsl:if test="$next">
       <xsl:call-template name="output-chain">
