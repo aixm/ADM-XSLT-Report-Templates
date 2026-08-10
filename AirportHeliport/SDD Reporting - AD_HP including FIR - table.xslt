@@ -1117,7 +1117,11 @@
                 <xsl:variable name="baseline-timeslice" select="aixm:timeSlice/aixm:AirportHeliportTimeSlice[aixm:interpretation = 'BASELINE']"/>
                 
                 <xsl:for-each select="$baseline-timeslice">
-                  
+
+                  <!-- Sort the timeslices of this feature by sequenceNumber (descending), then by correctionNumber (descending) -->
+                  <xsl:sort select="aixm:sequenceNumber" data-type="number" order="descending"/>
+                  <xsl:sort select="aixm:correctionNumber" data-type="number" order="descending"/>
+
                   <!-- FeatureIdentifier -->
                   <xsl:variable name="AHP_identifier" select="../../gml:identifier"/>
                   
@@ -1670,17 +1674,18 @@
                         <xsl:value-of select="''"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:variable name="all-notes" select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote"/>
-                        <xsl:for-each select="$all-notes">
-                          <xsl:variable name="global-index" select="position()"/>
-                          <xsl:choose>
-                            <xsl:when test="$global-index = 1">
-                              <xsl:value-of select="concat('[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
-                            </xsl:when>
-                            <xsl:otherwise>
-                              <xsl:value-of select="concat('&lt;br/&gt;', '[', $global-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
-                            </xsl:otherwise>
-                          </xsl:choose>
+                        <xsl:for-each select="aixm:annotation">
+                          <xsl:variable name="annotation-index" select="position()"/>
+                          <xsl:for-each select="aixm:Note/aixm:translatedNote/aixm:LinguisticNote">
+                            <xsl:choose>
+                              <xsl:when test="$annotation-index = 1 and position() = 1">
+                                <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                              </xsl:when>
+                              <xsl:otherwise>
+                                <xsl:value-of select="concat('&lt;br/&gt;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                              </xsl:otherwise>
+                            </xsl:choose>
+                          </xsl:for-each>
                         </xsl:for-each>
                       </xsl:otherwise>
                     </xsl:choose>
@@ -2048,11 +2053,11 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by column: </font></td>
-              <td><font size="-1">Designator, SequenceNumber, CorrectionNumber</font></td>
+              <td><font size="-1">Designator (first), SequenceNumber (second), CorrectionNumber (third)</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
-              <td><font size="-1">Designator (ascending), then SequenceNumber (descending), then CorrectionNumber (descending)</font></td>
+              <td><font size="-1">Designator (ascending), SequenceNumber (descending), CorrectionNumber (descending)</font></td>
             </tr>
           </table>
           

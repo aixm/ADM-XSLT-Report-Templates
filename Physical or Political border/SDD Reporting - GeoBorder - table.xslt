@@ -144,16 +144,6 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:function>
-  
-  <!-- Get annotation text preserving line breaks and escaping special HTML characters -->
-  <xsl:function name="fcn:get-annotation-text" as="xs:string">
-    <xsl:param name="raw_text" as="xs:string"/>
-    <!-- First, escape special HTML characters in the raw text before processing -->
-    <xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
-    <xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
-    <xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
-    <xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
-  </xsl:function>
 
   <!-- Pretty-print one XML node as escaped HTML: &#160;-based indentation, one line per element; namespace declarations and gml:id attributes are dropped -->
   <xsl:function name="fcn:format-gml-node" as="xs:string">
