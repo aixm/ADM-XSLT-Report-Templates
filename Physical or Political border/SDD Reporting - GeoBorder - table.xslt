@@ -154,7 +154,49 @@
     <xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
     <xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
   </xsl:function>
-  
+
+  <!-- Pretty-print one XML node as escaped HTML: &#160;-based indentation, one line per element; namespace declarations and gml:id attributes are dropped -->
+  <xsl:function name="fcn:format-gml-node" as="xs:string">
+    <xsl:param name="node" as="node()"/>
+    <xsl:param name="depth" as="xs:integer"/>
+    <xsl:variable name="indent" select="string-join(for $i in 1 to $depth return '&amp;#160;&amp;#160;&amp;#160;', '')"/>
+    <xsl:choose>
+      <xsl:when test="$node instance of element()">
+        <xsl:variable name="attrs" select="string-join(for $a in $node/@*[name(.) != 'gml:id'] return concat(' ', name($a), '=&quot;', string($a), '&quot;'), '')"/>
+        <xsl:variable name="children" select="$node/node()[not(self::text()[normalize-space(.) = ''])]"/>
+        <xsl:choose>
+          <!-- empty element: self-closing tag -->
+          <xsl:when test="empty($children)">
+            <xsl:sequence select="concat($indent, '&amp;lt;', name($node), $attrs, '/&amp;gt;')"/>
+          </xsl:when>
+          <!-- text-only content stays on one line -->
+          <xsl:when test="empty($children[not(self::text())])">
+            <xsl:sequence select="concat($indent, '&amp;lt;', name($node), $attrs, '&amp;gt;', normalize-space(string($node)), '&amp;lt;/', name($node), '&amp;gt;')"/>
+          </xsl:when>
+          <!-- child elements each on their own indented line -->
+          <xsl:otherwise>
+            <xsl:sequence select="string-join((
+              concat($indent, '&amp;lt;', name($node), $attrs, '&amp;gt;'),
+              for $child in $children return fcn:format-gml-node($child, $depth + 1),
+              concat($indent, '&amp;lt;/', name($node), '&amp;gt;')), '&lt;br/&gt;')"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:when>
+      <xsl:when test="$node instance of comment()">
+        <xsl:sequence select="concat($indent, '&amp;lt;!-- ', normalize-space($node), ' --&amp;gt;')"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:sequence select="concat($indent, normalize-space($node))"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:function>
+
+  <!-- Format (beautify) embedded GML/XML content as indented escaped HTML (render with disable-output-escaping) -->
+  <xsl:function name="fcn:format-gml-xml" as="xs:string">
+    <xsl:param name="nodes" as="node()*"/>
+    <xsl:sequence select="string-join(for $n in $nodes[not(self::text()[normalize-space(.) = ''])] return fcn:format-gml-node($n, 0), '&lt;br/&gt;')"/>
+  </xsl:function>
+
   <xsl:template match="/">
     
     <html xmlns="http://www.w3.org/1999/xhtml">
@@ -258,233 +300,265 @@
             
             <tbody>
               
-              <xsl:for-each select="//aixm:GeoBorder/aixm:timeSlice/aixm:GeoBorderTimeSlice">
-                
-                <xsl:sort select="aixm:name" order="ascending"/>
-                <xsl:sort select="aixm:sequenceNumber" order="descending" data-type="number"/>
-                <xsl:sort select="aixm:correctionNumber" order="descending" data-type="number"/>
-                
-                <!-- FeatureIdentifier -->
-                <xsl:variable name="identifier" select="../../gml:identifier"/>
-                
-                <!-- FeatureLifetimeBegin -->
-                <xsl:variable name="lifetime-begin">
-                  <xsl:choose>
-                    <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- FeatureLifetimeEnd -->
-                <xsl:variable name="lifetime-end">
-                  <xsl:choose>
-                    <xsl:when test="aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
-                      <xsl:value-of select="'31-DEC-9999'"/>
-                    </xsl:when>
-                    <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition) and aixm:featureLifetime/gml:TimePeriod/gml:endPosition">
-                      <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)"/>
-                    </xsl:when>
-                    <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)">
-                      <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)"/>
-                    </xsl:when>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- ValidityFrom -->
-                <xsl:variable name="validity-begin">
-                  <xsl:choose>
-                    <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:beginPosition)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:beginPosition)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- ValidityTo -->
-                <xsl:variable name="validity-end">
-                  <xsl:choose>
-                    <xsl:when test="gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
-                      <xsl:value-of select="'31-DEC-9999'"/>
-                    </xsl:when>
-                    <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition) and gml:validTime/gml:TimePeriod/gml:endPosition">
-                      <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:endPosition)"/>
-                    </xsl:when>
-                    <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:endPosition)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- SequenceNumber -->
-                <xsl:variable name="sequence-number">
-                  <xsl:choose>
-                    <xsl:when test="not(aixm:sequenceNumber)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value(aixm:sequenceNumber)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- CorrectionNumber -->
-                <xsl:variable name="correction-number">
-                  <xsl:choose>
-                    <xsl:when test="not(aixm:correctionNumber)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value(aixm:correctionNumber)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- Name -->
-                <xsl:variable name="name">
-                  <xsl:choose>
-                    <xsl:when test="not(aixm:name)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value(aixm:name)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- Type -->
-                <xsl:variable name="type">
-                  <xsl:choose>
-                    <xsl:when test="not(aixm:type)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value(aixm:type)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- Border/GmlXml -->
-                <xsl:variable name="border">
-                  <xsl:for-each select="aixm:border/node()">
-                    <xsl:variable name="serialized" select="serialize(., map{'omit-xml-declaration': true(), 'indent': false()})"/>
-                    <xsl:variable name="no-xmlns" select="replace($serialized, ' xmlns:[^=]+=&quot;[^&quot;]+&quot;', '')"/>
-                    <xsl:value-of select="replace($no-xmlns, ' gml:id=&quot;[^&quot;]+&quot;', '')"/>
-                  </xsl:for-each>
-                </xsl:variable>
-                
-                <!-- EAD-Audit -->
-                <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:GeoBorderExtension/ead-audit:auditInformation/ead-audit:Audit"/>
-                
-                <!-- EAD-AUDIT:CreatedBy -->
-                <xsl:variable name="created-by">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:createdBy)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdBy)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- EAD-AUDIT:CreationDate -->
-                <xsl:variable name="creation-date">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:creationDate)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:format-date($EAD-Audit/ead-audit:creationDate)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- EAD-AUDIT:CreatedByOrganisation -->
-                <xsl:variable name="created-by-org">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:createdByOrg)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdByOrg)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- EAD-AUDIT:CreatedOnBehalfOfUser -->
-                <xsl:variable name="created-on-behalf-of-user">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:createdOnBehalfOfUser)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdOnBehalfOfUser)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- EAD-AUDIT:CreatedOnBehalfOfOrganisation -->
-                <xsl:variable name="created-on-behalf-of-org">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:createdOnBehalfOfOrg)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdOnBehalfOfOrg)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- EAD-AUDIT:ReasonForChange -->
-                <xsl:variable name="reason-for-change">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:reasonForChange)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:reasonForChange)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <!-- EAD-AUDIT:ResponsibleSubsystem -->
-                <xsl:variable name="responsible-subsystem">
-                  <xsl:choose>
-                    <xsl:when test="not($EAD-Audit/ead-audit:responsibleSubsystem)">
-                      <xsl:value-of select="''"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                      <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:responsibleSubsystem)"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:variable>
-                
-                <tr style="white-space:nowrap;vertical-align:top">
-                  <td><xsl:value-of select="if (string-length($identifier) gt 0) then $identifier else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($lifetime-begin) gt 0) then $lifetime-begin else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($lifetime-end) gt 0) then $lifetime-end else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($validity-begin) gt 0) then $validity-begin else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($validity-end) gt 0) then $validity-end else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($sequence-number) gt 0) then $sequence-number else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($correction-number) gt 0) then $correction-number else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($name) gt 0) then $name else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
-                  <td style="max-width:2000px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($border) gt 0) then $border else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($creation-date) gt 0) then $creation-date else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
-                  <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
-                  <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
-                </tr>
-                
+              <xsl:for-each select="//aixm:GeoBorder">
+
+                <!-- Sort by GeoBorder name (ascending), then by GeoBorder sequenceNumber (descending), then by GeoBorder correctionNumber (descending) -->
+                <xsl:sort select="
+                  let $GB_baseline := aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $GB_valid-ts := fcn:get-valid-timeslice($GB_baseline)
+                  return $GB_valid-ts/aixm:name"
+                  data-type="text" order="ascending"/>
+
+                <xsl:sort select="
+                  let $GB_baseline := aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $GB_valid-ts := fcn:get-valid-timeslice($GB_baseline)
+                  return $GB_valid-ts/aixm:sequenceNumber"
+                  data-type="number" order="descending"/>
+
+                <xsl:sort select="
+                  let $GB_baseline := aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE'],
+                  $GB_valid-ts := fcn:get-valid-timeslice($GB_baseline)
+                  return $GB_valid-ts/aixm:correctionNumber"
+                  data-type="number" order="descending"/>
+
+                <!-- Get all BASELINE time slices for this feature -->
+                <xsl:variable name="baseline-timeslice" select="aixm:timeSlice/aixm:GeoBorderTimeSlice[aixm:interpretation = 'BASELINE']"/>
+
+                <xsl:for-each select="$baseline-timeslice">
+
+                  <!-- Sort the timeslices of this feature by sequenceNumber (descending), then by correctionNumber (descending) -->
+                  <xsl:sort select="aixm:sequenceNumber" data-type="number" order="descending"/>
+                  <xsl:sort select="aixm:correctionNumber" data-type="number" order="descending"/>
+
+                  <!-- FeatureIdentifier -->
+                  <xsl:variable name="identifier" select="../../gml:identifier"/>
+
+                  <!-- FeatureLifetimeBegin -->
+                  <xsl:variable name="lifetime-begin">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:beginPosition)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- FeatureLifetimeEnd -->
+                  <xsl:variable name="lifetime-end">
+                    <xsl:choose>
+                      <xsl:when test="aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
+                        <xsl:value-of select="'31-DEC-9999'"/>
+                      </xsl:when>
+                      <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:endPosition/@indeterminatePosition) and aixm:featureLifetime/gml:TimePeriod/gml:endPosition">
+                        <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)"/>
+                      </xsl:when>
+                      <xsl:when test="not(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)">
+                        <xsl:value-of select="fcn:format-date(aixm:featureLifetime/gml:TimePeriod/gml:endPosition)"/>
+                      </xsl:when>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- ValidityFrom -->
+                  <xsl:variable name="validity-begin">
+                    <xsl:choose>
+                      <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:beginPosition)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:beginPosition)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- ValidityTo -->
+                  <xsl:variable name="validity-end">
+                    <xsl:choose>
+                      <xsl:when test="gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition = 'unknown'">
+                        <xsl:value-of select="'31-DEC-9999'"/>
+                      </xsl:when>
+                      <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:endPosition/@indeterminatePosition) and gml:validTime/gml:TimePeriod/gml:endPosition">
+                        <xsl:value-of select="fcn:format-date(gml:validTime/gml:TimePeriod/gml:endPosition)"/>
+                      </xsl:when>
+                      <xsl:when test="not(gml:validTime/gml:TimePeriod/gml:endPosition)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- SequenceNumber -->
+                  <xsl:variable name="sequence-number">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:sequenceNumber)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:sequenceNumber)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- CorrectionNumber -->
+                  <xsl:variable name="correction-number">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:correctionNumber)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:correctionNumber)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- Name -->
+                  <xsl:variable name="name">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:name)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:name)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- Type -->
+                  <xsl:variable name="type">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:type)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value(aixm:type)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- Border/GmlXml -->
+                  <xsl:variable name="border">
+                    <xsl:choose>
+                      <xsl:when test="not(aixm:border)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:when test="aixm:border/@xsi:nil = 'true'">
+                        <xsl:value-of select="fcn:insert-value(aixm:border)"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:format-gml-xml(aixm:border/node())"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-Audit -->
+                  <xsl:variable name="EAD-Audit" select="aixm:extension/ead-audit:GeoBorderExtension/ead-audit:auditInformation/ead-audit:Audit"/>
+
+                  <!-- EAD-AUDIT:CreatedBy -->
+                  <xsl:variable name="created-by">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdBy)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdBy)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-AUDIT:CreationDate -->
+                  <xsl:variable name="creation-date">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:creationDate)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:format-date($EAD-Audit/ead-audit:creationDate)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-AUDIT:CreatedByOrganisation -->
+                  <xsl:variable name="created-by-org">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdByOrg)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdByOrg)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-AUDIT:CreatedOnBehalfOfUser -->
+                  <xsl:variable name="created-on-behalf-of-user">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdOnBehalfOfUser)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdOnBehalfOfUser)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-AUDIT:CreatedOnBehalfOfOrganisation -->
+                  <xsl:variable name="created-on-behalf-of-org">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:createdOnBehalfOfOrg)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:createdOnBehalfOfOrg)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-AUDIT:ReasonForChange -->
+                  <xsl:variable name="reason-for-change">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:reasonForChange)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:reasonForChange)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <!-- EAD-AUDIT:ResponsibleSubsystem -->
+                  <xsl:variable name="responsible-subsystem">
+                    <xsl:choose>
+                      <xsl:when test="not($EAD-Audit/ead-audit:responsibleSubsystem)">
+                        <xsl:value-of select="''"/>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <xsl:value-of select="fcn:insert-value($EAD-Audit/ead-audit:responsibleSubsystem)"/>
+                      </xsl:otherwise>
+                    </xsl:choose>
+                  </xsl:variable>
+
+                  <tr style="white-space:nowrap;vertical-align:top">
+                    <td><xsl:value-of select="if (string-length($identifier) gt 0) then $identifier else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($lifetime-begin) gt 0) then $lifetime-begin else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($lifetime-end) gt 0) then $lifetime-end else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($validity-begin) gt 0) then $validity-begin else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($validity-end) gt 0) then $validity-end else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($sequence-number) gt 0) then $sequence-number else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($correction-number) gt 0) then $correction-number else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($name) gt 0) then $name else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($type) gt 0) then $type else '&#160;'"/></td>
+                    <td style="max-width:2000px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($border) gt 0"><xsl:value-of select="$border" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
+                    <td><xsl:value-of select="if (string-length($created-by) gt 0) then $created-by else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($creation-date) gt 0) then $creation-date else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-by-org) gt 0) then $created-by-org else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-on-behalf-of-user) gt 0) then $created-on-behalf-of-user else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($created-on-behalf-of-org) gt 0) then $created-on-behalf-of-org else '&#160;'"/></td>
+                    <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:value-of select="if (string-length($reason-for-change) gt 0) then $reason-for-change else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($responsible-subsystem) gt 0) then $responsible-subsystem else '&#160;'"/></td>
+                  </tr>
+
+                </xsl:for-each>
+
               </xsl:for-each>
               
             </tbody>
@@ -698,11 +772,11 @@
           <table>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting by columns: </font></td>
-              <td><font size="-1">Name, SequenceNumber, CorrectionNumber</font></td>
+              <td><font size="-1">Name (first), SequenceNumber (second), CorrectionNumber (third)</font></td>
             </tr>
             <tr>
               <td style="text-align:right"><font size="-1">Sorting order: </font></td>
-              <td><font size="-1">ascending (Name), descending (SequenceNumber), descending (CorrectionNumber)</font></td>
+              <td><font size="-1">Name (ascending), SequenceNumber (descending), CorrectionNumber (descending)</font></td>
             </tr>
           </table>
           
