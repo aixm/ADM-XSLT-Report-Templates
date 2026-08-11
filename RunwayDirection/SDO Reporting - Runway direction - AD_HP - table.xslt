@@ -344,9 +344,9 @@
                 <td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[touch down zone elevation]</strong></td>
                 <td><strong>Taxi time<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>estimation</strong></td>
                 <td><strong>Type</strong></td>
-                <td><strong>(d)VASIS position description</strong></td>
+                <td><strong>VASIS position description</strong></td>
                 <td><strong>Approach slope angle</strong></td>
-                <td><strong>Minimun eye height<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>over threshold</strong></td>
+                <td><strong>Minimum eye height<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>over threshold</strong></td>
                 <td><strong>Unit of measurement<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>[minimum eye height over threshold]</strong></td>
                 <td><strong>VASIS<xsl:text disable-output-escaping="yes">&lt;br/&gt;</xsl:text>- Valid TimeSlice</strong></td>
                 <td><strong>Arresting device</strong></td>
@@ -688,7 +688,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)VASIS position description -->
+                  <!-- VASIS position description -->
                   <xsl:variable name="RDN_VASIS_position_desc">
                     <xsl:if test="$VASIS-valid-ts">
                       <xsl:for-each select="$VASIS-valid-ts/aixm:annotation/aixm:Note[aixm:propertyName = ('position')]">
@@ -725,7 +725,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Minimun eye height over threshold -->
+                  <!-- Minimum eye height over threshold -->
                   <xsl:variable name="RDN_MEH">
                     <xsl:choose>
                       <xsl:when test="$VASIS-valid-ts">

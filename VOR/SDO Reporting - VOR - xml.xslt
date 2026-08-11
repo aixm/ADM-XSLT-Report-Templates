@@ -836,9 +836,15 @@
                   <txtName><xsl:value-of select="$originator"/></txtName>
                 </OrgCre>
               </xsl:if>
-              <xsl:if test="string-length($VOR_remarks) gt 0">
-                <txtRmk><xsl:value-of select="$VOR_remarks"/></txtRmk>
-              </xsl:if>
+              <!-- txtRmk with the VOR timeslice on the first line, followed by the remarks if any -->
+              <txtRmk>
+                <xsl:text>VOR - Valid TimeSlice: </xsl:text>
+                <xsl:value-of select="$VOR_timeslice"/>
+                <xsl:if test="string-length($VOR_remarks) gt 0">
+                  <xsl:text>&#10;</xsl:text>
+                  <xsl:value-of select="$VOR_remarks"/>
+                </xsl:if>
+              </txtRmk>
             </Record>
     
           </xsl:for-each>

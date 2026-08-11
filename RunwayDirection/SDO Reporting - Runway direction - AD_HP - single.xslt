@@ -376,13 +376,13 @@
                 <td><strong>Type</strong></td>
               </tr>
               <tr>
-                <td><strong>(d)VASIS position description</strong></td>
+                <td><strong>VASIS position description</strong></td>
               </tr>
               <tr>
                 <td><strong>Approach slope angle</strong></td>
               </tr>
               <tr>
-                <td><strong>Minimun eye height over threshold</strong></td>
+                <td><strong>Minimum eye height over threshold</strong></td>
               </tr>
               <tr>
                 <td><strong>Unit of measurement [minimum eye height over threshold]</strong></td>
@@ -753,7 +753,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)VASIS position description -->
+                  <!-- VASIS position description -->
                   <xsl:variable name="RDN_VASIS_position_desc">
                     <xsl:if test="$VASIS-valid-ts">
                       <xsl:for-each select="$VASIS-valid-ts/aixm:annotation/aixm:Note[aixm:propertyName = ('position')]">
@@ -790,7 +790,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- Minimun eye height over threshold -->
+                  <!-- Minimum eye height over threshold -->
                   <xsl:variable name="RDN_MEH">
                     <xsl:choose>
                       <xsl:when test="$VASIS-valid-ts">

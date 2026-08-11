@@ -1411,28 +1411,28 @@
               <td><strong>Type</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)Operation code</strong></td>
+              <td><strong>Operation code</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)National traffic</strong></td>
+              <td><strong>National traffic</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)International traffic</strong></td>
+              <td><strong>International traffic</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)Scheduled flight</strong></td>
+              <td><strong>Scheduled flight</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)Non scheduled flight</strong></td>
+              <td><strong>Non scheduled flight</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)Private flight</strong></td>
+              <td><strong>Private flight</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)Observe VFR</strong></td>
+              <td><strong>Observe VFR</strong></td>
             </tr>
             <tr>
-              <td><strong>(d)Observe IFR</strong></td>
+              <td><strong>Observe IFR</strong></td>
             </tr>
             <tr>
               <td><strong>Reference point description</strong></td>
@@ -1661,7 +1661,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Operation code -->
+                  <!-- Operation code -->
                   <xsl:variable name="AHP_control_type">
                     <xsl:choose>
                       <xsl:when test="not(aixm:controlType)">
@@ -1675,7 +1675,7 @@
                   
                   <xsl:variable name="AHP_normal_usage" select="aixm:availability/aixm:AirportHeliportAvailability[aixm:operationalStatus='NORMAL']/aixm:usage/aixm:AirportHeliportUsage"/>
                   
-                  <!-- (d)National traffic -->
+                  <!-- National traffic -->
                   <xsl:variable name="AHP_nat_traffic">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:origin = ('NTL','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:origin = ('NTL','ALL')]) != 0">
@@ -1690,7 +1690,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)International traffic -->
+                  <!-- International traffic -->
                   <xsl:variable name="AHP_intl_traffic">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:origin = ('INTL','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:origin = ('INTL','ALL')]) != 0">
@@ -1705,7 +1705,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Scheduled flight -->
+                  <!-- Scheduled flight -->
                   <xsl:variable name="AHP_scheduled_flight">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:purpose = ('SCHEDULED','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:purpose = ('SCHEDULED','ALL')]) != 0">
@@ -1720,7 +1720,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Non scheduled flight -->
+                  <!-- Non scheduled flight -->
                   <xsl:variable name="AHP_non_scheduled_flight">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:purpose = ('NON_SCHEDULED','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:purpose = ('NON_SCHEDULED','ALL')]) != 0">
@@ -1735,7 +1735,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Private flight -->
+                  <!-- Private flight -->
                   <xsl:variable name="AHP_private_flight">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:purpose = ('PRIVATE','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:purpose = ('PRIVATE','ALL')]) != 0">
@@ -1750,7 +1750,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Observe VFR -->
+                  <!-- Observe VFR -->
                   <xsl:variable name="AHP_VFR_flight">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:rule = ('VFR','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:rule = ('VFR','ALL')]) != 0">
@@ -1765,7 +1765,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Observe IFR -->
+                  <!-- Observe IFR -->
                   <xsl:variable name="AHP_IFR_flight">
                     <xsl:choose>
                       <xsl:when test="count($AHP_normal_usage[aixm:type = ('PERMIT','RESERV','CONDITIONAL','OTHER:EXTENDED') and .//aixm:FlightCharacteristic/aixm:rule = ('IFR','ALL')]) = 0 and count($AHP_normal_usage[aixm:type = ('FORBID') and .//aixm:FlightCharacteristic/aixm:rule = ('IFR','ALL')]) != 0">

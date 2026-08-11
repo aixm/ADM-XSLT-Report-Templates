@@ -223,11 +223,18 @@
   <!-- Function to format working hours -->
   <xsl:function name="fcn:format-working-hours" as="xs:string">
     <xsl:param name="availability-elements" as="element()*"/>
+    <xsl:variable name="month-abbr" select="('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')"/>
+    <xsl:variable name="weekdays" select="('MON','TUE','WED','THU','FRI','SAT','SUN')"/>
     <xsl:variable name="result">
       <xsl:choose>
         <!-- if there is at least one availability element -->
         <xsl:when test="count($availability-elements) ge 1">
           <xsl:for-each select="$availability-elements">
+            <!-- header line before each availability's schedule when there are two or more availability elements -->
+            <xsl:if test="count($availability-elements) ge 2">
+              <xsl:value-of select="concat('Availability ', position(), if (aixm:operationalStatus and (not(aixm:operationalStatus/@xsi:nil) or aixm:operationalStatus/@xsi:nil!='true')) then concat(' - ', aixm:operationalStatus) else '')"/>
+              <xsl:text> </xsl:text>
+            </xsl:if>
             <xsl:choose>
               <!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and no Timesheet -->
               <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'OPERATIONAL'">
@@ -267,62 +274,129 @@
               </xsl:when>
               <xsl:otherwise>
                 <!-- for days of the week special days schedules  -->
-                <!-- First grouping: by excluded/not excluded, then by day/dayTil -->
-                <xsl:for-each-group select="aixm:timeInterval/aixm:Timesheet[aixm:day = ('ANY','MON','TUE','WED','THU','FRI','SAT','SUN','WORK_DAY','BEF_WORK_DAY','AFT_WORK_DAY','HOL','BEF_HOL','AFT_HOL','BUSY_FRI')]" group-by="concat(
-                  if (aixm:excluded = 'YES') then 'EXCLUDED' else 'NOT_EXCLUDED',
-                  '|',
-                  if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then concat(aixm:day, '-', aixm:dayTil) else aixm:day)">
-                  <dayInterval days="{current-grouping-key()}">
-                    <xsl:variable name="day" select="if (aixm:day = 'ANY') then 'ANY_DAY' else aixm:day"/>
-                    <xsl:variable name="day_til" select="if (aixm:dayTil = 'ANY') then 'ANY_DAY' else aixm:dayTil"/>
-                    <xsl:variable name="day_group" select="if (aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true')) then if (aixm:dayTil = aixm:day) then $day else concat($day, '-', $day_til) else $day"/>
-                    <xsl:value-of select="if (aixm:excluded = 'NO' or not(aixm:excluded) or aixm:excluded/@xsi:nil='true') then concat($day_group, ' ') else concat('exc ', $day_group, ' ')"/>
-                    <!-- Second grouping: by startDate/endDate within each day group -->
-                    <xsl:for-each-group select="current-group()" group-by="
-                      if (aixm:startDate and ((not(aixm:startDate/@xsi:nil) or aixm:startDate/@xsi:nil!='true')) and (aixm:endDate and (not(aixm:endDate/@xsi:nil) or aixm:endDate/@xsi:nil!='true')))
-                      then concat(aixm:startDate, '|', aixm:endDate)
-                      else 'NO_DATE_RANGE'">
-                      <!-- Output the date range once per group -->
-                      <xsl:variable name="has_date_range" select="current-grouping-key() != 'NO_DATE_RANGE'"/>
-                      <xsl:if test="$has_date_range">
-                        <xsl:variable name="start_date" select="if (aixm:startDate != 'SDLST' and aixm:startDate != 'EDLST') then concat(substring(aixm:startDate,1,2), '/', substring(aixm:startDate,4,2)) else aixm:startDate"/>
-                        <xsl:variable name="end_date" select="if (aixm:endDate != 'SDLST' and aixm:endDate != 'EDLST') then concat(substring(aixm:endDate,1,2), '/', substring(aixm:endDate,4,2)) else aixm:endDate"/>
-                        <xsl:value-of select="concat($start_date, '-', $end_date, ' ')"/>
-                      </xsl:if>
-                      <!-- Output all time intervals for this date range -->
-                      <xsl:for-each select="current-group()">
-                        <xsl:variable name="start_time" select="concat(substring(aixm:startTime, 1, 2), substring(aixm:startTime, 4, 2))"/>
-                        <xsl:variable name="end_time" select="concat(substring(aixm:endTime, 1, 2), substring(aixm:endTime, 4, 2))"/>
-                        <xsl:variable name="start_time_DST">
-                          <xsl:value-of select="concat(if (number(substring($start_time, 1, 2)) gt 0) then format-number(number(substring($start_time, 1, 2)) - 1, '00') else 23, substring($start_time, 3, 2))"/>
-                        </xsl:variable>
-                        <xsl:variable name="end_time_DST">
-                          <xsl:value-of select="concat(if (number(substring($end_time, 1, 2)) gt 0) then format-number(number(substring($end_time, 1, 2)) - 1, '00') else 23, substring($end_time, 3, 2))"/>
-                        </xsl:variable>
-                        <xsl:value-of select="concat(
-                          if (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true') then $start_time else '',
-                          if (aixm:daylightSavingAdjust = 'YES' and (aixm:startEvent and ((not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) or (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true'))) and (aixm:startTime and (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true'))) then concat('(', $start_time_DST, ')') else '',
-                          if (aixm:startEvent and (not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) then if (aixm:startTime and (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true')) then concat('/',aixm:startEvent) else aixm:startEvent else '',
-                          if ((aixm:startEvent and (not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) and (aixm:startTimeRelativeEvent and (not(aixm:startTimeRelativeEvent/@xsi:nil) or aixm:startTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:startTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:startTimeRelativeEvent, '+'), aixm:startTimeRelativeEvent/@uom) else if (number(aixm:startTimeRelativeEvent) ge 0) then concat('plus', aixm:startTimeRelativeEvent, aixm:startTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:startTimeRelativeEvent, '-'), aixm:startTimeRelativeEvent/@uom) else '',
-                          if (aixm:startEventInterpretation and (not(aixm:startEventInterpretation/@xsi:nil) or aixm:startEventInterpretation/@xsi:nil!='true')) then concat('(', aixm:startEventInterpretation, ')') else '',
-                          '-',
-                          if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then $end_time else '',
-                          if (aixm:daylightSavingAdjust = 'YES' and (aixm:startEvent and ((not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) or (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true'))) and (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true'))) then concat('(', $end_time_DST, ')') else '',
-                          if (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) then if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then concat('/',aixm:endEvent) else aixm:endEvent else '',
-                          if ((aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) and (aixm:endTimeRelativeEvent and (not(aixm:endTimeRelativeEvent/@xsi:nil) or aixm:endTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:endTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:endTimeRelativeEvent, '+'), aixm:endTimeRelativeEvent/@uom) else if (number(aixm:endTimeRelativeEvent) ge 0) then concat('plus', aixm:endTimeRelativeEvent, aixm:endTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:endTimeRelativeEvent, '-'), aixm:endTimeRelativeEvent/@uom) else '',
-                          if (aixm:endEventInterpretation and (not(aixm:endEventInterpretation/@xsi:nil) or aixm:endEventInterpretation/@xsi:nil!='true')) then concat('(', aixm:endEventInterpretation, ')') else '',
-                          if (aixm:startEvent and (not(aixm:startEvent) and not(aixm:endEvent)) and aixm:daylightSavingAdjust = 'YES') then concat(' (', $start_time_DST, '-', $end_time_DST, ')') else '')"/>
-                        <xsl:if test="position() != last()"><xsl:text> </xsl:text></xsl:if>
-                      </xsl:for-each>
-                      <!-- Add separator between date range groups (within the same day group) -->
-                      <xsl:if test="position() != last()"><xsl:text> | </xsl:text></xsl:if>
+                <!-- First grouping: by startDate/endDate (dates may be absent) -->
+                <xsl:for-each-group select="aixm:timeInterval/aixm:Timesheet[aixm:day = ('ANY','MON','TUE','WED','THU','FRI','SAT','SUN','WORK_DAY','BEF_WORK_DAY','AFT_WORK_DAY','HOL','BEF_HOL','AFT_HOL','BUSY_FRI') or not(aixm:day) or aixm:day/@xsi:nil='true']" group-by="
+                  if ((aixm:startDate and (not(aixm:startDate/@xsi:nil) or aixm:startDate/@xsi:nil!='true')) and (aixm:endDate and (not(aixm:endDate/@xsi:nil) or aixm:endDate/@xsi:nil!='true')))
+                  then concat(aixm:startDate, '|', aixm:endDate)
+                  else 'NO_DATE_RANGE'">
+                  <xsl:variable name="date_group_pos" select="position()"/>
+                  <xsl:variable name="date_group_last" select="last()"/>
+                  <!-- Decode the date range as 'Mmm dd-dd' (same month) or 'Mmm dd-Mmm dd' (different months) -->
+                  <xsl:variable name="date_range_text">
+                    <xsl:if test="current-grouping-key() != 'NO_DATE_RANGE'">
+                      <xsl:variable name="start_date" select="substring-before(current-grouping-key(), '|')"/>
+                      <xsl:variable name="end_date" select="substring-after(current-grouping-key(), '|')"/>
+                      <xsl:variable name="start_day" select="substring($start_date, 1, 2)"/>
+                      <xsl:variable name="start_month" select="substring($start_date, 4, 2)"/>
+                      <xsl:variable name="end_day" select="substring($end_date, 1, 2)"/>
+                      <xsl:variable name="end_month" select="substring($end_date, 4, 2)"/>
+                      <xsl:choose>
+                        <!-- keep special values (SDLST/EDLST) as they are -->
+                        <xsl:when test="$start_date = ('SDLST','EDLST') or $end_date = ('SDLST','EDLST')">
+                          <xsl:value-of select="concat(
+                            if ($start_date = ('SDLST','EDLST')) then $start_date else concat($month-abbr[xs:integer($start_month)], ' ', $start_day),
+                            '-',
+                            if ($end_date = ('SDLST','EDLST')) then $end_date else concat($month-abbr[xs:integer($end_month)], ' ', $end_day))"/>
+                        </xsl:when>
+                        <xsl:when test="$start_month = $end_month">
+                          <xsl:value-of select="concat($month-abbr[xs:integer($start_month)], ' ', $start_day, '-', $end_day)"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                          <xsl:value-of select="concat($month-abbr[xs:integer($start_month)], ' ', $start_day, '-', $month-abbr[xs:integer($end_month)], ' ', $end_day)"/>
+                        </xsl:otherwise>
+                      </xsl:choose>
+                    </xsl:if>
+                  </xsl:variable>
+                  <!-- Precompute the decoded parts of each Timesheet -->
+                  <xsl:variable name="sheets" as="element()*">
+                    <xsl:for-each select="current-group()">
+                      <xsl:variable name="start_time" select="concat(substring(aixm:startTime, 1, 2), substring(aixm:startTime, 4, 2))"/>
+                      <xsl:variable name="end_time" select="concat(substring(aixm:endTime, 1, 2), substring(aixm:endTime, 4, 2))"/>
+                      <xsl:variable name="start_time_DST">
+                        <xsl:value-of select="concat(if (number(substring($start_time, 1, 2)) gt 0) then format-number(number(substring($start_time, 1, 2)) - 1, '00') else 23, substring($start_time, 3, 2))"/>
+                      </xsl:variable>
+                      <xsl:variable name="end_time_DST">
+                        <xsl:value-of select="concat(if (number(substring($end_time, 1, 2)) gt 0) then format-number(number(substring($end_time, 1, 2)) - 1, '00') else 23, substring($end_time, 3, 2))"/>
+                      </xsl:variable>
+                      <!-- start time/event (incl. relative event time and interpretation) -->
+                      <xsl:variable name="start_part" select="concat(
+                        if (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true') then $start_time else '',
+                        if (aixm:daylightSavingAdjust = 'YES' and (aixm:startEvent and ((not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) or (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true'))) and (aixm:startTime and (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true'))) then concat('(', $start_time_DST, ')') else '',
+                        if (aixm:startEvent and (not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) then if (aixm:startTime and (not(aixm:startTime/@xsi:nil) or aixm:startTime/@xsi:nil!='true')) then concat('/',aixm:startEvent) else aixm:startEvent else '',
+                        if ((aixm:startEvent and (not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) and (aixm:startTimeRelativeEvent and (not(aixm:startTimeRelativeEvent/@xsi:nil) or aixm:startTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:startTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:startTimeRelativeEvent, '+'), aixm:startTimeRelativeEvent/@uom) else if (number(aixm:startTimeRelativeEvent) ge 0) then concat('plus', aixm:startTimeRelativeEvent, aixm:startTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:startTimeRelativeEvent, '-'), aixm:startTimeRelativeEvent/@uom) else '',
+                        if (aixm:startEventInterpretation and (not(aixm:startEventInterpretation/@xsi:nil) or aixm:startEventInterpretation/@xsi:nil!='true')) then concat('(', aixm:startEventInterpretation, ')') else '')"/>
+                      <!-- end time/event (incl. relative event time and interpretation) -->
+                      <xsl:variable name="end_part" select="concat(
+                        if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then $end_time else '',
+                        if (aixm:daylightSavingAdjust = 'YES' and (aixm:startEvent and ((not(aixm:startEvent/@xsi:nil) or aixm:startEvent/@xsi:nil!='true')) or (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true'))) and (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true'))) then concat('(', $end_time_DST, ')') else '',
+                        if (aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) then if (aixm:endTime and (not(aixm:endTime/@xsi:nil) or aixm:endTime/@xsi:nil!='true')) then concat('/',aixm:endEvent) else aixm:endEvent else '',
+                        if ((aixm:endEvent and (not(aixm:endEvent/@xsi:nil) or aixm:endEvent/@xsi:nil!='true')) and (aixm:endTimeRelativeEvent and (not(aixm:endTimeRelativeEvent/@xsi:nil) or aixm:endTimeRelativeEvent/@xsi:nil!='true'))) then if (contains(aixm:endTimeRelativeEvent, '+')) then concat('plus', substring-after(aixm:endTimeRelativeEvent, '+'), aixm:endTimeRelativeEvent/@uom) else if (number(aixm:endTimeRelativeEvent) ge 0) then concat('plus', aixm:endTimeRelativeEvent, aixm:endTimeRelativeEvent/@uom) else concat('minus', substring-after(aixm:endTimeRelativeEvent, '-'), aixm:endTimeRelativeEvent/@uom) else '',
+                        if (aixm:endEventInterpretation and (not(aixm:endEventInterpretation/@xsi:nil) or aixm:endEventInterpretation/@xsi:nil!='true')) then concat('(', aixm:endEventInterpretation, ')') else '')"/>
+                      <xsl:variable name="has_day" select="boolean(aixm:day and (not(aixm:day/@xsi:nil) or aixm:day/@xsi:nil!='true'))"/>
+                      <xsl:variable name="has_day_til" select="boolean(aixm:dayTil and (not(aixm:dayTil/@xsi:nil) or aixm:dayTil/@xsi:nil!='true'))"/>
+                      <!-- the day directly following aixm:day: consecutive weekdays, BUSY_FRI-SAT, BEF_WORK_DAY-WORK_DAY-AFT_WORK_DAY, BEF_HOL-HOL-AFT_HOL -->
+                      <xsl:variable name="weekday_index" select="(index-of($weekdays, string(aixm:day)), 0)[1]"/>
+                      <xsl:variable name="next_day" select="
+                        if ($weekday_index gt 0) then $weekdays[($weekday_index mod 7) + 1]
+                        else if (aixm:day = 'BUSY_FRI') then 'SAT'
+                        else if (aixm:day = 'BEF_WORK_DAY') then 'WORK_DAY'
+                        else if (aixm:day = 'WORK_DAY') then 'AFT_WORK_DAY'
+                        else if (aixm:day = 'BEF_HOL') then 'HOL'
+                        else if (aixm:day = 'HOL') then 'AFT_HOL'
+                        else ''"/>
+                      <!-- day-to-day interval: dayTil differs from day and is not simply the next day (e.g. MON-WED) -->
+                      <xsl:variable name="is_day_to_day" select="$has_day and $has_day_til and not(aixm:dayTil = aixm:day) and not(aixm:dayTil = $next_day)"/>
+                      <sheet excluded="{if (aixm:excluded = 'YES') then 'YES' else 'NO'}" dayToDay="{if ($is_day_to_day) then 'YES' else 'NO'}" day="{if (not($has_day)) then '' else if (aixm:day = 'ANY') then 'Daily' else aixm:day}" dayTil="{if (not($has_day_til)) then '' else if (aixm:dayTil = 'ANY') then 'Daily' else aixm:dayTil}" start="{$start_part}" end="{$end_part}"/>
+                    </xsl:for-each>
+                  </xsl:variable>
+                  <!-- One entry per day, carrying that day's full set of time intervals -->
+                  <xsl:variable name="day-scheds" as="element()*">
+                    <xsl:for-each-group select="$sheets[@dayToDay = 'NO']" group-by="concat(@excluded, '|', @day)">
+                      <daySched excluded="{@excluded}" day="{@day}" sched="{string-join(distinct-values(for $s in current-group() return concat($s/@start, '-', $s/@end)), ' ')}"/>
                     </xsl:for-each-group>
-                    <!-- Add line break between day groups -->
-                    <xsl:if test="position() != last()"><xsl:text> </xsl:text></xsl:if>
-                  </dayInterval>
+                  </xsl:variable>
+                  <!-- Merge days sharing the same set of time intervals into a single line, then append the day-to-day interval lines -->
+                  <xsl:variable name="lines" as="xs:string*">
+                    <xsl:for-each-group select="$day-scheds" group-by="concat(@excluded, '|', if (string-length(@day) gt 0) then 'DAY' else 'NO_DAY', '|', @sched)">
+                      <xsl:variable name="all_days" select="for $d in distinct-values(current-group()/@day) return string($d)"/>
+                      <!-- weekdays sorted into MON..SUN order -->
+                      <xsl:variable name="wd_sorted" as="xs:string*">
+                        <xsl:perform-sort select="$all_days[. = $weekdays]">
+                          <xsl:sort select="index-of($weekdays, .)"/>
+                        </xsl:perform-sort>
+                      </xsl:variable>
+                      <!-- consecutive chains of weekdays merge into a range (e.g. MON-FRI, SAT-SUN); special day values are never merged -->
+                      <xsl:variable name="weekday_part" as="xs:string*">
+                        <xsl:for-each-group select="$wd_sorted" group-adjacent="index-of($weekdays, .) - position()">
+                          <xsl:sequence select="if (count(current-group()) ge 2) then concat(current-group()[1], '-', current-group()[last()]) else string(current-group()[1])"/>
+                        </xsl:for-each-group>
+                      </xsl:variable>
+                      <xsl:variable name="days" select="string-join(($weekday_part, $all_days[not(. = $weekdays)]), ' ')"/>
+                      <xsl:sequence select="concat(
+                        if (@excluded = 'YES') then 'exc ' else '',
+                        if (string-length($days) gt 0) then concat($days, ' ') else '',
+                        @sched)"/>
+                    </xsl:for-each-group>
+                    <xsl:for-each-group select="$sheets[@dayToDay = 'YES']" group-by="concat(@excluded, '|', @day, '|', @dayTil, '|', @start, '|', @end)">
+                      <xsl:sequence select="concat(
+                        if (@excluded = 'YES') then 'exc ' else '',
+                        @day, ' ', @start, '-', @dayTil, ' ', @end)"/>
+                    </xsl:for-each-group>
+                  </xsl:variable>
+                  <!-- Output each line: start date - end date, then day(s), then time interval(s) -->
+                  <xsl:for-each select="$lines">
+                    <xsl:if test="string-length($date_range_text) gt 0">
+                      <xsl:value-of select="concat($date_range_text, ' ')"/>
+                    </xsl:if>
+                    <xsl:value-of select="."/>
+                    <!-- each decoding on its own line -->
+                    <xsl:if test="position() != last() or $date_group_pos != $date_group_last"><xsl:text> </xsl:text></xsl:if>
+                  </xsl:for-each>
                 </xsl:for-each-group>
               </xsl:otherwise>
             </xsl:choose>
+            <!-- each availability starts on a new line -->
+            <xsl:if test="position() != last()"><xsl:text> </xsl:text></xsl:if>
           </xsl:for-each>
         </xsl:when>
       </xsl:choose>

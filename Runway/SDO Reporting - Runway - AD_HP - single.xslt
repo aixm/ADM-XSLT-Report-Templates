@@ -255,10 +255,10 @@
                 <td><strong>Unit of measurement [horizontal dimension]</strong></td>
               </tr>
               <tr>
-                <td><strong>(d)Surface strength method</strong></td>
+                <td><strong>Surface strength method</strong></td>
               </tr>
               <tr>
-                <td><strong>(d)Surface strength</strong></td>
+                <td><strong>Surface strength</strong></td>
               </tr>
               <tr>
                 <td><strong>Surface composition</strong></td>
@@ -476,7 +476,7 @@
                   
                   <xsl:variable name="RWY_sfc_ch" select="aixm:surfaceProperties/aixm:SurfaceCharacteristics"/>
                   
-                  <!-- (d)Surface strength method -->
+                  <!-- Surface strength method -->
                   <xsl:variable name="RWY_sfc_strenght_method">
                     <!-- Check for PCN: if properties ending in 'PCN' have values (not nil) -->
                     <xsl:variable name="has_PCN" select="
@@ -494,7 +494,7 @@
                     </xsl:choose>
                   </xsl:variable>
                   
-                  <!-- (d)Surface strength -->
+                  <!-- Surface strength -->
                   <xsl:variable name="RWY_sfc_strength">
                     <xsl:choose>
                       <!-- If PCN values are complete, show PCN format -->
