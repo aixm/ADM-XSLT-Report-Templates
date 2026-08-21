@@ -112,6 +112,12 @@
     </xsl:choose>
   </xsl:function>
   
+  <!-- Get the single aixm:note or if multiple present the one which has @lang=("EN","ENG") -->
+  <xsl:function name="fcn:get-eng-note" as="element()?">
+    <xsl:param name="note" as="element()?"/>   <!-- an aixm:Note -->
+    <xsl:sequence select="(($note/aixm:translatedNote/aixm:LinguisticNote/aixm:note)[last() = 1 or lower-case(@lang) = ('en','eng')])[1]"/>
+  </xsl:function>
+
   <xsl:function name="fcn:get-last-word" as="xs:string">
     <xsl:param name="text" as="xs:string"/>
     <xsl:variable name="words" select="tokenize(normalize-space($text), '\s+')"/>
@@ -273,7 +279,7 @@
             </xsl:if>
             <xsl:choose>
               <!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and no Timesheet -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'OPERATIONAL'">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and (some $code in ('HX','HO','NOTAM','HOL','SS','SR','MON','TUE','WED','THU','FRI','SAT','SUN') satisfies contains(fcn:get-eng-note(.), $code))]) and aixm:operationalStatus = 'OPERATIONAL'">
                 <xsl:value-of select="'H24'"/>
               </xsl:when>
               <!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and a continuous service 24/7 Timesheet -->
@@ -289,15 +295,15 @@
                 <xsl:value-of select="'HN'"/>
               </xsl:when>
               <!-- insert 'HX' if there is an availability with operationalStatus='OPERATIONAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HX')] and aixm:operationalStatus = 'OPERATIONAL'">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(fcn:get-eng-note(.), 'HX')] and aixm:operationalStatus = 'OPERATIONAL'">
                 <xsl:value-of select="'HX'"/>
               </xsl:when>
               <!-- insert 'HO' if there is an availability with operationalStatus='OPERATIONAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')] and aixm:operationalStatus = 'OPERATIONAL'">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(fcn:get-eng-note(.), 'HO')] and aixm:operationalStatus = 'OPERATIONAL'">
                 <xsl:value-of select="'HO'"/>
               </xsl:when>
               <!-- insert 'NOTAM' if there is an availability with operationalStatus='OPERATIONAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'notam') and not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'outside'))]">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(lower-case(fcn:get-eng-note(.)), 'notam') and not(contains(lower-case(fcn:get-eng-note(.)), 'outside'))]">
                 <xsl:value-of select="'NOTAM'"/>
               </xsl:when>
               <!-- insert 'U/S' if there is an availability with operationalStatus='UNSERVICEABLE' and no Timesheet -->
@@ -611,36 +617,38 @@
                   <xsl:variable name="coordinates_decimal_number" select="2"/>
                   
                   <!-- VOR Datum -->
-                  <xsl:variable name="VOR_datum">
-                    <xsl:value-of select="replace(replace(aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="VOR_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if (aixm:location/aixm:ElevatedPoint/@srsName) then aixm:location/aixm:ElevatedPoint/@srsName
+                      else if (ancestor::aixm:VOR/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:VOR/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
                   </xsl:variable>
-                  
-                  <xsl:variable name="lat-long-datums" select="
-                    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-                    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-                    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-                    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-                    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-                    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
+                  <xsl:variable name="VOR_datum">
+                    <xsl:value-of select="
+                      if ($VOR_datum_raw != 'No srsName found!') then replace(replace($VOR_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   
                   <!-- Extract coordinates depending on the coordinate system -->
                   <xsl:variable name="VOR_coordinates" select="aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="VOR_latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$VOR_datum = $lat-long-datums">
+                      <xsl:when test="$VOR_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-before($VOR_coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($VOR_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$VOR_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($VOR_coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="VOR_longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$VOR_datum = $lat-long-datums">
+                      <xsl:when test="$VOR_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-after($VOR_coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($VOR_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$VOR_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($VOR_coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
@@ -898,7 +906,7 @@
                   </xsl:variable>
                   
                   <!-- Unit of measurement [geographical accuracy] -->
-                  <xsl:variable name="VOR_geographical_accuracy_uom" select="aixm:horizontalAccuracy/@uom"/>
+                  <xsl:variable name="VOR_geographical_accuracy_uom" select="aixm:location/aixm:ElevatedPoint/aixm:horizontalAccuracy/@uom"/>
                   
                   <!-- Elevation -->
                   <xsl:variable name="VOR_elevation">
@@ -961,8 +969,8 @@
                   
                   <!-- Cyclic redundancy check -->
                   <xsl:variable name="VOR_CRC">
-                    <xsl:if test="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')]/aixm:note">
-                      <xsl:value-of select="fcn:get-last-word(aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'CRC:')]/aixm:note[not(@lang) or @lang=('en','eng')])"/>
+                    <xsl:if test="(aixm:location/aixm:ElevatedPoint/aixm:annotation/aixm:Note[aixm:purpose='OTHER:AIXM_4_5_MAPPING'] ! fcn:get-eng-note(.))[contains(., 'CRC:')][1]">
+                      <xsl:value-of select="fcn:get-last-word((aixm:location/aixm:ElevatedPoint/aixm:annotation/aixm:Note[aixm:purpose='OTHER:AIXM_4_5_MAPPING'] ! fcn:get-eng-note(.))[contains(., 'CRC:')][1])"/>
                     </xsl:if>
                   </xsl:variable>
                   
@@ -1014,35 +1022,58 @@
                   
                   <!-- Remark to working hours -->
                   <xsl:variable name="VOR_working_hours_remarks">
-                    <xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
-                      <xsl:choose>
-                        <xsl:when test="position() = 1">
-                          <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:when>
-                        <xsl:otherwise>
-                          <xsl:value-of select="concat('&lt;br/&gt;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:otherwise>
-                      </xsl:choose>
-                    </xsl:for-each>
+                    <xsl:choose>
+                      <!-- Check if VOR has at least one availability (excluding xsi:nil='true') -->
+                      <xsl:when test="aixm:availability[not(@xsi:nil='true')]">
+                        <xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
+                          <xsl:choose>
+                            <xsl:when test="position() = 1">
+                              <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                            </xsl:when>
+                            <xsl:otherwise>
+                              <xsl:value-of select="concat('&lt;br/&gt;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                            </xsl:otherwise>
+                          </xsl:choose>
+                        </xsl:for-each>
+                      </xsl:when>
+                      <xsl:otherwise>
+                        <!-- Find the Navaid that references this VOR -->
+                        <xsl:variable name="navaid-with-VOR" select="//aixm:Navaid[.//aixm:navaidEquipment/aixm:NavaidComponent/aixm:theNavaidEquipment/@xlink:href = concat('urn:uuid:', $VOR_UUID)]"/>
+                        <xsl:variable name="navaid-baseline-ts" select="$navaid-with-VOR/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
+                        <xsl:variable name="navaid-valid-ts" select="fcn:get-valid-timeslice($navaid-baseline-ts)"/>
+                        <xsl:choose>
+                          <!-- If Navaid has at least one availability (excluding xsi:nil='true') -->
+                          <xsl:when test="$navaid-valid-ts/aixm:availability[not(@xsi:nil='true')]">
+                            <xsl:for-each select="$navaid-valid-ts//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
+                              <xsl:choose>
+                                <xsl:when test="position() = 1">
+                                  <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                                </xsl:when>
+                                <xsl:otherwise>
+                                  <xsl:value-of select="concat('&lt;br/&gt;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                                </xsl:otherwise>
+                              </xsl:choose>
+                            </xsl:for-each>
+                          </xsl:when>
+                        </xsl:choose>
+                      </xsl:otherwise>
+                    </xsl:choose>
                   </xsl:variable>
                   
                   <!-- Remarks -->
                   <xsl:variable name="VOR_remarks">
-                    <xsl:variable name="dataset_creation_date" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
-                    <xsl:if test="string-length($dataset_creation_date) gt 0">
-                      <xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
-                    </xsl:if>
-                    <xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote[
-                      ((../../aixm:propertyName and (not(../../aixm:propertyName/@xsi:nil='true') or not(../../aixm:propertyName/@xsi:nil))) or not(../../aixm:propertyName)) and
-                      not(contains(aixm:note, 'CRC:'))]">
-                      <xsl:choose>
-                        <xsl:when test="position() = 1 and string-length($dataset_creation_date) = 0">
-                          <xsl:value-of select="concat('(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:when>
-                        <xsl:otherwise>
-                          <xsl:value-of select="concat('&lt;br/&gt;', '(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:otherwise>
-                      </xsl:choose>
+                    <xsl:for-each select="aixm:annotation/aixm:Note">
+                      <xsl:variable name="annotation-index" select="position()"/>
+                      <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+                        <xsl:choose>
+                          <xsl:when test="$annotation-index = 1 and position() = 1">
+                            <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                          </xsl:when>
+                          <xsl:otherwise>
+                            <xsl:value-of select="concat('&lt;br/&gt;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                          </xsl:otherwise>
+                        </xsl:choose>
+                      </xsl:for-each>
                     </xsl:for-each>
                   </xsl:variable>
                   

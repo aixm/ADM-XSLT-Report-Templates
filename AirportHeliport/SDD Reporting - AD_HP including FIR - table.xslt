@@ -1569,14 +1569,19 @@
                   
                   <!-- ===== ARP ===== -->
                   <!-- Datum -->
-                  <xsl:variable name="AHP_ARP-datum" select="replace(replace(aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-                  <xsl:variable name="lat-long-datums" select="
-                    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-                    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-                    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-                    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-                    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-                    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
+                  <xsl:variable name="AHP_ARP_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:ARP/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:ARP/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if (aixm:ARP/aixm:ElevatedPoint/@srsName) then aixm:ARP/aixm:ElevatedPoint/@srsName
+                      else if (ancestor::aixm:AirportHeliport/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:AirportHeliport/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="AHP_ARP_datum">
+                    <xsl:value-of select="
+                      if ($AHP_ARP_datum_raw != 'No srsName found!') then replace(replace($AHP_ARP_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   <!-- Latitude -->
                   <xsl:variable name="AHP_ARP-lat">
                     <xsl:choose>
@@ -1589,10 +1594,10 @@
                       <xsl:otherwise>
                         <xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                         <xsl:choose>
-                          <xsl:when test="$AHP_ARP-datum = $lat-long-datums">
+                          <xsl:when test="$AHP_ARP_datum != 'OGC:1.3:CRS84'">
                             <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
                           </xsl:when>
-                          <xsl:when test="matches($AHP_ARP-datum, '^OGC:.*CRS84$')">
+                          <xsl:when test="$AHP_ARP_datum = 'OGC:1.3:CRS84'">
                             <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                           </xsl:when>
                         </xsl:choose>
@@ -1611,10 +1616,10 @@
                       <xsl:otherwise>
                         <xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                         <xsl:choose>
-                          <xsl:when test="$AHP_ARP-datum = $lat-long-datums">
+                          <xsl:when test="$AHP_ARP_datum != 'OGC:1.3:CRS84'">
                             <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
                           </xsl:when>
-                          <xsl:when test="matches($AHP_ARP-datum, '^OGC:.*CRS84$')">
+                          <xsl:when test="$AHP_ARP_datum = 'OGC:1.3:CRS84'">
                             <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                           </xsl:when>
                         </xsl:choose>
@@ -1825,7 +1830,7 @@
                     <td><xsl:value-of select="if (string-length($AHP_resp-org-name) gt 0) then $AHP_resp-org-name else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_ARP-lat) gt 0) then $AHP_ARP-lat else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_ARP-long) gt 0) then $AHP_ARP-long else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($AHP_ARP-datum) gt 0) then $AHP_ARP-datum else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($AHP_ARP_datum) gt 0) then $AHP_ARP_datum else '&#160;'"/></td>
                     <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($AHP_ARP-gml-xml) gt 0"><xsl:value-of select="$AHP_ARP-gml-xml" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($AHP_aviation-boundary-gml-xml) gt 0"><xsl:value-of select="$AHP_aviation-boundary-gml-xml" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>
                     <td style="max-width:600px;white-space:normal;overflow-wrap:break-word"><xsl:choose><xsl:when test="string-length($AHP_annotation) gt 0"><xsl:value-of select="$AHP_annotation" disable-output-escaping="yes"/></xsl:when><xsl:otherwise><xsl:text>&#160;</xsl:text></xsl:otherwise></xsl:choose></td>

@@ -73,14 +73,6 @@
   
   <xsl:key name="AirportHeliport-by-uuid" match="aixm:AirportHeliport" use="gml:identifier"/>
   
-  <xsl:variable name="lat-long-datums" select="
-    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
-  
   <!-- Function to get the valid BASELINE timeslice for any feature type -->
   <!-- Accepts pre-filtered BASELINE timeslice elements (e.g. AirspaceTimeSlice, DMETimeSlice, VORTimeSlice, etc.) -->
   <!-- Selection order: most recent validTime beginPosition, then highest sequenceNumber, then highest correctionNumber -->
@@ -1159,36 +1151,48 @@
                   <!-- Select the number of decimals -->
                   <xsl:variable name="coordinates_decimal_number" select="8"/>
                   <!-- Datum -->
-                  <xsl:variable name="DPN_datum" select="replace(replace(aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="DPN_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:location/aixm:Point/gml:pos/@srsName) then aixm:location/aixm:Point/gml:pos/@srsName
+                      else if (aixm:location/aixm:Point/@srsName) then aixm:location/aixm:Point/@srsName
+                      else if (ancestor::aixm:DesignatedPoint/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:DesignatedPoint/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="DPN_datum">
+                    <xsl:value-of select="
+                      if ($DPN_datum_raw != 'No srsName found!') then replace(replace($DPN_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   <!-- Extract coordinates depending on the coordinate system -->
                   <xsl:variable name="coordinates" select="aixm:location/aixm:Point/gml:pos"/>
                   <xsl:variable name="latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$DPN_datum = $lat-long-datums">
+                      <xsl:when test="$DPN_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$DPN_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$DPN_datum = $lat-long-datums">
+                      <xsl:when test="$DPN_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($DPN_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$DPN_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="DPN_lat">
-                    <xsl:if test="string-length($latitude_decimal) gt 0">
+                    <xsl:if test="string($latitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
                   <xsl:variable name="DPN_long">
-                    <xsl:if test="string-length($longitude_decimal) gt 0">
+                    <xsl:if test="string($longitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
@@ -1326,36 +1330,48 @@
                   <!-- Select the number of decimals -->
                   <xsl:variable name="coordinates_decimal_number" select="8"/>
                   <!-- Datum -->
-                  <xsl:variable name="NAV_datum" select="replace(replace(aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="Navaid_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if (aixm:location/aixm:ElevatedPoint/@srsName) then aixm:location/aixm:ElevatedPoint/@srsName
+                      else if (ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="Navaid_datum">
+                    <xsl:value-of select="
+                      if ($Navaid_datum_raw != 'No srsName found!') then replace(replace($Navaid_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   <!-- Extract coordinates depending on the coordinate system -->
                   <xsl:variable name="coordinates" select="aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$NAV_datum = $lat-long-datums">
+                      <xsl:when test="$Navaid_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($NAV_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$Navaid_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$NAV_datum = $lat-long-datums">
+                      <xsl:when test="$Navaid_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($NAV_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$Navaid_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="NAV_lat">
-                    <xsl:if test="string-length($latitude_decimal) gt 0">
+                    <xsl:if test="string($latitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
                   <xsl:variable name="NAV_long">
-                    <xsl:if test="string-length($longitude_decimal) gt 0">
+                    <xsl:if test="string($longitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
@@ -1458,35 +1474,47 @@
                   <!-- ===== Coordinates ===== -->
                   <xsl:variable name="coordinates_type" select="'DEC'"/>
                   <xsl:variable name="coordinates_decimal_number" select="8"/>
-                  <xsl:variable name="AHP_datum" select="replace(replace(aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="AHP_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:ARP/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:ARP/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if (aixm:ARP/aixm:ElevatedPoint/@srsName) then aixm:ARP/aixm:ElevatedPoint/@srsName
+                      else if (ancestor::aixm:AirportHeliport/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:AirportHeliport/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="AHP_datum">
+                    <xsl:value-of select="
+                      if ($AHP_datum_raw != 'No srsName found!') then replace(replace($AHP_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   <xsl:variable name="coordinates" select="aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$AHP_datum = $lat-long-datums">
+                      <xsl:when test="$AHP_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($AHP_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$AHP_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$AHP_datum = $lat-long-datums">
+                      <xsl:when test="$AHP_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($AHP_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$AHP_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="AHP_lat">
-                    <xsl:if test="string-length($latitude_decimal) gt 0">
+                    <xsl:if test="string($latitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
                   <xsl:variable name="AHP_long">
-                    <xsl:if test="string-length($longitude_decimal) gt 0">
+                    <xsl:if test="string($longitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
@@ -1591,35 +1619,47 @@
                   <!-- ===== Coordinates ===== -->
                   <xsl:variable name="coordinates_type" select="'DEC'"/>
                   <xsl:variable name="coordinates_decimal_number" select="8"/>
-                  <xsl:variable name="RCP_datum" select="replace(replace(aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="RCP_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if (aixm:location/aixm:ElevatedPoint/@srsName) then aixm:location/aixm:ElevatedPoint/@srsName
+                      else if (ancestor::aixm:RunwayCentrelinePoint/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:RunwayCentrelinePoint/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="RCP_datum">
+                    <xsl:value-of select="
+                      if ($RCP_datum_raw != 'No srsName found!') then replace(replace($RCP_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   <xsl:variable name="coordinates" select="aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$RCP_datum = $lat-long-datums">
+                      <xsl:when test="$RCP_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($RCP_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$RCP_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$RCP_datum = $lat-long-datums">
+                      <xsl:when test="$RCP_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($RCP_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$RCP_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="RCP_lat">
-                    <xsl:if test="string-length($latitude_decimal) gt 0">
+                    <xsl:if test="string($latitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
                   <xsl:variable name="RCP_long">
-                    <xsl:if test="string-length($longitude_decimal) gt 0">
+                    <xsl:if test="string($longitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
@@ -1715,35 +1755,47 @@
                   <!-- ===== Coordinates ===== -->
                   <xsl:variable name="coordinates_type" select="'DEC'"/>
                   <xsl:variable name="coordinates_decimal_number" select="8"/>
-                  <xsl:variable name="TLOF_datum" select="replace(replace(aixm:extent/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
+                  <xsl:variable name="TLOF_datum_raw">
+                    <xsl:value-of select="
+                      if (aixm:aimingPoint/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:aimingPoint/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if (aixm:aimingPoint/aixm:ElevatedPoint/@srsName) then aixm:aimingPoint/aixm:ElevatedPoint/@srsName
+                      else if (ancestor::aixm:TouchDownLiftOff/gml:boundedBy/gml:Envelope/@srsName) then ancestor::aixm:TouchDownLiftOff/gml:boundedBy/gml:Envelope/@srsName
+                      else if (root()/*/gml:boundedBy/gml:Envelope/@srsName) then root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="TLOF_datum">
+                    <xsl:value-of select="
+                      if ($TLOF_datum_raw != 'No srsName found!') then replace(replace($TLOF_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   <xsl:variable name="coordinates" select="aixm:extent/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$TLOF_datum = $lat-long-datums">
+                      <xsl:when test="$TLOF_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($TLOF_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$TLOF_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$TLOF_datum = $lat-long-datums">
+                      <xsl:when test="$TLOF_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($TLOF_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$TLOF_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="TLOF_lat">
-                    <xsl:if test="string-length($latitude_decimal) gt 0">
+                    <xsl:if test="string($latitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
                   <xsl:variable name="TLOF_long">
-                    <xsl:if test="string-length($longitude_decimal) gt 0">
+                    <xsl:if test="string($longitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>

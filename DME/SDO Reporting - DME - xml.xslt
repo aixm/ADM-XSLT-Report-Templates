@@ -213,9 +213,11 @@
         <!-- if there is at least one availability element -->
         <xsl:when test="count($availability-elements) ge 1">
           <xsl:for-each select="$availability-elements">
+            <!-- separate the codes of the individual availability elements -->
+            <xsl:if test="position() gt 1"><xsl:text>-</xsl:text></xsl:if>
             <xsl:choose>
               <!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and no Timesheet -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and aixm:translatedNote/aixm:LinguisticNote[contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HX') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HO') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'NOTAM') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'HOL') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SS') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SR') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'MON') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'TUE') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'WED') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'THU') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'FRI') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SAT') or contains(aixm:note[not(@lang) or @lang=('en','eng')], 'SUN')]]) and aixm:operationalStatus = 'OPERATIONAL'">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and (not(aixm:timeInterval/@nilReason) or aixm:timeInterval/@nilReason='inapplicable')) and not(aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and (some $code in ('HX','HO','NOTAM','HOL','SS','SR','MON','TUE','WED','THU','FRI','SAT','SUN') satisfies contains(fcn:get-eng-note(.), $code))]) and aixm:operationalStatus = 'OPERATIONAL'">
                 <xsl:value-of select="'H24'"/>
               </xsl:when>
               <!-- insert 'H24' if there is an availability with operationalStatus='OPERATIONAL' and a continuous service 24/7 Timesheet -->
@@ -231,20 +233,20 @@
                 <xsl:value-of select="'HN'"/>
               </xsl:when>
               <!-- insert 'HX' if there is an availability with operationalStatus='OPERATIONAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HX')] and aixm:operationalStatus = 'OPERATIONAL'">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(fcn:get-eng-note(.), 'HX')] and aixm:operationalStatus = 'OPERATIONAL'">
                 <xsl:value-of select="'HX'"/>
               </xsl:when>
               <!-- insert 'HO' if there is an availability with operationalStatus='OPERATIONAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')], 'HO')] and aixm:operationalStatus = 'OPERATIONAL'">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(fcn:get-eng-note(.), 'HO')] and aixm:operationalStatus = 'OPERATIONAL'">
                 <xsl:value-of select="'HO'"/>
               </xsl:when>
               <!-- insert 'NOTAM' if there is an availability with operationalStatus='OPERATIONAL', no Timesheet and corresponding note -->
-              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'notam') and not(contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'outside'))]">
+              <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:annotation/aixm:Note[aixm:propertyName='timeInterval' and contains(lower-case(fcn:get-eng-note(.)), 'notam') and not(contains(lower-case(fcn:get-eng-note(.)), 'outside'))]">
                 <xsl:value-of select="'NOTAM'"/>
               </xsl:when>
               <!-- insert 'U/S' if there is an availability with operationalStatus='UNSERVICEABLE' and no Timesheet -->
               <xsl:when test="((not(aixm:timeInterval) or aixm:timeInterval/@xsi:nil='true') and not(aixm:timeInterval/@nilReason)) and aixm:operationalStatus = 'UNSERVICEABLE'">
-                <xsl:value-of select="'OTHER'"/>
+                <xsl:value-of select="'U/S'"/>
               </xsl:when>
               <!-- insert nil reason if provided -->
               <xsl:when test="aixm:timeInterval/@xsi:nil='true' and aixm:timeInterval/@nilReason and not(aixm:timeInterval/@nilReason='inapplicable')">
@@ -361,6 +363,12 @@
     </xsl:choose>
   </xsl:function>
   
+  <!-- Get the single aixm:note or if multiple present the one which has @lang=("EN","ENG") -->
+  <xsl:function name="fcn:get-eng-note" as="element()?">
+    <xsl:param name="note" as="element()?"/>   <!-- an aixm:Note -->
+    <xsl:sequence select="(($note/aixm:translatedNote/aixm:LinguisticNote/aixm:note)[last() = 1 or lower-case(@lang) = ('en','eng')])[1]"/>
+  </xsl:function>
+
   <xsl:template match="/">
     
     <xsl:element name="SdoReportResponse" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -444,45 +452,49 @@
             <xsl:variable name="coordinates_decimal_number" select="2"/>
             
             <!-- Datum -->
-            <xsl:variable name="DME_datum" select="replace(replace(aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-            
-            <xsl:variable name="lat-long-datums" select="
-              ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-              'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-              'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-              'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-              'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-              'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
+            <xsl:variable name="DME_datum_raw">
+              <xsl:value-of select="
+                if (aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                else if (aixm:location/aixm:ElevatedPoint/@srsName) then aixm:location/aixm:ElevatedPoint/@srsName
+                else if (../../gml:boundedBy/gml:Envelope/@srsName) then ../../gml:boundedBy/gml:Envelope/@srsName
+                else if (../../../../gml:boundedBy/gml:Envelope/@srsName) then ../../../../gml:boundedBy/gml:Envelope/@srsName
+                else 'No srsName found!'"/>
+            </xsl:variable>
+            <xsl:variable name="DME_datum">
+              <xsl:value-of select="
+                if ($DME_datum_raw != 'No srsName found!') then replace(replace($DME_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                else 'No srsName found!'"/>
+            </xsl:variable>
             
             <!-- Extract coordinates depending on the coordinate system -->
             <xsl:variable name="coordinates" select="aixm:location/aixm:ElevatedPoint/gml:pos"/>
             <xsl:variable name="latitude_decimal">
               <xsl:choose>
-                <xsl:when test="$DME_datum = $lat-long-datums">
+                <xsl:when test="$DME_datum != 'OGC:1.3:CRS84'">
                   <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
                 </xsl:when>
-                <xsl:when test="matches($DME_datum, '^OGC:.*CRS84$')">
+                <xsl:when test="$DME_datum = 'OGC:1.3:CRS84'">
                   <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
                 </xsl:when>
               </xsl:choose>
             </xsl:variable>
             <xsl:variable name="longitude_decimal">
               <xsl:choose>
-                <xsl:when test="$DME_datum = $lat-long-datums">
+                <xsl:when test="$DME_datum != 'OGC:1.3:CRS84'">
                   <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
                 </xsl:when>
-                <xsl:when test="matches($DME_datum, '^OGC:.*CRS84$')">
+                <xsl:when test="$DME_datum = 'OGC:1.3:CRS84'">
                   <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
                 </xsl:when>
               </xsl:choose>
             </xsl:variable>
             <xsl:variable name="DME_lat">
-              <xsl:if test="string-length($latitude_decimal) gt 0">
+              <xsl:if test="string($latitude_decimal) != 'NaN'">
                 <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
               </xsl:if>
             </xsl:variable>
             <xsl:variable name="DME_long">
-              <xsl:if test="string-length($longitude_decimal) gt 0">
+              <xsl:if test="string($longitude_decimal) != 'NaN'">
                 <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
               </xsl:if>
             </xsl:variable>
@@ -531,12 +543,12 @@
             <!-- UOM -->
             <xsl:variable name="DME_virtual_freq_uom" select="aixm:ghostFrequency/@uom"/>
             
-            <!-- Working hours -->
-            <xsl:variable name="DME_working_hours">
+            <!-- Availability elements the working hours and the Timsh elements are both derived from -->
+            <xsl:variable name="availabilities_for_output" as="element()*">
               <xsl:choose>
                 <!-- Check if DME has at least one availability (excluding xsi:nil='true') -->
                 <xsl:when test="aixm:availability[not(@xsi:nil='true')]">
-                  <xsl:value-of select="fcn:format-working-hours(aixm:availability/aixm:NavaidOperationalStatus)"/>
+                  <xsl:sequence select="aixm:availability/aixm:NavaidOperationalStatus"/>
                 </xsl:when>
                 <!-- Check if corresponding Navaid has at least one availability (excluding xsi:nil='true') -->
                 <xsl:otherwise>
@@ -544,19 +556,14 @@
                   <xsl:variable name="navaid-with-dme" select="//aixm:Navaid[.//aixm:navaidEquipment/aixm:NavaidComponent/aixm:theNavaidEquipment/@xlink:href = concat('urn:uuid:', $DME_UUID)]"/>
                   <xsl:variable name="navaid-baseline-ts" select="$navaid-with-dme/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']"/>
                   <xsl:variable name="navaid-valid-ts" select="fcn:get-valid-timeslice($navaid-baseline-ts)"/>
-                  <xsl:choose>
-                    <!-- If Navaid has at least one availability (excluding xsi:nil='true') -->
-                    <xsl:when test="$navaid-valid-ts/aixm:availability[not(@xsi:nil='true')]">
-                      <xsl:value-of select="fcn:format-working-hours($navaid-valid-ts/aixm:availability/aixm:NavaidOperationalStatus)"/>
-                    </xsl:when>
-                    <!-- If both DME and Navaid have no availability (or only with xsi:nil='true'), check if DME has xsi:nil='true' -->
-                    <xsl:otherwise>
-                      <!-- do nothing -->
-                    </xsl:otherwise>
-                  </xsl:choose>
+                  <!-- If both DME and Navaid have no availability (or only with xsi:nil='true'), nothing is selected -->
+                  <xsl:sequence select="$navaid-valid-ts/aixm:availability[not(@xsi:nil='true')]/aixm:NavaidOperationalStatus"/>
                 </xsl:otherwise>
               </xsl:choose>
             </xsl:variable>
+
+            <!-- Working hours -->
+            <xsl:variable name="DME_working_hours" select="fcn:format-working-hours($availabilities_for_output)"/>
             
             <!-- Effective date -->
             <xsl:variable name="DME_effective_date">
@@ -614,10 +621,10 @@
               <xsl:if test="string-length($DME_working_hours) gt 0">
                 <codeWorkHr><xsl:value-of select="$DME_working_hours"/></codeWorkHr>
               </xsl:if>
-              <!-- Add Timsh elements if VOR_working_hours is 'TIMSH' -->
-              <xsl:if test="$DME_working_hours = 'TIMSH'">
-                <!-- Get timesheets from VOR, or from parent Navaid if VOR has none -->
-                <xsl:variable name="timesheets_for_output" select="if (count(aixm:availability/aixm:NavaidOperationalStatus/aixm:timeInterval/aixm:Timesheet) gt 0) then aixm:availability/aixm:NavaidOperationalStatus/aixm:timeInterval/aixm:Timesheet else //aixm:Navaid[.//aixm:navaidEquipment/aixm:NavaidComponent/aixm:theNavaidEquipment/@xlink:href = concat('urn:uuid:', $DME_UUID)]/aixm:timeSlice/aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)][aixm:correctionNumber = max(../aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE'][aixm:sequenceNumber = max(../aixm:NavaidTimeSlice[aixm:interpretation = 'BASELINE']/aixm:sequenceNumber)]/aixm:correctionNumber)][1]/aixm:availability/aixm:NavaidOperationalStatus/aixm:timeInterval/aixm:Timesheet"/>
+              <!-- Add Timsh elements if the code of at least one availability is 'TIMSH' -->
+              <xsl:if test="tokenize($DME_working_hours, '-') = 'TIMSH'">
+                <!-- Timesheets of the same availability elements the working hours are derived from -->
+                <xsl:variable name="timesheets_for_output" select="$availabilities_for_output/aixm:timeInterval/aixm:Timesheet"/>
                 <xsl:for-each select="$timesheets_for_output">
                   <!-- Skip timesheets with BUSY_FRI or OTHER CodeDayType -->
                   <xsl:variable name="skip_day" select="fcn:should-skip-code-day(string(aixm:day))"/>
@@ -688,6 +695,11 @@
                       <!-- codeCombTil -->
                       <xsl:if test="aixm:endEventInterpretation and not(aixm:endEventInterpretation/@xsi:nil='true')">
                         <codeCombTil><xsl:value-of select="fcn:translate-event-interpretation(string(aixm:endEventInterpretation))"/></codeCombTil>
+                      </xsl:if>
+                      <!-- txtRmk identifying the availability this Timsh is generated from, when there is more than one -->
+                      <xsl:variable name="availability" select="ancestor::aixm:NavaidOperationalStatus[1]"/>
+                      <xsl:if test="count($availabilities_for_output) ge 2">
+                        <txtRmk><xsl:value-of select="concat('Availability ', count($availabilities_for_output[. &lt;&lt; $availability]) + 1, if ($availability/aixm:operationalStatus and not($availability/aixm:operationalStatus/@xsi:nil='true')) then concat(' - ', $availability/aixm:operationalStatus) else '')"/></txtRmk>
                       </xsl:if>
                     </Timsh>
                   </xsl:if>

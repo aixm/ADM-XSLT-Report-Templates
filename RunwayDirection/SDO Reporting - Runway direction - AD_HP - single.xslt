@@ -117,6 +117,12 @@
     </xsl:choose>
   </xsl:function>
   
+  <!-- Get the single aixm:note or if multiple present the one which has @lang=("EN","ENG") -->
+  <xsl:function name="fcn:get-eng-note" as="element()?">
+    <xsl:param name="note" as="element()?"/>   <!-- an aixm:Note -->
+    <xsl:sequence select="(($note/aixm:translatedNote/aixm:LinguisticNote/aixm:note)[last() = 1 or lower-case(@lang) = ('en','eng')])[1]"/>
+  </xsl:function>
+
   <xsl:function name="fcn:get-last-word" as="xs:string">
     <xsl:param name="input" as="xs:string"/>
     <xsl:variable name="words" select="tokenize(normalize-space($input), '\s+')"/>
@@ -555,45 +561,49 @@
                   </xsl:variable>
                   
                   <!-- RDN THR Datum -->
-                  <xsl:variable name="RDN_THR_datum" select="replace(replace($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-                  
-                  <xsl:variable name="lat-long-datums" select="
-                    ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-                    'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-                    'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-                    'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-                    'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-                    'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
+                  <xsl:variable name="RDN_THR_datum_raw">
+                    <xsl:value-of select="
+                      if ($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then $RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if ($RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName) then $RCP-valid-ts/aixm:location/aixm:ElevatedPoint/@srsName
+                      else if ($RCP-valid-ts/ancestor::aixm:RunwayCentrelinePoint/gml:boundedBy/gml:Envelope/@srsName) then $RCP-valid-ts/ancestor::aixm:RunwayCentrelinePoint/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($RCP-valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $RCP-valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:variable name="RDN_THR_datum">
+                    <xsl:value-of select="
+                      if ($RDN_THR_datum_raw != 'No srsName found!') then replace(replace($RDN_THR_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
                   
                   <!-- Extract coordinates depending on the coordinate system -->
                   <xsl:variable name="RDN_THR_coordinates" select="$RCP-valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:variable name="RDN_THR_latitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$RDN_THR_datum = $lat-long-datums">
+                      <xsl:when test="$RDN_THR_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-before($RDN_THR_coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($RDN_THR_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$RDN_THR_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-after($RDN_THR_coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="RDN_THR_longitude_decimal">
                     <xsl:choose>
-                      <xsl:when test="$RDN_THR_datum = $lat-long-datums">
+                      <xsl:when test="$RDN_THR_datum != 'OGC:1.3:CRS84'">
                         <xsl:value-of  select="number(substring-after($RDN_THR_coordinates, ' '))"/>
                       </xsl:when>
-                      <xsl:when test="matches($RDN_THR_datum, '^OGC:.*CRS84$')">
+                      <xsl:when test="$RDN_THR_datum = 'OGC:1.3:CRS84'">
                         <xsl:value-of select="number(substring-before($RDN_THR_coordinates, ' '))"/>
                       </xsl:when>
                     </xsl:choose>
                   </xsl:variable>
                   <xsl:variable name="RDN_THR_latitude">
-                    <xsl:if test="string-length($RDN_THR_latitude_decimal) gt 0">
+                    <xsl:if test="string($RDN_THR_latitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-latitude($RDN_THR_latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
                   <xsl:variable name="RDN_THR_longitude">
-                    <xsl:if test="string-length($RDN_THR_longitude_decimal) gt 0">
+                    <xsl:if test="string($RDN_THR_longitude_decimal) != 'NaN'">
                       <xsl:value-of select="fcn:format-longitude($RDN_THR_longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:variable>
@@ -658,8 +668,8 @@
                       </xsl:when>
                       <xsl:when test="not($VASIS-valid-ts/aixm:position)">
                         <xsl:for-each select="aixm:annotation/aixm:Note">
-                          <xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'vasis position')">
-                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
+                          <xsl:if test="contains(lower-case(fcn:get-eng-note(.)), 'vasis position')">
+                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(fcn:get-eng-note(.),'(\r\n?|\n)', ' ')), ' ')"/>
                             <xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
                             <xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'vasis position: ')) + string-length('vasis position: ')"/>
                             <xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
@@ -696,8 +706,8 @@
                       </xsl:when>
                       <xsl:when test="not($VASIS-valid-ts/aixm:portable)">
                         <xsl:for-each select="aixm:annotation/aixm:Note">
-                          <xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'portablevasis')">
-                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
+                          <xsl:if test="contains(lower-case(fcn:get-eng-note(.)), 'portablevasis')">
+                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(fcn:get-eng-note(.),'(\r\n?|\n)', ' ')), ' ')"/>
                             <xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
                             <xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'portablevasis: ')) + string-length('portablevasis: ')"/>
                             <xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
@@ -742,8 +752,8 @@
                       </xsl:when>
                       <xsl:when test="not($VASIS-valid-ts/aixm:type)">
                         <xsl:for-each select="aixm:annotation/aixm:Note">
-                          <xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'type of vasis')">
-                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
+                          <xsl:if test="contains(lower-case(fcn:get-eng-note(.)), 'type of vasis')">
+                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(fcn:get-eng-note(.),'(\r\n?|\n)', ' ')), ' ')"/>
                             <xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
                             <xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'type of vasis: ')) + string-length('type of vasis: ')"/>
                             <xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
@@ -779,8 +789,8 @@
                       </xsl:when>
                       <xsl:when test="not($VASIS-valid-ts/aixm:slopeAngle)">
                         <xsl:for-each select="aixm:annotation/aixm:Note">
-                          <xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'approach slope angle')">
-                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
+                          <xsl:if test="contains(lower-case(fcn:get-eng-note(.)), 'approach slope angle')">
+                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(fcn:get-eng-note(.),'(\r\n?|\n)', ' ')), ' ')"/>
                             <xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
                             <xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'approach slope angle: ')) + string-length('approach slope angle: ')"/>
                             <xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
@@ -805,8 +815,8 @@
                       </xsl:when>
                       <xsl:when test="not($VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold)">
                         <xsl:for-each select="aixm:annotation/aixm:Note">
-                          <xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'minimum eye height over threshold')">
-                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
+                          <xsl:if test="contains(lower-case(fcn:get-eng-note(.)), 'minimum eye height over threshold')">
+                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(fcn:get-eng-note(.),'(\r\n?|\n)', ' ')), ' ')"/>
                             <xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
                             <xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'minimum eye height over threshold: ')) + string-length('minimum eye height over threshold: ')"/>
                             <xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
@@ -824,8 +834,8 @@
                       </xsl:when>
                       <xsl:when test="not($VASIS-valid-ts/aixm:minimumEyeHeightOverThreshold/@uom)">
                         <xsl:for-each select="aixm:annotation/aixm:Note">
-                          <xsl:if test="contains(lower-case(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]), 'unit of measurement [minimum eye height over threshold]')">
-                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')],'(\r\n?|\n)', ' ')), ' ')"/>
+                          <xsl:if test="contains(lower-case(fcn:get-eng-note(.)), 'unit of measurement [minimum eye height over threshold]')">
+                            <xsl:variable name="annotation_text" select="concat(normalize-space(replace(fcn:get-eng-note(.),'(\r\n?|\n)', ' ')), ' ')"/>
                             <xsl:variable name="annotation_text_lower" select="lower-case($annotation_text)"/>
                             <xsl:variable name="start_pos" select="string-length(substring-before($annotation_text_lower, 'unit of measurement [minimum eye height over threshold]: ')) + string-length('unit of measurement [minimum eye height over threshold]: ')"/>
                             <xsl:value-of select="substring-before(substring($annotation_text, $start_pos + 1), ' ')"/>
@@ -856,7 +866,7 @@
                         </xsl:choose>
                       </xsl:when>
                       <xsl:when test="not($ArrestingGear-valid-ts)">
-                        <xsl:for-each select="aixm:annotation/aixm:Note[contains(lower-case(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note), 'arresting gear')]">
+                        <xsl:for-each select="aixm:annotation/aixm:Note[contains(lower-case(fcn:get-eng-note(.)), 'arresting gear')]">
                           <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
                             <xsl:choose>
                               <xsl:when test="contains(lower-case(aixm:note), 'arresting gear')">
@@ -874,30 +884,38 @@
                   
                   <!-- RVR meteorological equipment -->
                   <xsl:variable name="RVR-baseline" select="//aixm:RunwayVisualRangeTimeSlice[aixm:interpretation = 'BASELINE' and replace(aixm:associatedRunwayDirection/@xlink:href, '^(urn:uuid:|#uuid\.)', '') = $RDN_UUID]"/>
-                  <xsl:variable name="RVR-valid-ts" select="fcn:get-valid-timeslice($RVR-baseline)"/>
+                  <!-- valid timeslice of each RunwayVisualRange associated with this runway direction -->
+                  <xsl:variable name="RVR-valid-ts" as="element()*">
+                    <xsl:for-each select="$RVR-baseline/../..">
+                      <xsl:sequence select="fcn:get-valid-timeslice(aixm:timeSlice/aixm:RunwayVisualRangeTimeSlice intersect $RVR-baseline)"/>
+                    </xsl:for-each>
+                  </xsl:variable>
                   <xsl:variable name="RDN_RVR_timeslice">
-                    <xsl:if test="$RVR-valid-ts">
-                      <xsl:value-of select="fcn:format-timeslice-info($RVR-valid-ts)"/>
-                    </xsl:if>
+                    <!-- one line per RunwayVisualRange, in the same order as the equipment column -->
+                    <xsl:for-each select="$RVR-valid-ts">
+                      <xsl:value-of select="concat(if (position() = 1) then '' else ' ||| ', fcn:format-timeslice-info(.))"/>
+                    </xsl:for-each>
                   </xsl:variable>
                   <xsl:variable name="RDN_RVR_equipment">
                     <xsl:choose>
                       <xsl:when test="$RVR-valid-ts">
-                        <xsl:iterate select="$RVR-valid-ts/aixm:readingPosition">
-                          <xsl:param name="result" select="' '"/>
-                          <xsl:on-completion>
-                            <xsl:variable name="result">
-                              <xsl:sequence select="$result"/>
-                            </xsl:variable>
-                            <xsl:value-of select="concat('Installed at', substring($result, 1, string-length($result)-2))"/>
-                          </xsl:on-completion>
-                          <xsl:next-iteration>
-                            <xsl:with-param name="result" select="if (. = 'TDZ') then concat($result, 'TDZ, ') else if (. = 'MID') then concat($result, 'MID, ') else if (. = 'TO') then concat($result, 'TO, ') else concat($result, substring-after(., ':'), ', ')"/>
-                          </xsl:next-iteration>
-                        </xsl:iterate>
+                        <!-- one line per RunwayVisualRange, its reading positions spelled out -->
+                        <xsl:for-each select="$RVR-valid-ts">
+                          <xsl:variable name="reading_positions" as="xs:string*">
+                            <xsl:for-each select="aixm:readingPosition">
+                              <xsl:sequence select="
+                                if (. = 'TDZ') then 'touchdown'
+                                else if (. = 'MID') then 'middle/centre of runway'
+                                else if (. = 'TO') then 'takeoff/rollout point'
+                                else if (contains(., ':')) then substring-after(., ':')
+                                else string(.)"/>
+                            </xsl:for-each>
+                          </xsl:variable>
+                          <xsl:value-of select="concat(if (position() = 1) then '' else ' | ', if (exists($reading_positions)) then concat('Installed at ', string-join($reading_positions, ', ')) else '')"/>
+                        </xsl:for-each>
                       </xsl:when>
                       <xsl:when test="not($RVR-valid-ts)">
-                        <xsl:for-each select="aixm:annotation/aixm:Note[contains(lower-case(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note), 'runway visual range')]">
+                        <xsl:for-each select="aixm:annotation/aixm:Note[contains(lower-case(fcn:get-eng-note(.)), 'runway visual range')]">
                           <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
                             <xsl:choose>
                               <xsl:when test="contains(lower-case(aixm:note), 'runway visual range')">
@@ -927,30 +945,18 @@
                   
                   <!-- Remarks -->
                   <xsl:variable name="RDN_remarks">
-                    <xsl:variable name="dataset_creation_date" select="//aixm:messageMetadata/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:DateTime"/>
-                    <xsl:if test="string-length($dataset_creation_date) gt 0">
-                      <xsl:value-of select="concat('Current time: ', $dataset_creation_date)"/>
-                    </xsl:if>
-                    <xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote[
-                      ((../../aixm:propertyName and (not(../../aixm:propertyName/@xsi:nil='true') or not(../../aixm:propertyName/@xsi:nil))) or not(../../aixm:propertyName)) and
-                      (not(contains(lower-case(aixm:note), 'vasis position')) and
-                      not(contains(lower-case(aixm:note), 'portablevasis')) and
-                      not(contains(lower-case(aixm:note), 'type of vasis')) and
-                      not(contains(lower-case(aixm:note), 'vasis position')) and
-                      not(contains(lower-case(aixm:note), 'approach slope angle')) and
-                      not(contains(lower-case(aixm:note), 'minimum eye height over threshold')) and
-                      not(contains(lower-case(aixm:note), 'unit of measurement [minimum eye height over threshold]')) and
-                      not(contains(lower-case(aixm:note), 'arresting gear')) and
-                      not(contains(lower-case(aixm:note), 'runway visual range')) and
-                      not(contains(aixm:note, 'CRC:')))]">
-                      <xsl:choose>
-                        <xsl:when test="position() = 1">
-                          <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:when>
-                        <xsl:otherwise>
-                          <xsl:value-of select="concat(' | ', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                        </xsl:otherwise>
-                      </xsl:choose>
+                    <xsl:for-each select="aixm:annotation/aixm:Note">
+                      <xsl:variable name="annotation-index" select="position()"/>
+                      <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+                        <xsl:choose>
+                          <xsl:when test="$annotation-index = 1 and position() = 1">
+                            <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                          </xsl:when>
+                          <xsl:otherwise>
+                            <xsl:value-of select="concat(' | ', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                          </xsl:otherwise>
+                        </xsl:choose>
+                      </xsl:for-each>
                     </xsl:for-each>
                   </xsl:variable>
                   

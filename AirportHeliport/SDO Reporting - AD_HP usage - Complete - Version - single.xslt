@@ -182,7 +182,7 @@
         </xsl:choose>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:variable name="ti-notes" select="$level-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote/aixm:note[not(@lang) or @lang=('en','eng')]"/>
+        <xsl:variable name="ti-notes" select="$level-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval'] ! fcn:get-eng-note(.)"/>
         <xsl:choose>
           <!-- insert 'HX' if coded in a timeInterval annotation at this level -->
           <xsl:when test="$ti-notes[contains(., 'HX')]">
@@ -260,7 +260,7 @@
       <xsl:call-template name="process-condition">
         <xsl:with-param name="condition" select="."/>
         <xsl:with-param name="usage-element" select="$usage-element"/>
-        <xsl:with-param name="condition-level" select="concat($condition-level, '.', $subcondition-index)"/>
+        <xsl:with-param name="condition-level" select="concat($condition-level, '.subCondition[', $subcondition-index, ']')"/>
         <xsl:with-param name="airport-vars" select="$airport-vars"/>
       </xsl:call-template>
     </xsl:for-each>
@@ -363,17 +363,14 @@
     <!-- Detect working hours code for this timesheet / condition level -->
     <xsl:variable name="working-hours-code" select="fcn:format-working-hours($timesheet, $condition-element)"/>
 
-    <!-- Extract same-level annotations for this timesheet -->
+    <!-- Extract same-level annotations for this Timesheet, plus the annotations carried by the Timesheet itself -->
     <xsl:variable name="timesheet-remarks">
-      <xsl:for-each select="$condition-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
-        <xsl:choose>
-          <xsl:when test="position() = 1">
-            <xsl:value-of select="concat('(', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:value-of select="concat(' | (', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', ') ', fcn:get-annotation-text(aixm:note))"/>
-          </xsl:otherwise>
-        </xsl:choose>
+      <xsl:variable name="remark-notes" as="element()*" select="$condition-element/aixm:annotation/aixm:Note[aixm:propertyName='timeInterval'], $timesheet/aixm:annotation/aixm:Note"/>
+      <xsl:for-each select="$remark-notes">
+        <xsl:variable name="annotation-index" select="position()"/>
+        <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+          <xsl:value-of select="concat(if ($annotation-index = 1 and position() = 1) then '' else ' | ', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+        </xsl:for-each>
       </xsl:for-each>
     </xsl:variable>
 
@@ -564,10 +561,10 @@
             <xsl:sequence select="concat('NAV: ', fcn:insert-value($current-aircraft/aixm:navigationEquipment))"/>
           </xsl:if>
           <xsl:if test="$current-aircraft/aixm:navigationSpecification">
-            <xsl:sequence select="concat('NS: ', fcn:insert-value($current-aircraft/aixm:navigationSpecification))"/>
+            <xsl:sequence select="concat('NAV Spec: ', fcn:insert-value($current-aircraft/aixm:navigationSpecification))"/>
           </xsl:if>
           <xsl:if test="$current-aircraft/aixm:verticalSeparationCapability">
-            <xsl:sequence select="concat('VS capability: ', fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability))"/>
+            <xsl:sequence select="concat('Ver Sep capability: ', fcn:insert-value($current-aircraft/aixm:verticalSeparationCapability))"/>
           </xsl:if>
           <xsl:if test="$current-aircraft/aixm:antiCollisionAndSeparationEquipment">
             <xsl:sequence select="concat('Anti-Collision: ', fcn:insert-value($current-aircraft/aixm:antiCollisionAndSeparationEquipment))"/>
@@ -868,6 +865,12 @@
     </tr>
   </xsl:template>
 
+  <!-- Get the single aixm:note or if multiple present the one which has @lang=("EN","ENG") -->
+  <xsl:function name="fcn:get-eng-note" as="element()?">
+    <xsl:param name="note" as="element()?"/>   <!-- an aixm:Note -->
+    <xsl:sequence select="(($note/aixm:translatedNote/aixm:LinguisticNote/aixm:note)[last() = 1 or lower-case(@lang) = ('en','eng')])[1]"/>
+  </xsl:function>
+
   <xsl:template match="/">
 
     <html xmlns="http://www.w3.org/1999/xhtml">
@@ -957,7 +960,7 @@
                 <td><strong>Remark to working hours</strong></td>
               </tr>
               <tr>
-                <td><strong>Condition Combination</strong></td>
+                <td><strong>Condition Level</strong></td>
               </tr>
               <tr>
                 <td><strong>Prior Permission</strong></td>
@@ -1131,8 +1134,8 @@
                   <!-- Process each availability -->
                   <xsl:for-each select="aixm:availability/aixm:AirportHeliportAvailability">
 
-                    <!-- Roman numeral identifying the availability in the Condition Combination column, when there are two or more availability objects -->
-                    <xsl:variable name="availability-prefix" select="if (last() ge 2) then format-integer(position(), 'I') else ''"/>
+                    <!-- XPath-like path identifying the availability in the Condition Level column; always present, even when there is only one availability object -->
+                    <xsl:variable name="availability-prefix" select="concat('availability[', position(), ']')"/>
 
                     <!-- Create a map of airport-level variables -->
                     <xsl:variable name="airport-vars" select="map{
@@ -1188,7 +1191,7 @@
                         <xsl:call-template name="process-condition">
                           <xsl:with-param name="condition" select="."/>
                           <xsl:with-param name="usage-element" select="parent::aixm:selection/parent::aixm:AirportHeliportUsage"/>
-                          <xsl:with-param name="condition-level" select="if ($availability-prefix != '') then concat($availability-prefix, '.', $usage-index) else string($usage-index)"/>
+                          <xsl:with-param name="condition-level" select="concat($availability-prefix, '.usage[', $usage-index, ']')"/>
                           <xsl:with-param name="airport-vars" select="$airport-vars"/>
                         </xsl:call-template>
                       </xsl:for-each>

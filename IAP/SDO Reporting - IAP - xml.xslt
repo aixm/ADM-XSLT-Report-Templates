@@ -241,31 +241,30 @@
     <xsl:value-of select="string-join($non_empty_lines, '&lt;br/&gt;')"/>
   </xsl:function>
   
+  <!-- Get the single aixm:note or if multiple present the one which has @lang=("EN","ENG") -->
+  <xsl:function name="fcn:get-eng-note" as="element()?">
+    <xsl:param name="note" as="element()?"/>   <!-- an aixm:Note -->
+    <xsl:sequence select="(($note/aixm:translatedNote/aixm:LinguisticNote/aixm:note)[last() = 1 or lower-case(@lang) = ('en','eng')])[1]"/>
+  </xsl:function>
+  
   <!-- Get latitude on datum -->
   <xsl:function name="fcn:get-latitude" as="xs:string">
     <xsl:param name="datum" as="xs:string"/>
     <xsl:param name="coordinates" as="xs:string"/>
     <xsl:param name="coordinates_type" as="xs:string"/>
     <xsl:param name="coordinates_decimal_number" as="xs:integer"/>
-    <xsl:variable name="lat-long-datums" select="
-      ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-      'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-      'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-      'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-      'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-      'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
     <xsl:variable name="latitude_decimal">
       <xsl:choose>
-        <xsl:when test="$datum = $lat-long-datums">
+        <xsl:when test="$datum != 'OGC:1.3:CRS84'">
           <xsl:value-of  select="number(substring-before($coordinates, ' '))"/>
         </xsl:when>
-        <xsl:when test="matches($datum, '^OGC:.*CRS84$')">
+        <xsl:when test="$datum = 'OGC:1.3:CRS84'">
           <xsl:value-of select="number(substring-after($coordinates, ' '))"/>
         </xsl:when>
       </xsl:choose>
     </xsl:variable>
     <xsl:choose>
-      <xsl:when test="string-length($latitude_decimal) gt 0">
+      <xsl:when test="string($latitude_decimal) != 'NaN'">
         <xsl:value-of select="fcn:format-latitude($latitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
       </xsl:when>
       <xsl:otherwise>
@@ -280,25 +279,18 @@
     <xsl:param name="coordinates" as="xs:string"/>
     <xsl:param name="coordinates_type" as="xs:string"/>
     <xsl:param name="coordinates_decimal_number" as="xs:integer"/>
-    <xsl:variable name="lat-long-datums" select="
-      ('EPSG:4326','EPSG:4258','EPSG:4322','EPSG:4230',
-      'EPSG:4668','EPSG:4312','EPSG:4215','EPSG:4801',
-      'EPSG:4149','EPSG:4326','EPSG:4275','EPSG:4746',
-      'EPSG:4121','EPSG:4658','EPSG:4299','EPSG:4806',
-      'EPSG:4277','EPSG:4207','EPSG:4274','EPSG:4740',
-      'EPSG:4313','EPSG:4124','EPSG:4267','EPSG:4269')"/>
     <xsl:variable name="longitude_decimal">
       <xsl:choose>
-        <xsl:when test="$datum = $lat-long-datums">
+        <xsl:when test="$datum != 'OGC:1.3:CRS84'">
           <xsl:value-of  select="number(substring-after($coordinates, ' '))"/>
         </xsl:when>
-        <xsl:when test="matches($datum, '^OGC:.*CRS84$')">
+        <xsl:when test="$datum = 'OGC:1.3:CRS84'">
           <xsl:value-of select="number(substring-before($coordinates, ' '))"/>
         </xsl:when>
       </xsl:choose>
     </xsl:variable>
     <xsl:choose>
-      <xsl:when test="string-length($longitude_decimal) gt 0">
+      <xsl:when test="string($longitude_decimal) != 'NaN'">
         <xsl:value-of select="fcn:format-longitude($longitude_decimal, $coordinates_type, $coordinates_decimal_number)"/>
       </xsl:when>
       <xsl:otherwise>
@@ -654,10 +646,18 @@
             <!-- MSA centre NDB - Latitude and Longitude -->
             
             <!-- NDB Datum -->
+            <xsl:variable name="NDB_navaid_datum_raw">
+              <xsl:value-of select="
+                if ($NDB_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then $NDB_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                else if ($NDB_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName) then $NDB_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName
+                else if ($NDB_navaid_valid-ts/ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName) then $NDB_navaid_valid-ts/ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName
+                else if ($NDB_navaid_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $NDB_navaid_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                else 'No srsName found!'"/>
+            </xsl:variable>
             <xsl:variable name="NDB_navaid_datum">
-              <xsl:if test="$NDB_provides_navigable_location = 'NO'">
-                <xsl:value-of select="replace(replace($NDB_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-              </xsl:if>
+              <xsl:value-of select="
+                if ($NDB_navaid_datum_raw != 'No srsName found!') then replace(replace($NDB_navaid_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                else 'No srsName found!'"/>
             </xsl:variable>
             
             <!-- Extract coordinates depending on the coordinate system -->
@@ -703,10 +703,18 @@
             <!-- MSA centre VOR - Latitude and Longitude -->
             
             <!-- VOR Datum -->
+            <xsl:variable name="VOR_navaid_datum_raw">
+              <xsl:value-of select="
+                if ($VOR_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then $VOR_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                else if ($VOR_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName) then $VOR_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName
+                else if ($VOR_navaid_valid-ts/ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName) then $VOR_navaid_valid-ts/ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName
+                else if ($VOR_navaid_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $VOR_navaid_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                else 'No srsName found!'"/>
+            </xsl:variable>
             <xsl:variable name="VOR_navaid_datum">
-              <xsl:if test="$VOR_provides_navigable_location = 'NO'">
-                <xsl:value-of select="replace(replace($VOR_navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
-              </xsl:if>
+              <xsl:value-of select="
+                if ($VOR_navaid_datum_raw != 'No srsName found!') then replace(replace($VOR_navaid_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                else 'No srsName found!'"/>
             </xsl:variable>
             
             <!-- Extract coordinates depending on the coordinate system -->
@@ -828,36 +836,116 @@
                 </xsl:when>
               </xsl:choose>
             </xsl:variable>
+            
+            <!-- MSA datum -->
+            <xsl:variable name="MSA_datum">
+              <xsl:choose>
+                <xsl:when test="$MSA_valid-ts/aixm:centrePoint_airportReferencePoint/@xlink:href">
+                  <xsl:variable name="ARP_datum_raw">
+                    <xsl:value-of select="
+                      if ($AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos/@srsName) then $AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if ($AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName) then $AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName
+                      else if ($AHP_valid-ts/ancestor::aixm:AirportHeliport/gml:boundedBy/gml:Envelope/@srsName) then $AHP_valid-ts/ancestor::aixm:AirportHeliport/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($AHP_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $AHP_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:value-of select="
+                    if ($ARP_datum_raw != 'No srsName found!') then replace(replace($ARP_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                    else 'No srsName found!'"/>
+                </xsl:when>
+                <xsl:when test="$MSA_valid-ts/aixm:centrePoint_aimingPoint/@xlink:href">
+                  <xsl:variable name="TLOF_datum_raw">
+                    <xsl:value-of select="
+                      if ($TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/gml:pos/@srsName) then $TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if ($TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/@srsName) then $TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/@srsName
+                      else if ($TLOF_valid-ts/ancestor::aixm:TouchDownLiftOff/gml:boundedBy/gml:Envelope/@srsName) then $TLOF_valid-ts/ancestor::aixm:TouchDownLiftOff/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($TLOF_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $TLOF_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:value-of select="
+                    if ($TLOF_datum_raw != 'No srsName found!') then replace(replace($TLOF_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                    else 'No srsName found!'"/>
+                </xsl:when>
+                <xsl:when test="$MSA_valid-ts/aixm:centrePoint_runwayPoint/@xlink:href">
+                  <xsl:variable name="RCP_datum_raw">
+                    <xsl:value-of select="
+                      if ($RCP_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then $RCP_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if ($RCP_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName) then $RCP_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName
+                      else if ($RCP_valid-ts/ancestor::aixm:RunwayCentrelinePoint/gml:boundedBy/gml:Envelope/@srsName) then $RCP_valid-ts/ancestor::aixm:RunwayCentrelinePoint/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($RCP_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $RCP_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:value-of select="
+                    if ($RCP_datum_raw != 'No srsName found!') then replace(replace($RCP_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                    else 'No srsName found!'"/>
+                </xsl:when>
+                <xsl:when test="$MSA_valid-ts/aixm:centrePoint_position">
+                  <xsl:variable name="Point_datum_raw">
+                    <xsl:value-of select="
+                      if ($MSA_valid-ts/aixm:centrePoint_position/aixm:Point/gml:pos/@srsName) then $MSA_valid-ts/aixm:centrePoint_position/aixm:Point/gml:pos/@srsName
+                      else if ($MSA_valid-ts/aixm:centrePoint_position/aixm:Point/@srsName) then $MSA_valid-ts/aixm:centrePoint_position/aixm:Point/@srsName
+                      else if ($MSA_valid-ts/ancestor::aixm:SafeAltitudeArea/gml:boundedBy/gml:Envelope/@srsName) then $MSA_valid-ts/ancestor::aixm:SafeAltitudeArea/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($MSA_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $MSA_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:value-of select="
+                    if ($Point_datum_raw != 'No srsName found!') then replace(replace($Point_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                    else 'No srsName found!'"/>
+                </xsl:when>
+                <xsl:when test="$MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href">
+                  <xsl:variable name="Navaid_datum_raw">
+                    <xsl:value-of select="
+                      if ($Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName) then $Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos/@srsName
+                      else if ($Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName) then $Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName
+                      else if ($Navaid_valid-ts/ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName) then $Navaid_valid-ts/ancestor::aixm:Navaid/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($Navaid_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $Navaid_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:value-of select="
+                    if ($Navaid_datum_raw != 'No srsName found!') then replace(replace($Navaid_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                    else 'No srsName found!'"/>
+                </xsl:when>
+                <xsl:when test="$MSA_valid-ts/aixm:centrePoint_fixDesignatedPoint/@xlink:href">
+                  <xsl:variable name="DPN_datum_raw">
+                    <xsl:value-of select="
+                      if ($DPN_valid-ts/aixm:location/aixm:Point/gml:pos/@srsName) then $DPN_valid-ts/aixm:location/aixm:Point/gml:pos/@srsName
+                      else if ($DPN_valid-ts/aixm:location/aixm:Point/@srsName) then $DPN_valid-ts/aixm:location/aixm:Point/@srsName
+                      else if ($DPN_valid-ts/ancestor::aixm:DesignatedPoint/gml:boundedBy/gml:Envelope/@srsName) then $DPN_valid-ts/ancestor::aixm:DesignatedPoint/gml:boundedBy/gml:Envelope/@srsName
+                      else if ($DPN_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName) then $DPN_valid-ts/root()/*/gml:boundedBy/gml:Envelope/@srsName
+                      else 'No srsName found!'"/>
+                  </xsl:variable>
+                  <xsl:value-of select="
+                    if ($DPN_datum_raw != 'No srsName found!') then replace(replace($DPN_datum_raw, 'urn:ogc:def:crs:', ''), '::', ':')
+                    else 'No srsName found!'"/>
+                </xsl:when>
+              </xsl:choose>
+            </xsl:variable>
 
             <!-- MSA centre Significant point - Latitude -->
             <xsl:variable name="MSA_significant_point_latitude">
               <xsl:choose>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_airportReferencePoint/@xlink:href">
-                  <xsl:variable name="ARP_datum" select="replace(replace($AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="ARP_coordinates" select="$AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:if test="not(empty($ARP_coordinates)) and string-length($ARP_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-latitude($ARP_datum, $ARP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-latitude($MSA_datum, $ARP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_aimingPoint/@xlink:href">
-                  <xsl:variable name="TLOF_datum" select="replace(replace($TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="TLOF_coordinates" select="$TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:if test="not(empty($TLOF_coordinates)) and string-length($TLOF_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-latitude($TLOF_datum, $TLOF_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-latitude($MSA_datum, $TLOF_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_runwayPoint/@xlink:href">
-                  <xsl:variable name="RCP_datum" select="replace(replace($RCP_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="RCP_coordinates" select="$RCP_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:if test="not(empty($RCP_coordinates)) and string-length($RCP_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-latitude($RCP_datum, $RCP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-latitude($MSA_datum, $RCP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_position">
-                  <xsl:variable name="Point_datum" select="replace(replace($MSA_valid-ts/aixm:centrePoint_position/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="Point_coordinates" select="$MSA_valid-ts/aixm:centrePoint_position/aixm:Point/gml:pos"/>
                   <xsl:if test="not(empty($Point_coordinates)) and string-length($Point_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-latitude($Point_datum, $Point_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-latitude($MSA_datum, $Point_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href">
@@ -869,18 +957,16 @@
                     </xsl:for-each>
                   </xsl:variable>
                   <xsl:if test="$provides_navigable_location = 'YES'">
-                    <xsl:variable name="Navaid_datum" select="replace(replace($Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                     <xsl:variable name="Navaid_coordinates" select="$Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                     <xsl:if test="not(empty($Navaid_coordinates)) and string-length($Navaid_coordinates) gt 0">
-                      <xsl:value-of select="fcn:get-latitude($Navaid_datum, $Navaid_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                      <xsl:value-of select="fcn:get-latitude($MSA_datum, $Navaid_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_fixDesignatedPoint/@xlink:href">
-                  <xsl:variable name="DPN_datum" select="replace(replace($DPN_valid-ts/aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="DPN_coordinates" select="$DPN_valid-ts/aixm:location/aixm:Point/gml:pos"/>
                   <xsl:if test="not(empty($DPN_coordinates)) and string-length($DPN_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-latitude($DPN_datum, $DPN_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-latitude($MSA_datum, $DPN_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
               </xsl:choose>
@@ -890,31 +976,27 @@
             <xsl:variable name="MSA_significant_point_longitude">
               <xsl:choose>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_airportReferencePoint/@xlink:href">
-                  <xsl:variable name="ARP_datum" select="replace(replace($AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="ARP_coordinates" select="$AHP_valid-ts/aixm:ARP/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:if test="not(empty($ARP_coordinates)) and string-length($ARP_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-longitude($ARP_datum, $ARP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-longitude($MSA_datum, $ARP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_aimingPoint/@xlink:href">
-                  <xsl:variable name="TLOF_datum" select="replace(replace($TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="TLOF_coordinates" select="$TLOF_valid-ts/aixm:aimingPoint/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:if test="not(empty($TLOF_coordinates)) and string-length($TLOF_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-longitude($TLOF_datum, $TLOF_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-longitude($MSA_datum, $TLOF_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_runwayPoint/@xlink:href">
-                  <xsl:variable name="RCP_datum" select="replace(replace($RCP_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="RCP_coordinates" select="$RCP_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                   <xsl:if test="not(empty($RCP_coordinates)) and string-length($RCP_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-longitude($RCP_datum, $RCP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-longitude($MSA_datum, $RCP_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_position">
-                  <xsl:variable name="Point_datum" select="replace(replace($MSA_valid-ts/aixm:centrePoint_position/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="Point_coordinates" select="$MSA_valid-ts/aixm:centrePoint_position/aixm:Point/gml:pos"/>
                   <xsl:if test="not(empty($Point_coordinates)) and string-length($Point_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-longitude($Point_datum, $Point_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-longitude($MSA_datum, $Point_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_navaidSystem/@xlink:href">
@@ -926,18 +1008,16 @@
                     </xsl:for-each>
                   </xsl:variable>
                   <xsl:if test="$provides_navigable_location = 'YES'">
-                    <xsl:variable name="Navaid_datum" select="replace(replace($Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                     <xsl:variable name="Navaid_coordinates" select="$Navaid_valid-ts/aixm:location/aixm:ElevatedPoint/gml:pos"/>
                     <xsl:if test="not(empty($Navaid_coordinates)) and string-length($Navaid_coordinates) gt 0">
-                      <xsl:value-of select="fcn:get-longitude($Navaid_datum, $Navaid_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                      <xsl:value-of select="fcn:get-longitude($MSA_datum, $Navaid_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                     </xsl:if>
                   </xsl:if>
                 </xsl:when>
                 <xsl:when test="$MSA_valid-ts/aixm:centrePoint_fixDesignatedPoint/@xlink:href">
-                  <xsl:variable name="DPN_datum" select="replace(replace($DPN_valid-ts/aixm:location/aixm:Point/@srsName, 'urn:ogc:def:crs:', ''), '::', ':')"/>
                   <xsl:variable name="DPN_coordinates" select="$DPN_valid-ts/aixm:location/aixm:Point/gml:pos"/>
                   <xsl:if test="not(empty($DPN_coordinates)) and string-length($DPN_coordinates) gt 0">
-                    <xsl:value-of select="fcn:get-longitude($DPN_datum, $DPN_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
+                    <xsl:value-of select="fcn:get-longitude($MSA_datum, $DPN_coordinates, $coordinates_type, $coordinates_decimal_number)"/>
                   </xsl:if>
                 </xsl:when>
               </xsl:choose>
@@ -977,13 +1057,13 @@
             
             <!-- Required navigation performance -->
             <xsl:variable name="IAP_RNP">
-              <xsl:variable name="rnp_count" select="count(aixm:annotation/aixm:Note[contains(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note, 'codeRnp') or contains(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note, 'requiredNavigationPerformance')])"/>
+              <xsl:variable name="rnp_count" select="count(aixm:annotation/aixm:Note[contains(fcn:get-eng-note(.), 'codeRnp') or contains(fcn:get-eng-note(.), 'requiredNavigationPerformance')])"/>
               <xsl:choose>
                 <xsl:when test="$rnp_count gt 1">
                   <xsl:value-of select="'See remarks'"/>
                 </xsl:when>
                 <xsl:otherwise>
-                  <xsl:for-each select="aixm:annotation/aixm:Note">
+                  <xsl:for-each select="aixm:annotation/aixm:Note[contains(fcn:get-eng-note(.), 'codeRnp') or contains(fcn:get-eng-note(.), 'requiredNavigationPerformance')]">
                     <xsl:variable name="note_text" select="aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note"/>
                     <xsl:if test="contains($note_text, 'codeRnp')">
                       <xsl:variable name="after_codeRnp" select="normalize-space(substring-after($note_text, 'codeRnp:'))"/>
@@ -1069,16 +1149,18 @@
             
             <!-- Remarks -->
             <xsl:variable name="IAP_remarks">
-              <xsl:variable name="rnp_count" select="count(aixm:annotation/aixm:Note[contains(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note, 'codeRnp') or contains(aixm:translatedNote[1]/aixm:LinguisticNote/aixm:note, 'requiredNavigationPerformance')])"/>
-              <xsl:for-each select="aixm:annotation/aixm:Note/aixm:translatedNote/aixm:LinguisticNote[(($rnp_count gt 1 or (not(contains(aixm:note, 'codeRnp')) or not(contains(aixm:note, 'requiredNavigationPerformance')))) and not(contains(aixm:note, 'codeTransId')))]">
-                <xsl:choose>
-                  <xsl:when test="position() = 1">
-                    <xsl:value-of select="concat('(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                  </xsl:when>
-                  <xsl:otherwise>
-                    <xsl:value-of select="concat('&#10;', '(', string-join((../../aixm:propertyName, ../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
-                  </xsl:otherwise>
-                </xsl:choose>
+              <xsl:for-each select="aixm:annotation/aixm:Note">
+                <xsl:variable name="annotation-index" select="position()"/>
+                <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
+                  <xsl:choose>
+                    <xsl:when test="$annotation-index = 1 and position() = 1">
+                      <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                    </xsl:when>
+                    <xsl:otherwise>
+                      <xsl:value-of select="concat('&#10;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                    </xsl:otherwise>
+                  </xsl:choose>
+                </xsl:for-each>
               </xsl:for-each>
             </xsl:variable>
             
