@@ -24,11 +24,11 @@
 <!-- 
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
-  featureTypes: aixm:SignificantPointInAirspace
+                    featureTypes: aixm:SignificantPointInAirspace
   includeReferencedFeaturesLevel: 1
-  permanentBaseline: true
-  dataScope: ReleasedData
-  AIXMversion: 5.1.1
+               permanentBaseline: true
+                       dataScope: ReleasedData
+                     AIXMversion: 5.1.1
 -->
 
 <xsl:transform version="3.0" 
