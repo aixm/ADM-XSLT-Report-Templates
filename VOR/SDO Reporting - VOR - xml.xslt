@@ -300,16 +300,6 @@
     <xsl:sequence select="string($result)"/>
   </xsl:function>
 
-  <!-- Get annotation text escaping special HTML characters -->
-  <xsl:function name="fcn:get-annotation-text" as="xs:string">
-    <xsl:param name="raw_text" as="xs:string"/>
-    <!-- First, escape special HTML characters in the raw text before processing -->
-    <xsl:variable name="escaped_raw_text" select="replace(replace($raw_text, '&lt;', '&amp;lt;'), '&gt;', '&amp;gt;')"/>
-    <xsl:variable name="lines" select="for $line in tokenize($escaped_raw_text, '&#xA;') return normalize-space($line)"/>
-    <xsl:variable name="non_empty_lines" select="$lines[string-length(.) gt 0]"/>
-    <xsl:value-of select="string-join($non_empty_lines, '&#10;')"/>
-  </xsl:function>
-
   <!-- Translate CodeDayType values -->
   <xsl:function name="fcn:translate-code-day" as="xs:string">
     <xsl:param name="code_day" as="xs:string"/>
@@ -529,10 +519,10 @@
                   <xsl:for-each select=".//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
                     <xsl:choose>
                       <xsl:when test="position() = 1">
-                        <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                        <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', aixm:note)"/>
                       </xsl:when>
                       <xsl:otherwise>
-                        <xsl:value-of select="concat('&lt;br/&gt;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                        <xsl:value-of select="concat('&#10;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', aixm:note)"/>
                       </xsl:otherwise>
                     </xsl:choose>
                   </xsl:for-each>
@@ -548,10 +538,10 @@
                       <xsl:for-each select="$navaid-valid-ts//aixm:annotation/aixm:Note[aixm:propertyName='timeInterval']/aixm:translatedNote/aixm:LinguisticNote">
                         <xsl:choose>
                           <xsl:when test="position() = 1">
-                            <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                            <xsl:value-of select="concat('(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', aixm:note)"/>
                           </xsl:when>
                           <xsl:otherwise>
-                            <xsl:value-of select="concat('&lt;br/&gt;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', fcn:get-annotation-text(aixm:note))"/>
+                            <xsl:value-of select="concat('&#10;', '(', string-join((../../aixm:purpose, aixm:note/@lang), ';'), ') ', aixm:note)"/>
                           </xsl:otherwise>
                         </xsl:choose>
                       </xsl:for-each>
@@ -568,10 +558,10 @@
                 <xsl:for-each select="aixm:translatedNote/aixm:LinguisticNote">
                   <xsl:choose>
                     <xsl:when test="$annotation-index = 1 and position() = 1">
-                      <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                      <xsl:value-of select="concat('[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', aixm:note)"/>
                     </xsl:when>
                     <xsl:otherwise>
-                      <xsl:value-of select="concat('&#10;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', fcn:get-annotation-text(aixm:note))"/>
+                      <xsl:value-of select="concat('&#10;', '[', $annotation-index, ']', '(', if (../../aixm:propertyName) then (concat(../../aixm:propertyName, ';')) else '', ../../aixm:purpose, if (aixm:note/@lang) then (concat(';', aixm:note/@lang)) else '', '): ', aixm:note)"/>
                     </xsl:otherwise>
                   </xsl:choose>
                 </xsl:for-each>
