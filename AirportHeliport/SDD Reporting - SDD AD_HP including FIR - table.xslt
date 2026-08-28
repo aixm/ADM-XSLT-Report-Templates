@@ -1655,7 +1655,7 @@
                   <!-- featureIdentifier -->
                   <xsl:variable name="AHP_airspace-identifier" select="if (exists($AHP_FIR-info) and map:contains($AHP_FIR-info, 'identifier')) then string($AHP_FIR-info?identifier) else ''"/>
                   <!-- Designator -->
-                  <xsl:variable name="AHP_airspace-name" select="if (exists($AHP_FIR-info) and map:contains($AHP_FIR-info, 'designator')) then string($AHP_FIR-info?designator) else ''"/>
+                  <xsl:variable name="AHP_airspace-designator" select="if (exists($AHP_FIR-info) and map:contains($AHP_FIR-info, 'designator')) then string($AHP_FIR-info?designator) else ''"/>
                   
                   <!-- AviationBoundary/GmlXml -->
                   <xsl:variable name="AHP_aviation-boundary-gml-xml">
@@ -1792,7 +1792,7 @@
                     <td><xsl:value-of select="if (string-length($AHP_sequence-number) gt 0) then $AHP_sequence-number else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_correction-number) gt 0) then $AHP_correction-number else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_airspace-identifier) gt 0) then $AHP_airspace-identifier else '&#160;'"/></td>
-                    <td><xsl:value-of select="if (string-length($AHP_airspace-name) gt 0) then $AHP_airspace-name else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($AHP_airspace-designator) gt 0) then $AHP_airspace-designator else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_designator) gt 0) then $AHP_designator else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_name) gt 0) then $AHP_name else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($AHP_location-indicator-ICAO) gt 0) then $AHP_location-indicator-ICAO else '&#160;'"/></td>

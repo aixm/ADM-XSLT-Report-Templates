@@ -1511,7 +1511,7 @@
             <!-- featureIdentifier -->
             <xsl:variable name="AHP_airspace-identifier" select="if (exists($AHP_FIR-info) and map:contains($AHP_FIR-info, 'identifier')) then string($AHP_FIR-info?identifier) else ''"/>
             <!-- Designator -->
-            <xsl:variable name="AHP_airspace-name" select="if (exists($AHP_FIR-info) and map:contains($AHP_FIR-info, 'designator')) then string($AHP_FIR-info?designator) else ''"/>
+            <xsl:variable name="AHP_airspace-designator" select="if (exists($AHP_FIR-info) and map:contains($AHP_FIR-info, 'designator')) then string($AHP_FIR-info?designator) else ''"/>
             
             <!-- AviationBoundary/GmlXml -->
             <xsl:variable name="AHP_aviation-boundary-gml-xml">
@@ -1668,8 +1668,8 @@
                   <IDENTIFIER><xsl:value-of select="$AHP_airspace-identifier"/></IDENTIFIER>
                 </g0FEA>
               </xsl:if>
-              <xsl:if test="string-length($AHP_airspace-name) gt 0">
-                <DESG><xsl:value-of select="$AHP_airspace-name"/></DESG>
+              <xsl:if test="string-length($AHP_airspace-designator) gt 0">
+                <DESG><xsl:value-of select="$AHP_airspace-designator"/></DESG>
               </xsl:if>
               <xsl:if test="string-length($AHP_designator) gt 0">
                 <g3DESG><xsl:value-of select="$AHP_designator"/></g3DESG>
