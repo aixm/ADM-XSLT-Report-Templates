@@ -1340,7 +1340,7 @@
               <xsl:variable name="doc-root" select="/" as="document-node()"/>
               
               <!-- OPTIMIZATION: Pre-build all FIR geometries once before processing airports -->
-              <!-- This avoids reconstructing geometries N times (once per airport) -->
+              <!-- This avoids reconstructing geometries N times (once per navaid) -->
               <xsl:variable name="fir-geometry-cache" select="fcn:build-fir-geometry-cache($doc-root)" as="map(xs:string, map(*))"/>
               
               <xsl:for-each select="//aixm:Navaid">
@@ -1351,7 +1351,7 @@
                 
                 <xsl:for-each select="$valid-timeslice">
                   
-                  <!-- get all navaid equipment for each navaid -->
+                  <!-- Get all navaid equipment for each navaid -->
                   
                   <xsl:variable name="VOR_equipment_uuid">
                     <xsl:if test="aixm:type = ('VOR','VOR_DME','VORTAC')">
@@ -2551,6 +2551,7 @@
                     <td><xsl:value-of select="if (string-length($effective_date) gt 0) then $effective_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($commit_date) gt 0) then $commit_date else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($Navaid_UUID) gt 0) then $Navaid_UUID else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($valid-timeslice) gt 0) then $valid-timeslice else '&#160;'"/></td>
                     <td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
                   </tr>
                   
