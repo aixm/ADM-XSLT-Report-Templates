@@ -25,7 +25,7 @@
   Extraction Rule parameters required for the transformation to be successful:
   ===========================================================================
                              featureTypes: aixm:Navaid aixm:Airspace
-           includeReferencedFeaturesLevel: 1
+           includeReferencedFeaturesLevel: 2
                         featureOccurrence: aixm:Airspace.aixm:type EQUALS 'FIR' OR aixm:Airspace.aixm:type EQUALS 'FIR_P'
                         permanentBaseline: true
                                 dataScope: ReleasedData
