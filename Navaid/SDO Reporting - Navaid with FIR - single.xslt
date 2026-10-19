@@ -2593,6 +2593,9 @@
                   <!-- Internal UID (master) -->
                   <xsl:variable name="Navaid_UUID" select="../../gml:identifier"/>
                   
+                  <!-- Navaid - Valid TimeSlice -->
+                  <xsl:variable name="Navaid_valid-timeslice" select="fcn:format-timeslice-info(.)"/>
+                  
                   <!-- Originator -->
                   <xsl:variable name="originator" select="
                     if(aixm:extension/ead-audit:NavaidExtension/ead-audit:auditInformation/ead-audit:Audit/ead-audit:createdByOrg)
@@ -2741,7 +2744,7 @@
                     <td><xsl:value-of select="if (string-length($Navaid_UUID) gt 0) then $Navaid_UUID else '&#160;'"/></td>
                   </tr>
                   <tr>
-                    <td><xsl:value-of select="if (string-length($valid-timeslice) gt 0) then $valid-timeslice else '&#160;'"/></td>
+                    <td><xsl:value-of select="if (string-length($Navaid_valid-timeslice) gt 0) then $Navaid_valid-timeslice else '&#160;'"/></td>
                   </tr>
                   <tr>
                     <td><xsl:value-of select="if (string-length($originator) gt 0) then $originator else '&#160;'"/></td>
